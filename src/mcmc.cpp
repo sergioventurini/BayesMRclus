@@ -39,8 +39,8 @@ void bayesmr_mcmc_noclus(
   for(int i = 0; i < n; i++){
     gammahat_j[i] = data[i];
     Gammahat_j[i] = data[n + i];
-    sigma2_X[i] = data[2*n + i];
-    sigma2_Y[i] = data[3*n + i];
+    sigma2_X[i] = pow(data[2*n + i], 2);
+    sigma2_Y[i] = pow(data[3*n + i], 2);
     psi2_j[i] = sigma2_X[i] + hyper_gammaj_psi2;
     tau2_j[i] = sigma2_Y[i] + rhyper_Gammaj_tau2;
     h2_j[i] = (pow(beta_p, 2))*hyper_gammaj_psi2 + tau2_j[i];
@@ -53,7 +53,8 @@ void bayesmr_mcmc_noclus(
   GetRNGstate();
 
   double A_beta = 0, B_beta = 0;
-  double prob = 0;
+  double prob = 0, ran_unif = 0;
+  int accpeted_beta = 0;
   double* lpost_beta_prop = new double;
   double* lpost_beta_old = new double;
   accept[0] = 0;
@@ -72,11 +73,14 @@ void bayesmr_mcmc_noclus(
       rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n, Gammahat_j, sigma2_Y);
     logpost_beta(lpost_beta_old, beta_old, gamma_chain[(niter - 1)], rhyper_beta_mean,
       rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n, Gammahat_j, sigma2_Y);
-    prob = exp(lpost_beta_prop - lpost_beta_old);
-    accept[0] += (R::runif(0, 1) < prob) ? 1.0 : 0.0;
-    beta_old = (accept[0] == 1.0) ? beta_prop : beta_old;
+    prob = exp(*lpost_beta_prop - *lpost_beta_old);
+    
+    ran_unif = R::runif(0, 1);
+    accpeted_beta = (ran_unif < prob) ? 1 : 0;
+    accept[0] += accpeted_beta;
+    beta_old = (accpeted_beta == 1) ? beta_prop : beta_old;
     beta_chain[(niter - 1)] = beta_old;
-    accept_beta += accept[0];  // this is redundant --> simplify in the future
+    accept_beta = accept[0];  // [SV: this is redundant --> simplify in the future]
 
     // print the information
     if(((niter % 500) == 0) && verbose){

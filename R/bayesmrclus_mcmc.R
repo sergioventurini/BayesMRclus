@@ -150,13 +150,13 @@ logpost_beta <- function(b, par, hpar, data) {
   sigma2_beta <- hpar[["sigma2_beta"]]
   psi2 <- hpar[["psi2"]]
   tau2 <- hpar[["tau2"]]
-
+  
   tau2_j <- sigma2_Y + tau2
   h2_j <- matrix(NA, nrow = nrow(data), ncol = length(b))
   for (i in 1:length(b)) {
     h2_j[, i] <- (b[i]^2)*psi2 + tau2_j
   }
-
+  
   loglik_Gammahat <- numeric(length(b))
   for (i in 1:length(b)) {
     loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - b[i]*gamma)^2/h2_j[, i])

@@ -95,7 +95,7 @@ check_control <- function(control) {
     control_ok <- FALSE
     return(control_ok)
   }
-  if (control[["burnin"]] < 1) {
+  if (control[["burnin"]] < 0) {
     control_ok <- FALSE
     return(control_ok)
   }

@@ -203,7 +203,7 @@ setMethod("show",
   "bayesmr_model",
   function(object) {
     cat("Bayesian Two-Sample Summary Data Analysis\n")
-    cat("Number of latent dimensions (p):", object@p, "\n")
+    # cat("Number of latent dimensions (p):", object@p, "\n")
     cat("Number of clusters (G):", object@G, "\n")
   }
 )
@@ -336,8 +336,8 @@ setMethod("initialize",
       model = NA
 		)
 		{
-			.Object@gamma.chain <- z.chain
-			.Object@beta.chain <- alpha.chain
+			.Object@gamma.chain <- gamma.chain
+			.Object@beta.chain <- beta.chain
 			.Object@accept <- accept
 			.Object@data <- data
 			.Object@dens <- dens
@@ -364,7 +364,7 @@ setMethod("show",
   "bayesmr_fit",
   function(object) {
     cat("Bayesian Two-Sample Summary Data simulated chain\n")
-    cat("Number of latent dimensions (p):", object@model@p, "\n")
+    # cat("Number of latent dimensions (p):", object@model@p, "\n")
     cat("Number of clusters (G):", object@model@G, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
@@ -401,6 +401,41 @@ setMethod("summary",
 
       return(out)
     }
+)
+
+#' @export
+setGeneric("subset", function(x) standardGeneric("subset"))
+
+#' Subsetting a \code{bayesmr_fit} object.
+#'
+#' @param x An object of class \code{\link{bayesmr_fit}}.
+#' @param pars An optional character vector of parameter names. If neither 
+#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
+#'   parameters.
+#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
+#'   for parameter selection. Can be specified instead of \code{pars} or in addition
+#'   to \code{pars}.
+#' @param ... Further arguments to pass on (currently ignored).
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases subset,bayesmr_fit-method
+#' @aliases bayesmr_fit-subset
+#' 
+#' @export
+setMethod("subset",
+  "bayesmr_fit",
+  function(x, pars = character(), regex_pars = character(), ...) {
+    browser()
+    x_mcmc <- bayesmr_fit_to_mcmc(x, include.burnin = TRUE, verbose = FALSE)
+
+    parnames <- colnames(x_mcmc)
+    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
+    
+    out <- x_mcmc[, pars]
+    
+    return(out)
+  }
 )
 
 #' Provide a graphical summary of a \code{bayesmr_fit} class instance.
@@ -641,7 +676,7 @@ setMethod("show",
   function(object) {
     cat("List of Bayesian Two-Sample Summary Data simulated chains\n")
     cat("Number of simulated chains:", length(object@results), "\n")
-    cat("Number of latent dimensions (p):", object@results[[1]]@model@p, "\n")
+    # cat("Number of latent dimensions (p):", object@results[[1]]@model@p, "\n")
     cat("Number of clusters (G):", object@results[[1]]@model@G, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
@@ -679,6 +714,37 @@ setMethod("summary",
 
       return(out)
     }
+)
+
+#' Subsetting a \code{bayesmr_fit_list} object.
+#'
+#' @param x An object of class \code{\link{bayesmr_fit_list}}.
+#' @param pars An optional character vector of parameter names. If neither 
+#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
+#'   parameters.
+#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
+#'   for parameter selection. Can be specified instead of \code{pars} or in addition
+#'   to \code{pars}.
+#' @param ... Further arguments to pass on (currently ignored).
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases subset,bayesmr_fit_list-method
+#' @aliases bayesmr_fit_list-subset
+#' 
+#' @export
+setMethod("subset",
+  "bayesmr_fit_list",
+  function(x, pars = character(), regex_pars = character(), ...) {
+    x_mcmc.list <- bayesmr_fit_list_to_mcmc.list(x, include.burnin = TRUE, verbose = FALSE)
+
+    parnames <- colnames(x_mcmc.list[[1]])
+    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
+    
+    out <- coda::mcmc.list(lapply(x_mcmc.list, function(chain) chain[, pars]))
+    
+    return(out)
+  }
 )
 
 #' Provide a graphical summary of a \code{bayesmr_fit_list} class instance.

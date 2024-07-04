@@ -2,7 +2,7 @@
 
 #include "bayesmr.h"
 
-// full conditional of the beta parameter
+// full conditional distribution of the beta parameter
 void logpost_beta(double* lpost, const double beta, const double gamma, const double mu_beta,
   const double sigma2_beta, const double psi2, const double tau2, int n,
   const double* Gammahat_j, const double* sigma2_Y){

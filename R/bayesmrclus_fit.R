@@ -116,8 +116,8 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
       tokeep <- seq(control[["burnin"]] + 1, totiter, by = 1)
     }
   }
-  gamma.chain <- gamma.chain[tokeep, , , , drop = FALSE]
-  beta.chain <- beta.chain[tokeep, , , , drop = FALSE]
+  gamma.chain <- gamma.chain[tokeep, drop = FALSE]
+  beta.chain <- beta.chain[tokeep, drop = FALSE]
   loglik <- loglik[tokeep]
   logprior <- logprior[tokeep]
   logpost <- logpost[tokeep]
@@ -127,7 +127,7 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 		gamma.chain = gamma.chain,
     beta.chain = beta.chain,
 		accept = accept,
-		data = data,
+		data = data_obs,
 		dens = list(loglik = loglik, logprior = logprior, logpost = logpost),
     control = control,
     prior = prior,
