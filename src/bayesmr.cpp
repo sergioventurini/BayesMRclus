@@ -40,24 +40,13 @@
 // // [[Rcpp::export]]
 RcppExport SEXP bayesmr_mcmc(
   SEXP raiData,
-  // SEXP raiD,
-  // SEXP raix,
-  // SEXP raing,
   SEXP radgamma,
   SEXP radbeta,
-  // SEXP radalpha,
   SEXP rn,
   SEXP rp,
   SEXP rG,
-  // SEXP rS,
   SEXP rtotiter,
-  // SEXP radZ,
   SEXP rsigma2_beta,
-  // SEXP rgamma_z,
-  // SEXP reta,
-  // SEXP rgamma_alpha,
-  // SEXP rsigma2,
-  // SEXP rlambda,
   SEXP rhyper_gammaj_gamma,
   SEXP rhyper_gammaj_psi2,
   SEXP rhyper_Gammaj_tau2,
@@ -65,11 +54,6 @@ RcppExport SEXP bayesmr_mcmc(
   SEXP rhyper_gamma_var,
   SEXP rhyper_beta_mean,
   SEXP rhyper_beta_var,
-  // SEXP rhyper_eta_a,
-  // SEXP rhyper_eta_b,
-  // SEXP rhyper_sigma2_a,
-  // SEXP rhyper_sigma2_b,
-  // SEXP rhyper_lambda,
   SEXP rverbose){
   SEXP rAns = NULL;
   int rAnsItems = 6;
@@ -77,11 +61,10 @@ RcppExport SEXP bayesmr_mcmc(
   int n = Rf_asInteger(rn);
   int p = Rf_asInteger(rp);
   int G = Rf_asInteger(rG);
-  // int S = Rf_asInteger(rS);
   int totiter = Rf_asInteger(rtotiter);
-  // double gamma_z = Rf_asReal(rgamma_z);
   double sigma2_beta = Rf_asReal(rsigma2_beta);
-  // double gamma_alpha = Rf_asReal(rgamma_alpha);
+  double gamma_val = Rf_asReal(radgamma);
+  double beta_val = Rf_asReal(radbeta);
   double hyper_gammaj_gamma = Rf_asReal(rhyper_gammaj_gamma);
   double hyper_gammaj_psi2 = Rf_asReal(rhyper_gammaj_psi2);
   double hyper_Gammaj_tau2 = Rf_asReal(rhyper_Gammaj_tau2);
@@ -89,29 +72,20 @@ RcppExport SEXP bayesmr_mcmc(
   double hyper_gamma_var = Rf_asReal(rhyper_gamma_var);
   double hyper_beta_mean = Rf_asReal(rhyper_beta_mean);
   double hyper_beta_var = Rf_asReal(rhyper_beta_var);
-  // double hyper_sigma2_a = Rf_asReal(rhyper_sigma2_a);
-  // double hyper_sigma2_b = Rf_asReal(rhyper_sigma2_b);
   int verbose = INTEGER(rverbose)[0];
 
   SEXP rgamma_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*p*G)));
   SEXP rbeta_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*p*G)));
-  // SEXP rz_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*n*p*G)));
-  // SEXP ralpha_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*G)));
-  // SEXP reta_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*G)));
-  // SEXP rsigma2_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*G)));
-  // SEXP rlambda_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*G)));
-  // SEXP rprob_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*S*G)));
-  // SEXP rx_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*S)));
-  // SEXP rx_ind_chain = PROTECT(Rf_allocVector(REALSXP, (totiter*S*G)));
   SEXP raccept = PROTECT(Rf_allocVector(REALSXP, G));
   SEXP rloglik = PROTECT(Rf_allocVector(REALSXP, totiter));
   SEXP rlogprior = PROTECT(Rf_allocVector(REALSXP, totiter));
   SEXP rlogpost = PROTECT(Rf_allocVector(REALSXP, totiter));
 
-  bayesmr_mcmc_noclus(REAL(rgamma_chain), REAL(rbeta_chain), REAL(raccept), REAL(rloglik), REAL(rlogprior),
-    REAL(rlogpost), REAL(raiData), REAL(radgamma), REAL(radbeta), REAL(rhyper_gammaj_gamma),
-    REAL(rhyper_gammaj_psi2), REAL(rhyper_Gammaj_tau2), REAL(rhyper_gamma_mean), REAL(rhyper_gamma_var),
-    REAL(rhyper_beta_mean), REAL(rhyper_beta_var), sigma2_beta, totiter, n, p, G, verbose);
+  bayesmr_mcmc_noclus(REAL(rgamma_chain), REAL(rbeta_chain), REAL(raccept),
+    REAL(rloglik), REAL(rlogprior), REAL(rlogpost), REAL(raiData), gamma_val,
+    beta_val, hyper_gammaj_gamma, hyper_gammaj_psi2, hyper_Gammaj_tau2,
+    hyper_gamma_mean, hyper_gamma_var, hyper_beta_mean, hyper_beta_var,
+    sigma2_beta, totiter, n, p, G, verbose);
 
   // packing results
   PROTECT(rAns = Rf_allocVector(VECSXP, rAnsItems));

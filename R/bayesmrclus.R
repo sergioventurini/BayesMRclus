@@ -201,118 +201,26 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
     }
   }
 
-  # final post-processing of all chains:
+  # final post-processing of all chains
   if (nchains > 1 && post_all) {
     gamma.chain <- res[[1]]@gamma.chain
     beta.chain <- res[[1]]@beta.chain
-    # z.chain <- res[[1]]@z.chain
-    # z.chain.p <- res[[1]]@z.chain.p
-    # alpha.chain <- res[[1]]@alpha.chain
-    # eta.chain <- res[[1]]@eta.chain
-    # sigma2.chain <- res[[1]]@sigma2.chain
-    # lambda.chain <- res[[1]]@lambda.chain
-    # prob.chain <- res[[1]]@prob.chain
-    # x.ind.chain <- res[[1]]@x.ind.chain
-    niter <- dim(z.chain.p)[1]
+    niter <- length(gamma.chain)
     for (ch in 2:nchains) {
       gamma.chain <- abind::abind(gamma.chain, res[[ch]]@gamma.chain, along = 1)
       beta.chain <- abind::abind(beta.chain, res[[ch]]@beta.chain, along = 1)
-      # z.chain <- abind::abind(z.chain, res[[ch]]@z.chain, along = 1)
-      # z.chain.p <- abind::abind(z.chain.p, res[[ch]]@z.chain.p, along = 1)
-      # alpha.chain <- abind::abind(alpha.chain, res[[ch]]@alpha.chain, along = 1)
-      # eta.chain <- abind::abind(eta.chain, res[[ch]]@eta.chain, along = 1)
-      # sigma2.chain <- abind::abind(sigma2.chain, res[[ch]]@sigma2.chain, along = 1)
-      # lambda.chain <- abind::abind(lambda.chain, res[[ch]]@lambda.chain, along = 1)
-      # prob.chain <- abind::abind(prob.chain, res[[ch]]@prob.chain, along = 1)
-      # x.ind.chain <- abind::abind(x.ind.chain, res[[ch]]@x.ind.chain, along = 1)
     }
 
     if (control[["verbose"]]) message("Final post-processing of all chains:")
 
-    # ## Procrustes transformation of Z_g
-    # if (control[["verbose"]]) message("   - applying Procrustes transformation...")
-    # if (control[["verbose"]])
-    #   pb <- bayesmr_pb(min = 0, max = (niter*G*nchains - 1), width = 49)
-    # no <- 0
-    # for (it in 1:(niter*nchains)) {
-    #   for (g in 1:G) {
-    #     if (control[["verbose"]]) bayesmr_setpb(pb, no)
-    #     if (p == 1) {
-    #       z.chain.p[it, , , g] <- as.numeric(procrustes(as.matrix(z.chain[it, , , g]),
-    #         as.matrix(z.chain.p[(niter*nchains), , , g]), translation = TRUE, dilation = FALSE)$X.new)
-    #     } else {
-    #       z.chain.p[it, , , g] <- procrustes(z.chain[it, , , g], z.chain.p[(niter*nchains), , , g],
-    #         translation = TRUE, dilation = FALSE)$X.new
-    #     }
-    #     no <- no + 1
-    #   }
-    # }
     if (control[["verbose"]]) {
       # message("done!")
       close(pb)
     }
 
-    # if (G > 1) {
-    #   if ((niter*nchains) > 10) {
-    #     if (control[["verbose"]]) message("   - relabeling the parameter chain...")
-    #     init <- ifelse((niter*nchains) <= 100, 5, 100)
-        
-    #     theta <- .Call('bayesmr_pack_par', PACKAGE = 'bayesmr',
-    #       radz = as.double(z.chain.p),
-    #       radalpha = as.double(alpha.chain),
-    #       radlambda = as.double(lambda.chain),
-    #       rn = as.integer(n),
-    #       rp = as.integer(p),
-    #       rM = as.integer((niter*nchains)),
-    #       rG = as.integer(G)
-    #     )
-
-    #     theta.relab <- .Call('bayesmr_relabel', PACKAGE = 'bayesmr',
-    #       radtheta = as.double(theta),
-    #       radz = as.double(z.chain.p),
-    #       radalpha = as.double(alpha.chain),
-    #       radeta = as.double(eta.chain),
-    #       radsigma2 = as.double(sigma2.chain),
-    #       radlambda = as.double(lambda.chain),
-    #       radprob = as.double(prob.chain),
-    #       raix_ind = as.integer(x.ind.chain),
-    #       rinit = as.integer(init),
-    #       rn = as.integer(n),
-    #       rp = as.integer(p),
-    #       rS = as.integer(S),
-    #       rM = as.integer((niter*nchains)),
-    #       rR = as.integer(m + 1),
-    #       rG = as.integer(G),
-    #       rverbose = as.integer(control[["verbose"]])
-    #     )
-
-    #     theta <- array(theta.relab[[1]], c((niter*nchains), (m + 1), G))  # this is not needed elsewhere
-    #     z.chain.p <- array(theta.relab[[2]], c((niter*nchains), n, p, G))
-    #     alpha.chain <- array(theta.relab[[3]], c((niter*nchains), G))
-    #     eta.chain <- array(theta.relab[[4]], c((niter*nchains), G))
-    #     sigma2.chain <- array(theta.relab[[5]], c((niter*nchains), G))
-    #     lambda.chain <- array(theta.relab[[6]], c((niter*nchains), G))
-    #     prob.chain <- array(theta.relab[[7]], c((niter*nchains), S, G))
-    #     x.ind.chain <- array(theta.relab[[8]], c((niter*nchains), S, G))
-    #     x.chain <- t(apply(x.ind.chain, 1, function(x) as.integer(x %*% 1:G)))
-
-    #     # if (control[["verbose"]]) # message("done!")
-    #   } else {
-    #     warning("the number of iterations is too small for relabeling; relabeling skipped.", call. = FALSE,
-    #       immediate. = TRUE)
-    #   }
-    # }
-
     for (ch in 1:nchains) {
       res[[ch]]@gamma.chain <- gamma.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
       res[[ch]]@beta.chain <- beta.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      # res[[ch]]@z.chain.p <- z.chain.p[(niter*(ch - 1) + 1):(niter*ch), , , , drop = FALSE]
-      # res[[ch]]@alpha.chain <- alpha.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      # res[[ch]]@eta.chain <- eta.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      # res[[ch]]@sigma2.chain <- sigma2.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      # res[[ch]]@lambda.chain <- lambda.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      # res[[ch]]@prob.chain <- prob.chain[(niter*(ch - 1) + 1):(niter*ch), , , drop = FALSE]
-      # res[[ch]]@x.ind.chain <- x.ind.chain[(niter*(ch - 1) + 1):(niter*ch), , , drop = FALSE]
     }
   }
 

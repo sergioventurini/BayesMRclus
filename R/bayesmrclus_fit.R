@@ -66,10 +66,6 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 	G <- as.integer(G)
 	
 	gamma.chain <- beta.chain <- array(NA, dim = totiter)
-  # z.chain <- z.chain.p <- array(NA, dim = c(totiter, n, p, G))
-	# eta.chain <- alpha.chain <- sigma2.chain <- lambda.chain <- array(NA, dim = c(totiter, G))
-	# x.chain <- array(NA, dim = c(totiter, S))
-	# prob.chain <- x.ind.chain <- array(0, dim = c(totiter, S, G))
 	loglik <- logprior <- logpost <- numeric(totiter)
 	
 	# recover prior hyperparameters
@@ -80,35 +76,19 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
   hyper.gamma.var <- prior[["gamma"]][["var"]]
   hyper.beta.mean <- prior[["beta"]][["mean"]]
   hyper.beta.var <- prior[["beta"]][["var"]]
-  # hyper.eta.a <- prior[["eta"]][["a"]]
-  # hyper.eta.b <- prior[["eta"]][["b"]]
-	# hyper.sigma2.a <- prior[["sigma2"]][["a"]]
-	# hyper.sigma2.b <- prior[["sigma2"]][["b"]]
-	# hyper.lambda <- prior[["lambda"]]
 	
 	# start iteration
 	if (control[["verbose"]]) message("Running the MCMC simulation...")
 	
 	res.mcmc <- .Call('bayesmr_mcmc', PACKAGE = 'bayesmr',
     radData = as.double(unlist(data)),
-		# raiD = as.integer(unlist(D)),
-		# raix = as.integer(start$x),
-		# raing = as.integer(start$ng),
 		radgamma = as.double(start$gamma),
     radbeta = as.double(start$beta),
-    # radalpha = as.double(start$alpha),
 		rn = as.integer(n),
 		rp = as.integer(p),
 		rG = as.integer(G),
-		# rS = as.integer(S),
 		rtotiter = as.integer(totiter),
-		# radZ = as.double(start$z),
 		rsigma2_beta = as.double(control[["beta.prop"]]),
-    # rgamma_z = as.double(control[["z.prop"]]),
-		# reta = as.double(start$eta),
-		# rgamma_alpha = as.double(control[["alpha.prop"]]),
-		# rsigma2 = as.double(start$sigma2),
-		# rlambda = as.double(start$lambda),
     rhyper_gammaj_gamma = as.double(hyper.gammaj.gamma),
     rhyper_gammaj_psi2 = as.double(hyper.gammaj.psi2),
     rhyper_Gammaj_tau2 = as.double(hyper.Gammaj.tau2),
@@ -116,112 +96,15 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
     rhyper_gamma_var = as.double(hyper.gamma.var),
     rhyper_beta_mean = as.double(hyper.beta.mean),
     rhyper_beta_var = as.double(hyper.beta.var),
-		# rhyper_eta_a = as.double(hyper.eta.a),
-		# rhyper_eta_b = as.double(hyper.eta.b),
-    # rhyper_sigma2_a = as.double(hyper.sigma2.a),
-    # rhyper_sigma2_b = as.double(hyper.sigma2.b),
-		# rhyper_lambda = as.double(hyper.lambda),
 		rverbose = as.integer(control[["verbose"]])
 	)
 
-	gamma.chain <- beta.chain <- array(res.mcmc[[1]], totiter)
-  # z.chain <- z.chain.p <- array(res.mcmc[[1]], c(totiter, n, p, G))
-	# alpha.chain <- array(res.mcmc[[2]], c(totiter, G))
-	# eta.chain <- array(res.mcmc[[3]], c(totiter, G))
-	# sigma2.chain <- array(res.mcmc[[4]], c(totiter, G))
-	# lambda.chain <- array(res.mcmc[[5]], c(totiter, G))
-	# prob.chain <- array(res.mcmc[[6]], c(totiter, S, G))
-	# x.chain <- array(res.mcmc[[7]], c(totiter, S))
-	# x.ind.chain <- array(res.mcmc[[8]], c(totiter, S, G))
-	accept <- t(array(res.mcmc[[9]], c(G, 2)))
-	loglik <- as.numeric(res.mcmc[[10]])
-	logprior <- as.numeric(res.mcmc[[11]])
-	logpost <- as.numeric(res.mcmc[[12]])
-
-  # if (control[["procrustes"]] | control[["relabel"]]) {
-  # 	# post-processing:
-  # 	if (control[["verbose"]]) message("Post-processing the chain:")
-
-  #   if (control[["procrustes"]]) {
-  #   	## Procrustes transformation of Z_g
-  #   	if (control[["verbose"]]) message("   - applying Procrustes transformation...")
-  #     if (control[["verbose"]]) {
-  #       pb <- bayesmr_pb(min = 0, max = (totiter*G - 1), width = 49)
-  #     }
-  #     no <- 0
-  #   	for (niter in 1:totiter) {
-  #   		for (g in 1:G) {
-  #         if (control[["verbose"]]) bayesmr_setpb(pb, no)
-  #   			if (p == 1) {
-  #   				z.chain.p[niter, , , g] <- as.numeric(procrustes(as.matrix(z.chain[niter, , , g]),
-  #             as.matrix(z.chain[totiter, , , g]), translation = TRUE, dilation = FALSE)$X.new)
-  #   			} else {
-  #   				z.chain.p[niter, , , g] <- procrustes(z.chain[niter, , , g], z.chain[totiter, , , g],
-  #             translation = TRUE, dilation = FALSE)$X.new
-  #   			}
-  #         no <- no + 1
-  #   		}
-  #   	}
-  #     if (control[["verbose"]]) {
-  #       # message("done!")
-  #       close(pb)
-  #     }
-  #   }
-
-  #   if (control[["relabel"]]) {
-  #   	# relabel the parameter chain
-  #   	if (G > 1) {
-  #   		if (totiter > 10) {
-  #         if (control[["verbose"]]) message("   - relabeling the parameter chain...")
-  #   			init <- ifelse(totiter <= 100, 5, 100)
-    			
-  #   			theta <- .Call('bayesmr_pack_par', PACKAGE = 'bayesmr',
-  #   				radz = as.double(z.chain.p),
-  #   				radalpha = as.double(alpha.chain),
-  #   				radlambda = as.double(lambda.chain),
-  #   				rn = as.integer(n),
-  #   				rp = as.integer(p),
-  #   				rM = as.integer(totiter),
-  #   				rG = as.integer(G)
-  #   			)
-
-  #   			theta.relab <- .Call('bayesmr_relabel', PACKAGE = 'bayesmr',
-  #   				radtheta = as.double(theta),
-  #   				radz = as.double(z.chain.p),
-  #   				radalpha = as.double(alpha.chain),
-  #   				radeta = as.double(eta.chain),
-  #   				radsigma2 = as.double(sigma2.chain),
-  #   				radlambda = as.double(lambda.chain),
-  #   				radprob = as.double(prob.chain),
-  #   				raix_ind = as.integer(x.ind.chain),
-  #   				rinit = as.integer(init),
-  #   				rn = as.integer(n),
-  #   				rp = as.integer(p),
-  #   				rS = as.integer(S),
-  #   				rM = as.integer(totiter),
-  #   				rR = as.integer(m + 1),
-  #   				rG = as.integer(G),
-  #           rverbose = as.integer(control[["verbose"]])
-  #   			)
-
-  #   			theta <- array(theta.relab[[1]], c(totiter, (m + 1), G))  # this is not needed elsewhere
-  #   			z.chain.p <- array(theta.relab[[2]], c(totiter, n, p, G))
-  #   			alpha.chain <- array(theta.relab[[3]], c(totiter, G))
-  #   			eta.chain <- array(theta.relab[[4]], c(totiter, G))
-  #   			sigma2.chain <- array(theta.relab[[5]], c(totiter, G))
-  #   			lambda.chain <- array(theta.relab[[6]], c(totiter, G))
-  #   			prob.chain <- array(theta.relab[[7]], c(totiter, S, G))
-  #   			x.ind.chain <- array(theta.relab[[8]], c(totiter, S, G))
-  #   			x.chain <- t(apply(x.ind.chain, 1, function(x) as.integer(x %*% 1:G)))
-
-  #   			# if (control[["verbose"]]) # message("done!")
-  #   		} else {
-  #   			warning("the number of iterations is too small for relabeling; relabeling skipped.", call. = FALSE,
-  #           immediate. = TRUE)
-  #   		}
-  #   	}
-  #   }
-  # }
+	gamma.chain <- array(res.mcmc[[1]], totiter)
+  beta.chain <- array(res.mcmc[[2]], totiter)
+	accept <- t(array(res.mcmc[[3]], c(G, 2)))
+	loglik <- as.numeric(res.mcmc[[4]])
+	logprior <- as.numeric(res.mcmc[[5]])
+	logpost <- as.numeric(res.mcmc[[6]])
 
   # apply thinning
   if (control[["thin"]] > 1) {
@@ -239,15 +122,6 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
   }
   gamma.chain <- gamma.chain[tokeep, , , , drop = FALSE]
   beta.chain <- beta.chain[tokeep, , , , drop = FALSE]
-  # z.chain <- z.chain[tokeep, , , , drop = FALSE]
-  # z.chain.p <- z.chain.p[tokeep, , , , drop = FALSE]
-  # alpha.chain <- alpha.chain[tokeep, , drop = FALSE]
-  # eta.chain <- eta.chain[tokeep, , drop = FALSE]
-  # sigma2.chain <- sigma2.chain[tokeep, , drop = FALSE]
-  # lambda.chain <- lambda.chain[tokeep, , drop = FALSE]
-  # prob.chain <- prob.chain[tokeep, , , drop = FALSE]
-  # x.ind.chain <- x.ind.chain[tokeep, , , drop = FALSE]
-  # x.chain <- x.chain[tokeep, , drop = FALSE]
   loglik <- loglik[tokeep]
   logprior <- logprior[tokeep]
   logpost <- logpost[tokeep]
@@ -256,21 +130,11 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 	out <- new("bayesmr_fit",
 		gamma.chain = gamma.chain,
     beta.chain = beta.chain,
-    # z.chain = z.chain,
-		# z.chain.p = z.chain.p,
-		# alpha.chain = alpha.chain,
-		# eta.chain = eta.chain,
-		# sigma2.chain = sigma2.chain,
-		# lambda.chain = lambda.chain,
-		# prob.chain = prob.chain,
-		# x.ind.chain = x.ind.chain,
-		# x.chain = x.chain,
 		accept = accept,
-		diss = D,
+		data = data,
 		dens = list(loglik = loglik, logprior = logprior, logpost = logpost),
     control = control,
     prior = prior,
-		# dim = list(n = n, p = p, G = G, S = S),
     dim = list(n = n, p = p, G = G),
     model = new("bayesmr_model", p = p, G = G)
 	)

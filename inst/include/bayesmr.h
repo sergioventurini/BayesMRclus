@@ -46,11 +46,11 @@ void rinvgamma(double* dev, int n, const double alpha, const double beta);
 void ddirichlet(double* dens, const double* x, const double* par, int n, int p,
   int logscale);
 void rdirichlet(double* dev, int n, const double* par, int p);
-void loglik_rbmds_binom(double* loglik, const int* d, const double* z,
-  const double alpha, int n, int p, int S);
-void loglik_bayesmr(double* loglik, const int* d, const double* z,
-  const double* alpha, const double* sigma2, const double* lambda,
-  const int* x, int n, int p, int S, int G, const char* family);
+
+// MODEL DISTRIBUTIONS ------------------------------------------------------------------------------------------------
+void logpost_beta(double* lpost, const double beta, const double gamma,
+  const double mu_beta, const double sigma2_beta, const double psi2,
+  const double tau2, int n, const double* Gammahat_j, const double* sigma2_Y);
 
 // MATRIX UTILITIES ---------------------------------------------------------------------------------------------------
 void colsums(double* colsums, const double* A, int nrows, int ncols);
@@ -63,11 +63,11 @@ arma::vec mahalanobis(const arma::mat& x, const arma::vec& center,
 
 // MCMC SIMULATION ----------------------------------------------------------------------------------------------------
 void bayesmr_mcmc_noclus(double* gamma_chain, double* beta_chain, double* accept,
-  double* loglik, double* logprior, double* logpost, double* data, double* gamma,
-  double* beta, const double* hyper_gammaj_gamma, const double* hyper_gammaj_psi2,
-  const double* rhyper_Gammaj_tau2, const double* rhyper_gamma_mean,
-  const double* rhyper_gamma_var, const double* rhyper_beta_mean,
-  const double* rhyper_beta_var, const double sigma2_beta,
+  double* loglik, double* logprior, double* logpost, double* data, double gamma,
+  double beta, const double hyper_gammaj_gamma, const double hyper_gammaj_psi2,
+  const double rhyper_Gammaj_tau2, const double rhyper_gamma_mean,
+  const double rhyper_gamma_var, const double rhyper_beta_mean,
+  const double rhyper_beta_var, const double sigma2_beta,
   int totiter, int n, int p, int G, int verbose);
 
 // RELABEL ALGORITHMS -------------------------------------------------------------------------------------------------
