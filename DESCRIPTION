@@ -1,7 +1,6 @@
 Package: BayesMRclus
 Type: Package
-Title: Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian Randomization under
-  Heterogeneity
+Title: Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian Randomization under Heterogeneity
 Version: 0.0.1
 Date: 2024-07-10
 Authors@R: c(

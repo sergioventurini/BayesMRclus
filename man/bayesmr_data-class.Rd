@@ -15,15 +15,7 @@ An S4 class to represent the data to use in a BayesMR model.
 to the judgments expressed by the \emph{S} subjects/raters. These matrices
 must be defined as a \code{dist} object.}
 
-\item{\code{n}}{A length-one character vector representing the number of objects
-compared by each subject.}
-
-\item{\code{S}}{A length-one numeric vector representing the number of subjects.}
-
-\item{\code{family}}{A length-one character vector representing the type of data to
-analyze. Currently, it accepts only the 'binomial' value, but future
-developments will include the possibility to analyze continuous,
-multinomial and count data.}
+\item{\code{n}}{A length-one character vector representing the number of observations.}
 }}
 
 \examples{
@@ -31,9 +23,8 @@ showClass("bayesmr_data")
 
 }
 \references{
-Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

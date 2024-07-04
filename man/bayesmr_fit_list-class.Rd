@@ -22,9 +22,8 @@ showClass("bayesmr_fit_list")
 
 }
 \references{
-Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 }
 \seealso{
 \code{\link{bayesmr_fit}} for more details on the components of each element of

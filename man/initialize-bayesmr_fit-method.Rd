@@ -7,15 +7,8 @@
 \usage{
 \S4method{initialize}{bayesmr_fit}(
   .Object,
-  z.chain = array(),
-  z.chain.p = array(),
-  alpha.chain = matrix(),
-  eta.chain = matrix(),
-  sigma2.chain = matrix(),
-  lambda.chain = matrix(),
-  prob.chain = array(),
-  x.ind.chain = array(),
-  x.chain = matrix(),
+  gamma.chain = array(),
+  beta.chain = array(),
   accept = matrix(),
   data = list(),
   dens = list(),
@@ -27,6 +20,29 @@
 }
 \arguments{
 \item{.Object}{Prototype object from the class \code{\link{bayesmr_fit}}.}
+
+\item{accept}{An object of class \code{matrix}; final acceptance rates
+for the MCMC algorithm.}
+
+\item{data}{An object of class \code{list}; list of observed
+dissimilarity matrices.}
+
+\item{dens}{An object of class \code{list}; list of log-likelihood,
+log-prior and log-posterior values at each iteration of the MCMC simulation.}
+
+\item{control}{An object of class \code{list}; list of the control
+parameters (number of burnin and sample iterations, number of MCMC chains,
+etc.). See \code{\link{bayesmr_control}()} for more information.}
+
+\item{prior}{An object of class \code{list}; list of the prior
+hyperparameters. See \code{\link{bayesmr_prior}()} for more information.}
+
+\item{dim}{An object of class \code{list}; list of dimensions for
+the estimated model, i.e. number of objects (\emph{n}), number of latent
+dimensions (\emph{p}), number of clusters (\emph{G}), and number of
+subjects (\emph{S}).}
+
+\item{model}{An object of class \code{\link{bayesmr_model}}.}
 
 \item{z.chain}{An object of class \code{array}; posterior draws from
 the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.}
@@ -55,29 +71,6 @@ from the MCMC algorithm for the cluster membership indicators.}
 
 \item{x.chain}{An object of class \code{matrix}; posterior draws from
 the MCMC algorithm for the cluster membership labels.}
-
-\item{accept}{An object of class \code{matrix}; final acceptance rates
-for the MCMC algorithm.}
-
-\item{data}{An object of class \code{list}; list of observed
-dissimilarity matrices.}
-
-\item{dens}{An object of class \code{list}; list of log-likelihood,
-log-prior and log-posterior values at each iteration of the MCMC simulation.}
-
-\item{control}{An object of class \code{list}; list of the control
-parameters (number of burnin and sample iterations, number of MCMC chains,
-etc.). See \code{\link{bayesmr_control}()} for more information.}
-
-\item{prior}{An object of class \code{list}; list of the prior
-hyperparameters. See \code{\link{bayesmr_prior}()} for more information.}
-
-\item{dim}{An object of class \code{list}; list of dimensions for
-the estimated model, i.e. number of objects (\emph{n}), number of latent
-dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-subjects (\emph{S}).}
-
-\item{model}{An object of class \code{\link{bayesmr_model}}.}
 }
 \description{
 Create an instance of the \code{bayesmr_fit} class using new/initialize.

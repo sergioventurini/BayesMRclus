@@ -12,7 +12,6 @@ void bayesmr_mcmc_noclus(
   double* data,
   double gamma_p,                             // gamma starting value
   double beta_p,                              // beta starting value
-  const double hyper_gammaj_gamma,
   const double hyper_gammaj_psi2,
   const double rhyper_Gammaj_tau2,
   const double rhyper_gamma_mean,

@@ -23,7 +23,7 @@ static const double log_two = std::log(2.0);
 // MAIN FUNCTIONS -----------------------------------------------------------------------------------------------------
 RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
   SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter, SEXP rsigma2_beta,
-  SEXP rhyper_gammaj_gamma, SEXP rhyper_gammaj_psi2, SEXP rhyper_Gammaj_tau2,
+  SEXP rhyper_gammaj_psi2, SEXP rhyper_Gammaj_tau2,
   SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var, SEXP rhyper_beta_mean,
   SEXP rhyper_beta_var, SEXP rverbose);
 // RcppExport SEXP bayesmr_relabel(SEXP radtheta, SEXP radz, SEXP radalpha,
@@ -64,19 +64,10 @@ arma::vec mahalanobis(const arma::mat& x, const arma::vec& center,
 // MCMC SIMULATION ----------------------------------------------------------------------------------------------------
 void bayesmr_mcmc_noclus(double* gamma_chain, double* beta_chain, double* accept,
   double* loglik, double* logprior, double* logpost, double* data, double gamma,
-  double beta, const double hyper_gammaj_gamma, const double hyper_gammaj_psi2,
-  const double rhyper_Gammaj_tau2, const double rhyper_gamma_mean,
-  const double rhyper_gamma_var, const double rhyper_beta_mean,
-  const double rhyper_beta_var, const double sigma2_beta,
-  int totiter, int n, int p, int G, int verbose);
-
-// RELABEL ALGORITHMS -------------------------------------------------------------------------------------------------
-// void relabel_celeux(double* theta, double* z_chain, double* alpha_chain,
-//   double* eta_chain, double* sigma2_chain, double* lambda_chain,
-//   double* prob_chain, int* x_ind_chain, int init, int n, int p, int S, int M,
-//   int R, int G, int verbose);
-// void pack_par(double* theta, const double* z, const double* alpha,
-//   const double* lambda, int n, int p, int M, int G);
+  double beta, const double hyper_gammaj_psi2, const double rhyper_Gammaj_tau2,
+  const double rhyper_gamma_mean, const double rhyper_gamma_var,
+  const double rhyper_beta_mean, const double rhyper_beta_var,
+  const double sigma2_beta, int totiter, int n, int p, int G, int verbose);
 
 // UTILITIES ----------------------------------------------------------------------------------------------------------
 void logit(double* res, const double* p, int n);

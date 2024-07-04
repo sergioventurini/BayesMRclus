@@ -7,31 +7,37 @@
 \title{Auxiliary Function for Setting BayesMR Model Priors}
 \usage{
 bayesmr_prior(
-  eta = list(a = rep(1.5, .bayesmrEnv$current_G), b = rep(0.5, .bayesmrEnv$current_G)),
-  sigma2 = list(a = 0.1, b = 0.1),
-  lambda = rep(1, .bayesmrEnv$current_G)
+  gammaj = list(psi2 = 1),
+  Gammaj = list(tau2 = 1),
+  gamma = list(mean = 0, var = 1),
+  beta = list(mean = 0, var = 1)
 )
 
 prior_bayesmr(
-  eta = list(a = rep(1.5, .bayesmrEnv$current_G), b = rep(0.5, .bayesmrEnv$current_G)),
-  sigma2 = list(a = 0.1, b = 0.1),
-  lambda = rep(1, .bayesmrEnv$current_G)
+  gammaj = list(psi2 = 1),
+  Gammaj = list(tau2 = 1),
+  gamma = list(mean = 0, var = 1),
+  beta = list(mean = 0, var = 1)
 )
 
 check_prior(prior)
 }
 \arguments{
-\item{eta}{A named list containing the hyperparameters for the prior
+\item{gammaj}{A named list containing the hyperparameters for the prior
 distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
 contain two numeric vectors, namely \code{a} and \code{b}.}
 
-\item{sigma2}{A named list containing the hyperparameters for the prior
+\item{Gammaj}{A named list containing the hyperparameters for the prior
+distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
+contain two numeric vectors, namely \code{a} and \code{b}.}
+
+\item{gamma}{A named list containing the hyperparameters for the prior
+distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
+contain two numeric vectors, namely \code{a} and \code{b}.}
+
+\item{beta}{A named list containing the hyperparameters for the prior
 distributions of the \eqn{\sigma^2_1,\ldots,\sigma^2_G} parameters. It
 should contain two numeric scalars, namely \code{a} and \code{b}.}
-
-\item{lambda}{A list containing the hyperparameters for the prior
-distribution of the \eqn{\lambda_1,\ldots,\lambda_G} parameters. It should
-contain a single numeric vector.}
 
 \item{prior}{A named list of prior hyperparameters.}
 }
@@ -61,7 +67,7 @@ data(simdiss, package = "bayesmr")
 # Shorter run than default.
 sim.fit <- bayesmr(simdiss,
   control = bayesmr_control(burnin = 1000, nsim = 2000, thin = 1, verbose = TRUE),
-  prior = bayesmr_prior(sigma2 = list(a = 1, b = 4)))
+  prior = bayesmr_prior(gamma = list(mean = 0, var = 1)))
 }
 
 }

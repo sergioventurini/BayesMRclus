@@ -3,13 +3,7 @@
 #' @slot data A list whose elements are the dissimilarity matrices corresponding
 #'   to the judgments expressed by the \emph{S} subjects/raters. These matrices
 #'   must be defined as a \code{dist} object.
-#' @slot n A length-one character vector representing the number of objects
-#'   compared by each subject.
-#' @slot S A length-one numeric vector representing the number of subjects.
-#' @slot family A length-one character vector representing the type of data to
-#'   analyze. Currently, it accepts only the 'binomial' value, but future
-#'   developments will include the possibility to analyze continuous,
-#'   multinomial and count data.
+#' @slot n A length-one character vector representing the number of observations.
 #'
 #' @name bayesmr_data-class
 #' @rdname bayesmr_data-class
@@ -18,9 +12,8 @@
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @references
-#'   Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-#'   Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-#'   Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
 #' showClass("bayesmr_data")
@@ -29,8 +22,7 @@
 setClass(Class = "bayesmr_data",
   slots = c(
     data = "list",
-    n = "numeric",
-    S = "numeric"
+    n = "numeric"
   )
 )
 
@@ -42,11 +34,6 @@ setClass(Class = "bayesmr_data",
 #'   must be defined as a \code{dist} object.
 #' @param n A length-one character vector representing the number of objects
 #'   compared by each subject.
-#' @param S A length-one numeric vector representing the number of subjects.
-#' @param family A length-one character vector representing the type of data to
-#'   analyze. Currently, it accepts only the 'binomial' value, but future
-#'   developments will include the possibility to analyze continuous,
-#'   multinomial and count data.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
@@ -59,13 +46,11 @@ setMethod("initialize", "bayesmr_data",
   function(
     .Object,
     data = list(),
-    n = numeric(),
-    S = numeric()
+    n = numeric()
   )
   {
     .Object@data <- data
     .Object@n <- n
-    .Object@S <- S
     .Object
   }
 )
@@ -84,10 +69,8 @@ setMethod("initialize", "bayesmr_data",
 setMethod("show",
   "bayesmr_data",
   function(object) {
-    cat("Observed dissimilarity matrices to use in a BayesMR analysis\n")
-    cat("Number of objects (n):", object@n, "\n")
-    cat("Number of subjects (S):", object@S, "\n")
-    cat("Family:", object@family, "\n")
+    cat("Observed data to use in a BayesMRclus analysis\n")
+    cat("Number of SNPs (n):", object@n, "\n")
   }
 )
 
@@ -105,19 +88,8 @@ setMethod("summary",
   "bayesmr_data",
     function(object) {
       show(object)
-      cat("Observed dissimilarities:\n")
-
-      wd <- as.integer(options("width"))
-      for (s in 1:object@S) {
-        dash_string_L <- strrep("-", floor((wd - nchar(paste0("Subject ", object@S)) - 2)/2))
-        dash_string_R <- strrep("-", floor((wd - nchar(paste0("Subject ", object@S)) - 2)/2) - nchar(s) + 1)
-        cat(dash_string_L, " ", "Subject ", s, " ", dash_string_R, "\n", sep = "")
-        data_nm <- attr(object@data[[s]], "Labels")
-        print_matrix(as.matrix(object@data[[s]]), rownm = data_nm, colnm = data_nm,
-          ndigits = ifelse(object@family != "normal", 0, 2),
-          colwidth = ifelse(is.null(data_nm), 5, max(nchar(data_nm))),
-          isint = (object@family != "normal"), between_cols = 1)
-      }
+      cat("Observed data:\n")
+      summary(object@data)
     }
 )
 
@@ -148,46 +120,17 @@ setMethod("summary",
 setMethod("plot",
   signature(x = "bayesmr_data"),
   function(x, colors = c("white", "black"), font = NA, cex.font = NA, ...) {
-    if (x@family == "binomial") {
-      plot_bayesmr_data <- function(ncat, colors, crit, INPUT, MD_SOL, MD_DIM,
-        labxaxis = "", labyaxis = "") {
-        nsat <- length((1:nrow(INPUT))[crit])
-        if (nsat < 2) {
-          a <- matrix(0, ncol = ncol(INPUT), nrow = 1)
-        }
-        if (nsat > 1) {
-          a <- as.matrix(INPUT[crit, ][order(MD_SOL[crit, MD_DIM]), ])
-        }
-        graphics::image(x = 1:nrow(a), z = a, y = 1:ncol(a), axes = FALSE,
-          zlim = c(1, ncat), xlim = c(1, nsat), xlab = NA, ylab = NA, col = colors)
-         
-        graphics::box()
-        graphics::axis(side = 1, tck = -.03, labels = NA)
-        graphics::axis(side = 2, tck = -.03, labels = NA)
-        graphics::axis(side = 1, lwd = 0, line = -.9, cex.axis = 0.6)
-        graphics::axis(side = 2, lwd = 0, line = -.6, las = 1, cex.axis = 0.6)
-        graphics::mtext(side = 1, labxaxis, line = 2, cex = 0.6)
-        graphics::mtext(side = 2, labyaxis, line = 2.5, cex = 0.6)
-      }
-
-      D <- x@data
-      n <- x@n
-      S <- x@S
-      col_bn <- colors[1:2]
-      nr <- floor(sqrt(S))
-      nc <- S %/% nr
-      nr <- ifelse(S %% nr, nr + 1, nr)
-      opar <- graphics::par(c("mfrow", "mar", "oma"))
-      on.exit(par(opar))
-      graphics::par(mfrow = c(nr, nc), mar = c(1, .75, .75, .5) + 0.1, oma = c(1, 0, 0, 0))
-      for(s in 1:S) {
-        use <- as.matrix(D[[s]]) + 1
-        plot_bayesmr_data(2, col_bn, use[, 1] > 0, use, as.matrix((1:nrow(use))), 1)
-        mtext(paste0("Subject ", s), side = 3, font = font, line = 0.05, cex = cex.font)
-      }
-    } else {
-      stop("no plot methods implemented yet for non-binary data.")
-    }
+    D <- x@data
+    n <- x@n
+    opar <- graphics::par(no.readonly = TRUE)
+    on.exit(par(opar))
+    graphics::par(mar = c(4, 5, 2, 1) + 0.1, oma = c(1, 0, 0, 0))
+    plot(D[, 1], D[, 2], pch = 19,
+      xlab = expression(paste("SNP-exposure effects, ", hat(gamma)[j])),
+      ylab = expression(paste("SNP-outcome effects, ", hat(Gamma)[j])))
+    abline(h = 0, lty = 2, col = "gray")
+    abline(v = 0, lty = 2, col = "gray")
+    points(D[, 1], D[, 2], pch = 19)
   }
 )
 
@@ -197,19 +140,14 @@ setMethod("plot",
 #'   of the latent space to use in the MDS analysis.
 #' @slot G A length-one numeric vector representing the number of clusters to
 #'   partition the subjects into.
-#' @slot family A length-one character vector representing the type of data to
-#'   analyze. Currently, it accepts only the 'binomial' value, but future
-#'   developments will include the possibility to analyze continuous,
-#'   multinomial and count data.
 #'
 #' @name bayesmr_model-class
 #' @rdname bayesmr_model-class
 #' @aliases bayesmr_model
 #'
 #' @references
-#'   Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-#'   Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-#'   Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
 #' showClass("bayesmr_model")
@@ -218,8 +156,7 @@ setMethod("plot",
 setClass(Class = "bayesmr_model",
   slots = c(
     p = "numeric",
-    G = "numeric",
-    family = "character"
+    G = "numeric"
   )
 )
 
@@ -230,10 +167,6 @@ setClass(Class = "bayesmr_model",
 #'   of the latent space to use in the MDS analysis.
 #' @param G A length-one numeric vector representing the number of clusters to
 #'   partition the subjects into.
-#' @param family A length-one character vector representing the type of data to
-#'   analyze. Currently, it accepts only the 'binomial' value, but future
-#'   developments will include the possibility to analyze continuous,
-#'   multinomial and count data.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
@@ -246,13 +179,11 @@ setMethod("initialize", "bayesmr_model",
   function(
     .Object,
     p = numeric(),
-    G = numeric(),
-    family = character()
+    G = numeric()
   )
   {
     .Object@p <- p
     .Object@G <- G
-    .Object@family <- family
     .Object
   }
 )
@@ -271,10 +202,9 @@ setMethod("initialize", "bayesmr_model",
 setMethod("show",
   "bayesmr_model",
   function(object) {
-    cat("Dissimilarity Model Based Clustering definition\n")
+    cat("Bayesian Two-Sample Summary Data Analysis\n")
     cat("Number of latent dimensions (p):", object@p, "\n")
     cat("Number of clusters (G):", object@G, "\n")
-    cat("Family:", object@family, "\n")
   }
 )
 
@@ -324,9 +254,8 @@ setMethod("show",
 #' @rdname bayesmr_fit-class
 #'
 #' @references
-#'   Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-#'   Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-#'   Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
 #' showClass("bayesmr_fit")
@@ -334,15 +263,8 @@ setMethod("show",
 #' @exportClass bayesmr_fit
 setClass(Class = "bayesmr_fit",
 	slots = c(
-		z.chain = "array",
-		z.chain.p = "array",
-		alpha.chain = "matrix",
-		eta.chain = "matrix",
-		sigma2.chain = "matrix",
-		lambda.chain = "matrix",
-		prob.chain = "array",
-		x.ind.chain = "array",
-		x.chain = "matrix",
+		gamma.chain = "array",
+		beta.chain = "array",
 		accept = "matrix",
 		data = "list",
 		dens = "list",
@@ -403,15 +325,8 @@ setMethod("initialize",
   "bayesmr_fit",
 		function(
 			.Object,
-			z.chain = array(),
-			z.chain.p = array(),
-			alpha.chain = matrix(),
-			eta.chain = matrix(),
-			sigma2.chain = matrix(),
-			lambda.chain = matrix(),
-			prob.chain = array(),
-			x.ind.chain = array(),
-			x.chain = matrix(),
+			gamma.chain = array(),
+			beta.chain = array(),
 			accept = matrix(),
 			data = list(),
 			dens = list(),
@@ -421,15 +336,8 @@ setMethod("initialize",
       model = NA
 		)
 		{
-			.Object@z.chain <- z.chain
-			.Object@z.chain.p <- z.chain.p
-			.Object@alpha.chain <- alpha.chain
-			.Object@eta.chain <- eta.chain
-			.Object@sigma2.chain <- sigma2.chain
-			.Object@lambda.chain <- lambda.chain
-			.Object@prob.chain <- prob.chain
-			.Object@x.ind.chain <- x.ind.chain
-			.Object@x.chain <- x.chain
+			.Object@gamma.chain <- z.chain
+			.Object@beta.chain <- alpha.chain
 			.Object@accept <- accept
 			.Object@data <- data
 			.Object@dens <- dens
@@ -455,10 +363,9 @@ setMethod("initialize",
 setMethod("show",
   "bayesmr_fit",
   function(object) {
-    cat("Dissimilarity Model Based Clustering simulated chain\n")
+    cat("Bayesian Two-Sample Summary Data simulated chain\n")
     cat("Number of latent dimensions (p):", object@model@p, "\n")
     cat("Number of clusters (G):", object@model@G, "\n")
-    cat("Family:", object@model@family, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
   }
@@ -481,60 +388,19 @@ setMethod("show",
 #' @exportMethod summary
 setMethod("summary",
 	"bayesmr_fit",
-    function(object, include.burnin = FALSE, summary.Z = FALSE, ...) {
+    function(object, include.burnin = FALSE, ...) {
       control <- object@control
 
       n <- object@dim[["n"]]
       p <- object@dim[["p"]]
       G <- object@dim[["G"]]
-      S <- object@dim[["S"]]
 
       res.coda <- bayesmr_fit_to_mcmc(object, include.burnin = include.burnin, verbose = FALSE)
-
-      if (summary.Z) {
-        res.coda <- res.coda[, (n*p*G + 1):(2*n*p*G + 4*G)]
-      } else {
-        res.coda <- res.coda[, (2*n*p*G + 1):(2*n*p*G + 4*G)]
-      }
 
       out <- summary(res.coda)
 
       return(out)
     }
-)
-
-#' @export
-setGeneric("subset", function(x) standardGeneric("subset"))
-
-#' Subsetting a \code{bayesmr_fit} object.
-#'
-#' @param x An object of class \code{\link{bayesmr_fit}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
-#'   parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
-#'   for parameter selection. Can be specified instead of \code{pars} or in addition
-#'   to \code{pars}.
-#' @param ... Further arguments to pass on (currently ignored).
-#'
-#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#'
-#' @aliases subset,bayesmr_fit-method
-#' @aliases bayesmr_fit-subset
-#' 
-#' @export
-setMethod("subset",
-  "bayesmr_fit",
-  function(x, pars = character(), regex_pars = character(), ...) {
-    x_mcmc <- bayesmr_fit_to_mcmc(x, include.burnin = TRUE, verbose = FALSE)
-
-    parnames <- colnames(x_mcmc)
-    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
-    
-    out <- x_mcmc[, pars]
-    
-    return(out)
-  }
 )
 
 #' Provide a graphical summary of a \code{bayesmr_fit} class instance.
@@ -722,9 +588,8 @@ setMethod("plot",
 #'   the list.
 #'
 #' @references
-#'   Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-#'   Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-#'   Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
 #' showClass("bayesmr_fit_list")
@@ -774,11 +639,10 @@ setMethod("initialize", "bayesmr_fit_list",
 setMethod("show",
   "bayesmr_fit_list",
   function(object) {
-    cat("List of Dissimilarity Model Based Clustering simulated chains\n")
+    cat("List of Bayesian Two-Sample Summary Data simulated chains\n")
     cat("Number of simulated chains:", length(object@results), "\n")
     cat("Number of latent dimensions (p):", object@results[[1]]@model@p, "\n")
     cat("Number of clusters (G):", object@results[[1]]@model@G, "\n")
-    cat("Family:", object@results[[1]]@model@family, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
   }
@@ -801,60 +665,20 @@ setMethod("show",
 #' @exportMethod summary
 setMethod("summary",
   "bayesmr_fit_list",
-    function(object, include.burnin = FALSE, summary.Z = FALSE, ...) {
+    function(object, include.burnin = FALSE, ...) {
       control <- object@results[[1]]@control
       nchains <- control[["nchains"]]
 
       n <- object@results[[1]]@dim[["n"]]
       p <- object@results[[1]]@dim[["p"]]
       G <- object@results[[1]]@dim[["G"]]
-      S <- object@results[[1]]@dim[["S"]]
 
       res.coda <- bayesmr_fit_list_to_mcmc.list(object, include.burnin = include.burnin, verbose = FALSE)
-
-      for (c in 1:nchains) {
-        if (summary.Z) {
-          res.coda[[c]] <- res.coda[[c]][, (n*p*G + 1):(2*n*p*G + 4*G)]
-        } else {
-          res.coda[[c]] <- res.coda[[c]][, (2*n*p*G + 1):(2*n*p*G + 4*G)]
-        }
-      }
 
       out <- summary(res.coda)
 
       return(out)
     }
-)
-
-#' Subsetting a \code{bayesmr_fit_list} object.
-#'
-#' @param x An object of class \code{\link{bayesmr_fit_list}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
-#'   parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
-#'   for parameter selection. Can be specified instead of \code{pars} or in addition
-#'   to \code{pars}.
-#' @param ... Further arguments to pass on (currently ignored).
-#'
-#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#'
-#' @aliases subset,bayesmr_fit_list-method
-#' @aliases bayesmr_fit_list-subset
-#' 
-#' @export
-setMethod("subset",
-  "bayesmr_fit_list",
-  function(x, pars = character(), regex_pars = character(), ...) {
-    x_mcmc.list <- bayesmr_fit_list_to_mcmc.list(x, include.burnin = TRUE, verbose = FALSE)
-
-    parnames <- colnames(x_mcmc.list[[1]])
-    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
-    
-    out <- coda::mcmc.list(lapply(x_mcmc.list, function(chain) chain[, pars]))
-    
-    return(out)
-  }
 )
 
 #' Provide a graphical summary of a \code{bayesmr_fit_list} class instance.

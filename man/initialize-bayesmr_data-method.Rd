@@ -5,7 +5,7 @@
 \alias{bayesmr_data-initialize}
 \title{Create an instance of the \code{bayesmr_data} class using new/initialize.}
 \usage{
-\S4method{initialize}{bayesmr_data}(.Object, data = list(), n = numeric(), S = numeric())
+\S4method{initialize}{bayesmr_data}(.Object, data = list(), n = numeric())
 }
 \arguments{
 \item{.Object}{Prototype object from the class \code{\link{bayesmr_data}}.}
@@ -16,13 +16,6 @@ must be defined as a \code{dist} object.}
 
 \item{n}{A length-one character vector representing the number of objects
 compared by each subject.}
-
-\item{S}{A length-one numeric vector representing the number of subjects.}
-
-\item{family}{A length-one character vector representing the type of data to
-analyze. Currently, it accepts only the 'binomial' value, but future
-developments will include the possibility to analyze continuous,
-multinomial and count data.}
 }
 \description{
 Create an instance of the \code{bayesmr_data} class using new/initialize.

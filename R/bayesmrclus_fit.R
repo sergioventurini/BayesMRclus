@@ -2,9 +2,7 @@
 #'
 #' \code{bayesmr_fit()} is the main function that estimates a BayesMR model.
 #'
-#' @param D A list whose elements are the dissimilarity matrices corresponding
-#'   to the judgments expressed by the \emph{S} subjects/raters. These matrices
-#'   must be defined as a \code{dist} object.
+#' @param data An object of class \code{\link{bayesmr_data}})..
 #' @param p A length-one numeric vector indicating the number of dimensions of the
 #'   latent space.
 #' @param G A length-one numeric vector indicating the number of cluster to
@@ -22,9 +20,8 @@
 #' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
 #'   included in the returned object.
 #' @references
-#'   Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-#'   Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-#'   Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #' @examples
 #' \dontrun{
 #' data(simdiss, package = "bayesmr")
@@ -60,7 +57,8 @@
 #' }
 #' @export
 bayesmr_fit <- function(data, p, G, control, prior, start) {
-	n <- nrow(data)
+	n <- data@n
+  data_obs <- data@data
 	totiter <- control[["burnin"]] + control[["nsim"]]
 	p <- as.integer(p)
 	G <- as.integer(G)
@@ -69,7 +67,6 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 	loglik <- logprior <- logpost <- numeric(totiter)
 	
 	# recover prior hyperparameters
-  hyper.gammaj.gamma <- prior[["gammaj"]][["gamma"]]
   hyper.gammaj.psi2 <- prior[["gammaj"]][["psi2"]]
   hyper.Gammaj.tau2 <- prior[["Gammaj"]][["tau2"]]
   hyper.gamma.mean <- prior[["gamma"]][["mean"]]
@@ -80,8 +77,8 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 	# start iteration
 	if (control[["verbose"]]) message("Running the MCMC simulation...")
 	
-	res.mcmc <- .Call('bayesmr_mcmc', PACKAGE = 'bayesmr',
-    radData = as.double(unlist(data)),
+	res.mcmc <- .Call('bayesmr_mcmc', PACKAGE = 'BayesMRclus',
+    radData = as.double(unlist(data_obs)),
 		radgamma = as.double(start$gamma),
     radbeta = as.double(start$beta),
 		rn = as.integer(n),
@@ -89,7 +86,6 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 		rG = as.integer(G),
 		rtotiter = as.integer(totiter),
 		rsigma2_beta = as.double(control[["beta.prop"]]),
-    rhyper_gammaj_gamma = as.double(hyper.gammaj.gamma),
     rhyper_gammaj_psi2 = as.double(hyper.gammaj.psi2),
     rhyper_Gammaj_tau2 = as.double(hyper.Gammaj.tau2),
     rhyper_gamma_mean = as.double(hyper.gamma.mean),
@@ -157,9 +153,8 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 #' @seealso \code{\link{bayesmr}()}.
 #'
 #' @references
-#'   Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-#'   Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-#'   Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @export
 bayesmr_logLik <- function(data, gammaj, Gammaj) {

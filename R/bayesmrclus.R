@@ -90,8 +90,11 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
 
   have_mc <- have_snow <- FALSE
   if (parallel != "no" && threads > 1L) {
-    if (parallel == "multicore") have_mc <- .Platform$OS.type != "windows"
-    else if (parallel == "snow") have_snow <- TRUE
+    if (parallel == "multicore") {
+      have_mc <- .Platform$OS.type != "windows"
+    } else if (parallel == "snow") {
+      have_snow <- TRUE
+    }
     if (!have_mc && !have_snow) {
       warning("number of cores forced to 1 (i.e. no parallel computing used).")
       threads <- 1L

@@ -8,8 +8,6 @@
 
 static const R_CallMethodDef R_CallDef[] = {
   CALLDEF(bayesmr_mcmc, 16),
-  // CALLDEF(bayesmr_pack_par, 7),
-  // CALLDEF(bayesmr_relabel, 16),
   {NULL, NULL, 0}
 };
 

@@ -5,7 +5,7 @@
 \alias{bayesmr_fit-summary}
 \title{Provide a summary of a \code{bayesmr_fit} class instance.}
 \usage{
-\S4method{summary}{bayesmr_fit}(object, include.burnin = FALSE, summary.Z = FALSE, ...)
+\S4method{summary}{bayesmr_fit}(object, include.burnin = FALSE, ...)
 }
 \arguments{
 \item{object}{An object of class \code{\link{bayesmr_fit}}.}
@@ -13,10 +13,10 @@
 \item{include.burnin}{A length-one logical vector. If \code{TRUE} the
 burnin iterations (if available) are included in the summary.}
 
+\item{...}{Further arguments to pass on (currently ignored).}
+
 \item{summary.Z}{A length-one logical vector. If \code{TRUE} the summary
 also includes the latent configuration coordinates.}
-
-\item{...}{Further arguments to pass on (currently ignored).}
 }
 \description{
 Provide a summary of a \code{bayesmr_fit} class instance.

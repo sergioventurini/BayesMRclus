@@ -7,6 +7,8 @@
 bayesmr_fit(data, p, G, control, prior, start)
 }
 \arguments{
+\item{data}{An object of class \code{\link{bayesmr_data}})..}
+
 \item{p}{A length-one numeric vector indicating the number of dimensions of the
 latent space.}
 
@@ -22,10 +24,6 @@ but do not affect the posterior distribution See
 
 \item{start}{A named list of starting values for the MCMC algorithm (see
 \code{\link{bayesmr_init}}).}
-
-\item{D}{A list whose elements are the dissimilarity matrices corresponding
-to the judgments expressed by the \emph{S} subjects/raters. These matrices
-must be defined as a \code{dist} object.}
 }
 \value{
 A \code{bayesmr_fit_list} object.
@@ -68,9 +66,8 @@ graph + panel_bg(fill = "gray90", color = NA)
 }
 }
 \references{
-Venturini, S., Piccarreta, R. (2021), "A Bayesian Approach for Model-Based
-Clustering of Several Binary Dissimilarity Matrices: the \pkg{bayesmr}
-Package in \code{R}", Journal of Statistical Software, 100, 16, 1--35, <10.18637/jss.v100.i16>.
+Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 }
 \seealso{
 \code{\link{bayesmr_data}} for a description of the data format.

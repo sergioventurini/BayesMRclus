@@ -45,7 +45,6 @@ bayesmr_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE) {
   n <- res@dim[["n"]]
   p <- res@dim[["p"]]
   G <- res@dim[["G"]]
-  # S <- res@dim[["S"]]
 
   if (store.burnin) {
     if (include.burnin) {
@@ -63,46 +62,18 @@ bayesmr_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE) {
     tokeep <- 1:length(tokeep)
   }
 
-  theta <- matrix(NA, nrow = length(tokeep), ncol = (2*n*p*G + 4*G + 2*S*G + S + 3))
-  theta_nm <- character(2*n*p*G + 4*G + 2*S*G + S + 3)
-  count_z <- count_g <- 1
-  for (g in 1:G) {
-    for (j in 1:p) {
-      for (i in 1:n) {
-        theta[, count_z] <- res@z.chain[tokeep, i, j, g]
-        theta_nm[count_z] <- paste0("z[", i, ", ", j, ", ", g, "]")
-        theta[, n*p*G + count_z] <- res@z.chain.p[tokeep, i, j, g]
-        theta_nm[n*p*G + count_z] <- paste0("z_p[", i, ", ", j, ", ", g, "]")
-        count_z <- count_z + 1
-      }
-    }
-    theta[, 2*n*p*G + count_g] <- res@alpha.chain[tokeep, g]
-    theta_nm[2*n*p*G + count_g] <- paste0("alpha[", g, "]")
-    theta[, 2*n*p*G + G + count_g] <- res@eta.chain[tokeep, g]
-    theta_nm[2*n*p*G + G + count_g] <- paste0("eta[", g, "]")
-    theta[, 2*n*p*G + 2*G + count_g] <- res@sigma2.chain[tokeep, g]
-    theta_nm[2*n*p*G + 2*G + count_g] <- paste0("sigma2[", g, "]")
-    theta[, 2*n*p*G + 3*G + count_g] <- res@lambda.chain[tokeep, g]
-    theta_nm[2*n*p*G + 3*G + count_g] <- paste0("lambda[", g, "]")
-    for (s in 1:S) {
-      theta[, 2*n*p*G + 4*G + S*(g - 1) + s] <- res@prob.chain[tokeep, s, g]
-      theta_nm[2*n*p*G + 4*G + S*(g - 1) + s] <- paste0("prob[", s, g, "]")
-      theta[, 2*n*p*G + 4*G + S*G + S*(g - 1) + s] <- res@x.ind.chain[tokeep, s, g]
-      theta_nm[2*n*p*G + 4*G + S*G + S*(g - 1) + s] <- paste0("x_ind[", s, g, "]")
-    }
-    count_g <- count_g + 1
-  }
-  for (s in 1:S) {
-    theta[, 2*n*p*G + 4*G + 2*S*G + s] <- res@x.chain[tokeep, s]
-    theta_nm[2*n*p*G + 4*G + 2*S*G + s] <- paste0("x[", s, "]")
-  }
-  theta[, 2*n*p*G + 4*G + 2*S*G + S + 1] <- res@dens$loglik[tokeep]
-  theta_nm[2*n*p*G + 4*G + 2*S*G + S + 1] <- paste0("loglik")
-  theta[, 2*n*p*G + 4*G + 2*S*G + S + 2] <- res@dens$logprior[tokeep]
-  theta_nm[2*n*p*G + 4*G + 2*S*G + S + 2] <- paste0("logprior")
-  theta[, 2*n*p*G + 4*G + 2*S*G + S + 3] <- res@dens$logpost[tokeep]
-  theta_nm[2*n*p*G + 4*G + 2*S*G + S + 3] <- paste0("logpost")
-  
+  theta <- matrix(NA, nrow = length(tokeep), ncol = 2 + 3)
+  theta_nm <- character(2 + 3)
+  theta[, 1] <- res@gamma.chain[tokeep]
+  theta_nm[1] <- "gamma"
+  theta[, 2] <- res@beta.chain[tokeep]
+  theta_nm[2] <- "beta"
+  theta[, 2 + 1] <- res@dens$loglik[tokeep]
+  theta_nm[2 + 1] <- "loglik"
+  theta[, 2 + 2] <- res@dens$logprior[tokeep]
+  theta_nm[2 + 2] <- "logprior"
+  theta[, 2 + 3] <- res@dens$logpost[tokeep]
+  theta_nm[2 + 3] <- "logpost"
   colnames(theta) <- theta_nm
 
   if (store.burnin) {
@@ -168,8 +139,6 @@ bayesmr_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = TRUE
   n <- res@results[[1]]@dim[["n"]]
   p <- res@results[[1]]@dim[["p"]]
   G <- res@results[[1]]@dim[["G"]]
-  # S <- res@results[[1]]@dim[["S"]]
-  S <- 0
 
   if (store.burnin) {
     if (include.burnin) {
@@ -189,46 +158,19 @@ bayesmr_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = TRUE
 
   out <- list()
   for (c in 1:nchains) {
-    theta <- matrix(NA, nrow = length(tokeep), ncol = (2*n*p*G + 4*G + 2*S*G + S + 3))
-    theta_nm <- character(2*n*p*G + 4*G + 2*S*G + S + 3)
-    count_z <- count_g <- 1
-    for (g in 1:G) {
-      for (j in 1:p) {
-        for (i in 1:n) {
-          theta[, count_z] <- res@results[[c]]@z.chain[tokeep, i, j, g]
-          theta_nm[count_z] <- paste0("z[", i, ", ", j, ", ", g, "]")
-          theta[, n*p*G + count_z] <- res@results[[c]]@z.chain.p[tokeep, i, j, g]
-          theta_nm[n*p*G + count_z] <- paste0("z_p[", i, ", ", j, ", ", g, "]")
-          count_z <- count_z + 1
-        }
-      }
-      theta[, 2*n*p*G + count_g] <- res@results[[c]]@alpha.chain[tokeep, g]
-      theta_nm[2*n*p*G + count_g] <- paste0("alpha[", g, "]")
-      theta[, 2*n*p*G + G + count_g] <- res@results[[c]]@eta.chain[tokeep, g]
-      theta_nm[2*n*p*G + G + count_g] <- paste0("eta[", g, "]")
-      theta[, 2*n*p*G + 2*G + count_g] <- res@results[[c]]@sigma2.chain[tokeep, g]
-      theta_nm[2*n*p*G + 2*G + count_g] <- paste0("sigma2[", g, "]")
-      theta[, 2*n*p*G + 3*G + count_g] <- res@results[[c]]@lambda.chain[tokeep, g]
-      theta_nm[2*n*p*G + 3*G + count_g] <- paste0("lambda[", g, "]")
-      for (s in 1:S) {
-        theta[, 2*n*p*G + 4*G + S*(g - 1) + s] <- res@results[[c]]@prob.chain[tokeep, s, g]
-        theta_nm[2*n*p*G + 4*G + S*(g - 1) + s] <- paste0("prob[", s, g, "]")
-        theta[, 2*n*p*G + 4*G + S*G + S*(g - 1) + s] <- res@results[[c]]@x.ind.chain[tokeep, s, g]
-        theta_nm[2*n*p*G + 4*G + S*G + S*(g - 1) + s] <- paste0("x_ind[", s, g, "]")
-      }
-      count_g <- count_g + 1
-    }
-    for (s in 1:S) {
-      theta[, 2*n*p*G + 4*G + 2*S*G + s] <- res@results[[c]]@x.chain[tokeep, s]
-      theta_nm[2*n*p*G + 4*G + 2*S*G + s] <- paste0("x[", s, "]")
-    }
-    theta[, 2*n*p*G + 4*G + 2*S*G + S + 1] <- res@results[[c]]@dens$loglik[tokeep]
-    theta_nm[2*n*p*G + 4*G + 2*S*G + S + 1] <- paste0("loglik")
-    theta[, 2*n*p*G + 4*G + 2*S*G + S + 2] <- res@results[[c]]@dens$logprior[tokeep]
-    theta_nm[2*n*p*G + 4*G + 2*S*G + S + 2] <- paste0("logprior")
-    theta[, 2*n*p*G + 4*G + 2*S*G + S + 3] <- res@results[[c]]@dens$logpost[tokeep]
-    theta_nm[2*n*p*G + 4*G + 2*S*G + S + 3] <- paste0("logpost")
-    
+    theta <- matrix(NA, nrow = length(tokeep), ncol = (2 + 3))
+    theta_nm <- character(2 + 3)
+    theta[, 1] <- res@results[[c]]@gamma.chain[tokeep]
+    theta_nm[1] <- "gamma"
+    theta[, 2] <- res@results[[c]]@beta.chain[tokeep]
+    theta_nm[2] <- "beta"
+
+    theta[, 2 + 1] <- res@results[[c]]@dens$loglik[tokeep]
+    theta_nm[2 + 1] <- "loglik"
+    theta[, 2 + 2] <- res@results[[c]]@dens$logprior[tokeep]
+    theta_nm[2 + 2] <- "logprior"
+    theta[, 2 + 3] <- res@results[[c]]@dens$logpost[tokeep]
+    theta_nm[2 + 3] <- "logpost"
     colnames(theta) <- theta_nm
     out[[c]] <- theta
   }
