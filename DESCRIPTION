@@ -1,8 +1,8 @@
 Package: BayesMRclus
 Type: Package
 Title: Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian Randomization under Heterogeneity
-Version: 0.0.1
-Date: 2024-07-10
+Version: 0.0.2
+Date: 2024-08-08
 Authors@R: c(
   person("Sergio", "Venturini", role=c("aut", "cre"), email = "sergio.venturini@unicatt.it"),
   person("Guido", "Consonni", role=c("ctb"), email = "guido.consonni@unicatt.it"),
@@ -19,7 +19,6 @@ Imports:
     abind,
     bayesplot (>= 1.11.1),
     coda (>= 0.19-4.1),
-    ggplot2 (>= 3.5.1),
     graphics,
     grDevices,
     parallel (>= 4.4.1),
@@ -30,10 +29,13 @@ Suggests:
     rmarkdown,
     testthat
 Depends:
+    ggplot2 (>= 3.5.1),
     methods,
     R (>= 3.6.0),
+    shiny,
     stats,
-    utils
+    utils,
+    viridis
 LinkingTo: Rcpp, RcppArmadillo, RcppProgress
 BugReports: https://github.com/sergioventurini/BayesMRclus/issues
 Encoding: UTF-8

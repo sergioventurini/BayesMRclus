@@ -5,8 +5,11 @@
 #'
 #' @param logpost A function defining the logarithm of the posterior density.
 #' @param current A numeric value representing the starting value.
+#' @param proposal A length-one character vector with the name of the proposal
+#'   distribution; currently, accepted values are "unif" or "norm".
 #' @param C A numeric value corresponding to the neighborhood where one looks
-#'   for a proposal value.
+#'   for a proposal value; for a uniform proposal is the distance from the
+#'   current value; for a normal proposal it is the standard deviation.
 #' @param iter Integer value specifying the total the number of iterations
 #'   of the algorithm.
 #' @param ... Additional arguments to be passed to the \code{logpost}() function.
@@ -29,12 +32,20 @@
 #' out <- metropolis(lpost, 5, 20, 10000, s)
 #'
 #' @export
-metropolis <- function(logpost, current, C, iter, ...) {
+metropolis <- function(logpost, current, proposal = "unif", C, iter, ...) {
   S <- rep(0, iter)
   n_accept <- 0
   for (j in 1:iter) {
     # uniform proposal distribution centred around the current value
-    candidate <- runif(1, min = current - C, max = current + C)
+    if (proposal == "unif") {
+      candidate <- runif(1, min = current - C, max = current + C)
+    }
+    else if (proposal == "norm") {
+      candidate <- rnorm(1, mean = current, sd = C)
+    }
+    else {
+      stop("the specified proposal distribution is not available")
+    }
     prob <- exp(logpost(candidate, ...) - logpost(current, ...))
     accept <- ifelse(runif(1) < prob, 1, 0)
     current <- ifelse(accept == 1, candidate, current)
@@ -180,6 +191,8 @@ logpost_beta <- function(b, par, hpar, data) {
 #'   of the algorithm.
 #' @param start A numeric vector providing the parameter starting values.
 #' @param tune A numeric vector providing the Metropolis-Hastings tuning parameters.
+#' @param proposal A length-one character vector with the name of the proposal
+#'   distribution; currently, accepted values are "unif" or "norm".
 #' @return A list with two components, \code{S} is a vector of the simulated draws,
 #' and \code{accept_rate}, which gives the acceptance rate of the algorithm.
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
@@ -210,7 +223,11 @@ logpost_beta <- function(b, par, hpar, data) {
 #' res$accept_rate
 #'
 #' @export
-mcmc_bayesmr <- function(data, hpar, iter, start, tune) {
+mcmc_bayesmr <- function(data, hpar, iter, start, tune, proposal = "norm") {
+  if (is.null(proposal)) {
+    proposal <- "unif"
+  }
+
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
   sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
@@ -243,12 +260,13 @@ mcmc_bayesmr <- function(data, hpar, iter, start, tune) {
     # beta update using a M-H step
     par <- list(gamma = gamma_p)
     hpar <- list(mu_beta = mu_beta, sigma2_beta = sigma2_beta, psi2 = psi2, tau2 = tau2)
-    mh <- metropolis(logpost_beta, beta_p, C, 1, par, hpar, data)
+    mh <- metropolis(logpost = logpost_beta, current = beta_p, proposal = proposal,
+                     C = C, iter = 1, par, hpar, data)
     beta_p <- mh$S
     draws[m, 2] <- beta_p
     accept_rate <- accept_rate + mh$accept_rate
 
-    if ((m %% 500) == 0) print(paste0("Simulation ", m, " of ", format(iter)))
+    # if ((m %% 500) == 0) print(paste0("Simulation ", m, " of ", format(iter)))
   }
 
   res <- list(draws = draws, accept_rate = accept_rate/iter)

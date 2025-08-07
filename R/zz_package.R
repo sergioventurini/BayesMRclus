@@ -22,8 +22,10 @@
 #' @import ggplot2
 #' @import graphics
 #' @import grDevices
+#' @import shiny
 #' @import stats
 #' @import utils
+#' @import viridis
 #' 
 #' @keywords internal
 NULL

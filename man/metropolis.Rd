@@ -4,15 +4,19 @@
 \alias{metropolis}
 \title{Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution}
 \usage{
-metropolis(logpost, current, C, iter, ...)
+metropolis(logpost, current, proposal = "unif", C, iter, ...)
 }
 \arguments{
 \item{logpost}{A function defining the logarithm of the posterior density.}
 
 \item{current}{A numeric value representing the starting value.}
 
+\item{proposal}{A length-one character vector with the name of the proposal
+distribution; currently, accepted values are "unif" or "norm".}
+
 \item{C}{A numeric value corresponding to the neighborhood where one looks
-for a proposal value.}
+for a proposal value; for a uniform proposal is the distance from the
+current value; for a normal proposal it is the standard deviation.}
 
 \item{iter}{Integer value specifying the total the number of iterations
 of the algorithm.}
