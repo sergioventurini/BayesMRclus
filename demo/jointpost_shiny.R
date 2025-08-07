@@ -1,3 +1,6 @@
+if (!requireNamespace("BayesMRclus", quietly = TRUE)) {
+  remotes::install_github("sergioventurini/BayesMRclus")
+}
 library(BayesMRclus)
 
 # Prepare data
