@@ -74,10 +74,10 @@ data <- data.frame(
   se_outcome = bmi.sbp[, "se.outcome"]
 )
 
-# Helper: slider in column width 4
-slider_col4 <- function(inputId, label, min, max, value, step = NULL) {
-  column(4,
-    tags$div(withMathJax(label)),
+# Slider with a specified column width
+slider_cols <- function(cols, inputId, label, min, max, value, step = NULL) {
+  column(cols,
+    tags$div(withMathJax(label), style = "text-align: left; margin-bottom: 5px;"),
     sliderInput(inputId, NULL, min, max, value, step = step)
   )
 }
@@ -87,6 +87,16 @@ ui <- fluidPage(
   titlePanel("Interactive (Unnormalized) Joint Posterior"),
 
   withMathJax(),
+
+  tags$style(HTML("
+    .form-group {
+      text-align: left !important;
+    }
+    .form-group > label {
+      display: block;
+      text-align: left !important;
+    }
+  ")),
 
   fluidRow(column(12, tags$h4("Axis Ranges", style = "margin-top: 20px;"))),
   fluidRow(
@@ -99,14 +109,14 @@ ui <- fluidPage(
   fluidRow(column(12, tags$h4("Prior Parameters", style = "margin-top: 30px;"))),
 
   fluidRow(
-    slider_col4("mu_gamma", "$$\\mu_\\gamma$$", -5, 5, 0, step = 0.1),
-    slider_col4("mu_beta", "$$\\mu_\\beta$$", -5, 5, 0, step = 0.1),
-    slider_col4("psi2", "$$\\psi^2$$", 0.0001, 10, 0.1, step = 0.01)
+    slider_cols(4, "mu_gamma", "$$\\mu_\\gamma$$", -5, 5, 0, step = 0.1),
+    slider_cols(4, "mu_beta", "$$\\mu_\\beta$$", -5, 5, 0, step = 0.1),
+    slider_cols(4, "psi2", "$$\\psi^2$$", 0, 10, 0.1, step = 0.01)
   ),
   fluidRow(
-    slider_col4("sigma2_gamma", "$$\\sigma^2_\\gamma$$", 0.0001, 10, 0.1, step = 0.01),
-    slider_col4("sigma2_beta", "$$\\sigma^2_\\beta$$", 0.0001, 10, 0.1, step = 0.01),
-    slider_col4("tau2", "$$\\tau^2$$", 0.0001, 10, 0.1, step = 0.01)
+    slider_cols(4, "sigma2_gamma", "$$\\sigma^2_\\gamma$$", 0, 10, 0.1, step = 0.01),
+    slider_cols(4, "sigma2_beta", "$$\\sigma^2_\\beta$$", 0, 10, 0.1, step = 0.01),
+    slider_cols(4, "tau2", "$$\\tau^2$$", 0, 10, 0.1, step = 0.01)
   ),
 
   fluidRow(
@@ -115,7 +125,17 @@ ui <- fluidPage(
       choices = c("Low" = 50, "Medium" = 100, "High" = 150), selected = 50))
   ),
 
-  fluidRow(column(12, plotOutput("plot", height = "700px")))
+  fluidRow(column(12, plotOutput("joint_plot", height = "700px"))),
+
+  fluidRow(
+    slider_cols(6, "beta_for_gamma", "$$\\beta \\text{ value}$$", -20, 20, 0, step = 0.01),
+    slider_cols(6, "gamma_for_beta", "$$\\gamma \\text{ value}$$", -20, 20, 0, step = 0.01)
+  ),
+
+  fluidRow(
+    column(6, plotOutput("gamma_plot", height = "300px")),
+    column(6, plotOutput("beta_plot", height = "300px"))
+  )
 )
 
 # Server
@@ -128,11 +148,13 @@ server <- function(input, output, session) {
       sigma2_gamma = input$sigma2_gamma,
       sigma2_beta  = input$sigma2_beta,
       psi2         = input$psi2,
-      tau2         = input$tau2
+      tau2         = input$tau2,
+      gamma_val    = input$gamma_for_beta,
+      beta_val     = input$beta_for_gamma
     )
   })
 
-  posteriorPlot <- reactive({
+  output$joint_plot <- renderPlot({
     gamma_min <- suppressWarnings(as.numeric(input$gamma_min))
     gamma_max <- suppressWarnings(as.numeric(input$gamma_max))
     beta_min  <- suppressWarnings(as.numeric(input$beta_min))
@@ -173,8 +195,64 @@ server <- function(input, output, session) {
       theme_minimal(base_size = 14)
   })
 
-  output$plot <- renderPlot({
-    posteriorPlot()
+  output$gamma_plot <- renderPlot({
+    gamma_min <- suppressWarnings(as.numeric(input$gamma_min))
+    gamma_max <- suppressWarnings(as.numeric(input$gamma_max))
+
+    if (is.na(gamma_min) || is.na(gamma_max) || gamma_min >= gamma_max) {
+      gamma_min <- -0.05; gamma_max <- 0.05
+    }
+
+    p <- plotParams()
+
+    res <- as.numeric(input$resolution)
+    gamma_vals <- seq(gamma_min, gamma_max, length.out = res)
+
+    prior <- bayesmr_prior(
+      gammaj = list(psi2 = p$psi2),
+      Gammaj = list(tau2 = p$tau2),
+      gamma  = list(mean = p$mu_gamma, var = p$sigma2_gamma),
+      beta   = list(mean = p$mu_beta, var = p$sigma2_beta)
+    )
+
+    post_vals <- gamma_beta_post(gamma_vals, p$beta_val, data, prior, log = FALSE, verbose = FALSE)
+    df <- data.frame(gamma = gamma_vals, posterior = as.numeric(post_vals))
+
+    ggplot(df, aes(x = gamma, y = posterior)) +
+      geom_line(color = "steelblue", linewidth = 1.2) +
+      geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
+      labs(x = expression(gamma), y = paste("Marginal Posterior at β =", p$beta_val)) +
+      theme_minimal(base_size = 14)
+  })
+
+  output$beta_plot <- renderPlot({
+    beta_min <- suppressWarnings(as.numeric(input$beta_min))
+    beta_max <- suppressWarnings(as.numeric(input$beta_max))
+
+    if (is.na(beta_min) || is.na(beta_max) || beta_min >= beta_max) {
+      beta_min <- -1; beta_max <- 1
+    }
+
+    p <- plotParams()
+
+    res <- as.numeric(input$resolution)
+    beta_vals <- seq(beta_min, beta_max, length.out = res)
+
+    prior <- bayesmr_prior(
+      gammaj = list(psi2 = p$psi2),
+      Gammaj = list(tau2 = p$tau2),
+      gamma  = list(mean = p$mu_gamma, var = p$sigma2_gamma),
+      beta   = list(mean = p$mu_beta, var = p$sigma2_beta)
+    )
+
+    post_vals <- gamma_beta_post(p$gamma_val, beta_vals, data, prior, log = FALSE, verbose = FALSE)
+    df <- data.frame(beta = beta_vals, posterior = as.numeric(post_vals))
+
+    ggplot(df, aes(x = beta, y = posterior)) +
+      geom_line(color = "darkorange", linewidth = 1.2) +
+      geom_vline(xintercept = p$mu_beta, linetype = "dashed", color = "gray") +
+      labs(x = expression(beta), y = paste("Marginal Posterior at γ =", p$gamma_val)) +
+      theme_minimal(base_size = 14)
   })
 }
 

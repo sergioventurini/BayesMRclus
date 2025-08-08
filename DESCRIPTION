@@ -34,8 +34,7 @@ Depends:
     R (>= 3.6.0),
     shiny,
     stats,
-    utils,
-    viridis
+    utils
 LinkingTo: Rcpp, RcppArmadillo, RcppProgress
 BugReports: https://github.com/sergioventurini/BayesMRclus/issues
 Encoding: UTF-8

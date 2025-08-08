@@ -25,7 +25,6 @@
 #' @import shiny
 #' @import stats
 #' @import utils
-#' @import viridis
 #' 
 #' @keywords internal
 NULL
