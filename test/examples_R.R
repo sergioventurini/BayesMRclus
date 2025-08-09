@@ -84,3 +84,40 @@ plot(beta, out, xlab = "beta", ylab = "full conditional distribution",
      type = "l")
 abline(v = prior$beta$mean, lty = 2)
 summary(as.vector(out))
+
+###
+
+library(BayesMRclus)
+
+data("bmi_sbp", package = "BayesMRclus")
+data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
+                   beta_outcome = bmi_sbp[, "beta.outcome"],
+                   se_exposure = bmi_sbp[, "se.exposure"],
+                   se_outcome = bmi_sbp[, "se.outcome"])
+
+prior <- bayesmr_prior(gammaj = list(psi2 = 1e0),
+                       Gammaj = list(tau2 = 1e-3),
+                       gamma = list(mean = 0,
+                                    var = 1e-1),
+                       beta = list(mean = 1, var = 1e1))
+
+gamma <- 0
+beta_min <- -1.5
+beta_max <- 1.5
+beta_step <- 0.001
+beta_seq <- seq(beta_min, beta_max, beta_step)
+out <- beta_marg_post_drv(beta_seq, gamma, data, prior)
+plot(beta_seq, out, type = "l")
+abline(h = 0, lty = 1, col = "gray")
+abline(v = prior$beta$mean, lty = 2, col = "gray")
+
+# uniroot(beta_marg_post_drv, interval = range(beta_seq),
+#         gamma = gamma, data = data, prior = prior,
+#         tol = 1e-5, maxiter = 1000, trace = 2)
+roots <- find_all_roots(beta_marg_post_drv,
+                        lower = beta_min, upper = beta_max,
+                        gamma = gamma, data = data, prior = prior,
+                        n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+                        eps_small = 1e-8)
+roots
+abline(v = roots, lty = 2, col = "gray")
