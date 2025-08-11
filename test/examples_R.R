@@ -95,15 +95,15 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
 
-prior <- bayesmr_prior(gammaj = list(psi2 = 1e0),
-                       Gammaj = list(tau2 = 1e-3),
+prior <- bayesmr_prior(gammaj = list(psi2 = 1e-2),
+                       Gammaj = list(tau2 = 0),
                        gamma = list(mean = 0,
-                                    var = 1e-1),
-                       beta = list(mean = 1, var = 1e1))
+                                    var = .1),
+                       beta = list(mean = 0, var = 4.28))
 
 gamma <- 0
-beta_min <- -1.5
-beta_max <- 1.5
+beta_min <- -5
+beta_max <- 5
 beta_step <- 0.001
 beta_seq <- seq(beta_min, beta_max, beta_step)
 out <- beta_marg_post_drv(beta_seq, gamma, data, prior)

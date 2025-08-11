@@ -96,7 +96,7 @@ find_all_roots <- function(f, ..., lower, upper, n = 1000,
   
   # Remove NA and duplicates
   roots <- roots[!is.na(roots)]
-  roots <- sort(unique(round(roots, digits = 10)))
+  roots <- sort(unique(roots))
   
   roots
 }

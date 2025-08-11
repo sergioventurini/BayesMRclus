@@ -109,7 +109,7 @@ logpost_gamma <- function(g, par, hpar, data) {
   h2_j <- (beta^2)*psi2 + tau2_j
 
   A_beta <- sum(1/psi2_j) + (beta^2)*sum(1/h2_j) + 1/sigma2_gamma
-  B_beta <- sum(gammahat_j/psi2_j) + (beta^2)*sum(Gammahat_j/(beta*h2_j)) + mu_gamma/sigma2_gamma
+  B_beta <- sum(gammahat_j/psi2_j) + beta*sum(Gammahat_j/h2_j) + mu_gamma/sigma2_gamma
 
   res <- dnorm(g, B_beta/A_beta, sqrt(1/A_beta), log = TRUE)
 
@@ -253,7 +253,7 @@ mcmc_bayesmr <- function(data, hpar, iter, start, tune, proposal = "norm") {
     # gamma update using its full conditional
     h2_j <- (beta_p^2)*psi2 + tau2_j
     A_beta <- sum(1/psi2_j) + (beta_p^2)*sum(1/h2_j) + 1/sigma2_gamma
-    B_beta <- sum(gammahat_j/psi2_j) + (beta_p^2)*sum(Gammahat_j/(beta_p*h2_j)) + mu_gamma/sigma2_gamma
+    B_beta <- sum(gammahat_j/psi2_j) + beta_p*sum(Gammahat_j/h2_j) + mu_gamma/sigma2_gamma
     gamma_p <- rnorm(1, B_beta/A_beta, sqrt(1/A_beta))
     draws[m, 1] <- gamma_p
 

@@ -48,6 +48,112 @@ gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE, verbose = TRUE
   res
 }
 
+beta_marg_post_drv <- function(beta, gamma, data, prior, beta_min = -20, beta_max = 20) {
+  gammahat_j <- data[, 1]  # SNP-Exposure effect
+  Gammahat_j <- data[, 2]  # SNP-Outcome effect
+  sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
+  sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
+
+  mu_beta <- prior[["beta"]][["mean"]]
+  sigma2_beta <- prior[["beta"]][["var"]]
+  psi2 <- prior[["gammaj"]][["psi2"]]
+  tau2 <- prior[["Gammaj"]][["tau2"]]
+
+  tau2_j <- sigma2_Y + tau2
+
+  res <- numeric(length(beta))
+  for (b in 1:length(beta)) {
+    h_j_beta <- beta[b]^2*psi2 + tau2_j
+
+    res[b] <- beta[b]^2*(gamma*psi2*sum(Gammahat_j/h_j_beta^2)) +
+              beta[b]*(gamma^2*sum(tau2_j/h_j_beta^2) - psi2*sum(Gammahat_j^2/h_j_beta^2) + 1/sigma2_beta) -
+              (gamma*sum(Gammahat_j*tau2_j/h_j_beta^2) + mu_beta/sigma2_beta)
+  }
+
+  res
+}
+
+gamma_post_mode <- function(beta, data, prior) {
+  gammahat_j <- data[, 1]  # SNP-Exposure effect
+  Gammahat_j <- data[, 2]  # SNP-Outcome effect
+  sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
+  sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
+
+  mu_gamma <- prior[["gamma"]][["mean"]]
+  sigma2_gamma <- prior[["gamma"]][["var"]]
+  mu_beta <- prior[["beta"]][["mean"]]
+  sigma2_beta <- prior[["beta"]][["var"]]
+  psi2 <- prior[["gammaj"]][["psi2"]]
+  tau2 <- prior[["Gammaj"]][["tau2"]]
+
+  psi2_j <- sigma2_X + psi2
+  tau2_j <- sigma2_Y + tau2
+  h2_j <- (beta^2)*psi2 + tau2_j
+  A_beta <- sum(1/psi2_j) + (beta^2)*sum(1/h2_j) + 1/sigma2_gamma
+  B_beta <- sum(gammahat_j/psi2_j) + beta*sum(Gammahat_j/h2_j) + mu_gamma/sigma2_gamma
+  res <- B_beta/A_beta
+
+  res
+}
+
+find_all_roots <- function(f, ..., lower, upper, n = 1000,
+                           tol_x = 1e-10, tol_f = 1e-12,
+                           eps_small = 1e-8) {
+  # Create coarse sampling grid
+  xs <- seq(lower, upper, length.out = n)
+  vals <- sapply(xs, f, ...)
+  
+  brackets <- list()
+  near_zero_intervals <- list()
+  
+  for (i in seq_len(n - 1)) {
+    # Exact zero at sample point
+    if (vals[i] == 0) {
+      brackets[[length(brackets) + 1]] <- c(xs[i], xs[i])
+    }
+    # Sign change
+    else if (vals[i] * vals[i + 1] < 0) {
+      brackets[[length(brackets) + 1]] <- c(xs[i], xs[i + 1])
+    }
+    # Possible multiple root (no sign change but small values)
+    else if (min(abs(vals[i]), abs(vals[i + 1])) < eps_small) {
+      near_zero_intervals[[length(near_zero_intervals) + 1]] <- c(xs[i], xs[i + 1])
+    }
+  }
+  
+  # Function to refine root in bracket with uniroot
+  refine_root <- function(a, b) {
+    if (a == b) return(a)  # already exact
+    tryCatch({
+      r <- uniroot(f, ..., lower = a, upper = b, tol = tol_x)$root
+      return(r)
+    }, error = function(e) NA)
+  }
+  
+  roots <- numeric(0)
+  
+  # Handle sign-change brackets
+  for (br in brackets) {
+    roots <- c(roots, refine_root(br[1], br[2]))
+  }
+  
+  # Handle near-zero intervals (possible multiple roots)
+  for (br in near_zero_intervals) {
+    mid <- mean(br)
+    if (abs(f(mid, ...)) < tol_f * 100) {
+      # Try small bracket around midpoint
+      r <- refine_root(br[1], br[2])
+      roots <- c(roots, r)
+    }
+  }
+  
+  # Remove NA and duplicates
+  roots <- roots[!is.na(roots)]
+  roots <- sort(unique(roots))
+  
+  roots
+}
+
 # Install packages
 if (!requireNamespace("devtools", quietly = TRUE)) {
   install.packages("devtools")
@@ -185,11 +291,24 @@ server <- function(input, output, session) {
     df_plot <- expand.grid(gamma = gamma_vals, beta = beta_vals)
     df_plot$posterior <- as.vector(post_vals)
 
+    # find beta modes
+    beta_modes <- find_all_roots(beta_marg_post_drv,
+                                 lower = beta_min, upper = beta_max,
+                                 gamma = p$gamma_val, data = data, prior = prior,
+                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+                                 eps_small = 1e-8)
+    if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
+
+    # find gamma mode
+    gamma_mode <- gamma_post_mode(p$beta_val, data, prior)
+
     ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
       geom_contour_filled(bins = 20) +
       scale_fill_viridis_d(option = "C") +
       geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
+      geom_vline(xintercept = gamma_mode, linetype = "dashed", color = "black") +
       geom_hline(yintercept = p$mu_beta, linetype = "dashed", color = "gray") +
+      geom_hline(yintercept = beta_modes, linetype = "dashed", color = "black") +
       labs(x = expression(gamma), y = expression(beta), fill = "Posterior") +
       coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
       theme_minimal(base_size = 14)
@@ -218,9 +337,13 @@ server <- function(input, output, session) {
     post_vals <- gamma_beta_post(gamma_vals, p$beta_val, data, prior, log = FALSE, verbose = FALSE)
     df <- data.frame(gamma = gamma_vals, posterior = as.numeric(post_vals))
 
+    # find gamma mode
+    gamma_mode <- gamma_post_mode(p$beta_val, data, prior)
+
     ggplot(df, aes(x = gamma, y = posterior)) +
       geom_line(color = "steelblue", linewidth = 1.2) +
       geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
+      geom_vline(xintercept = gamma_mode, linetype = "dashed", color = "black") +
       labs(x = expression(gamma), y = paste("Marginal Posterior at β =", p$beta_val)) +
       theme_minimal(base_size = 14)
   })
@@ -248,9 +371,18 @@ server <- function(input, output, session) {
     post_vals <- gamma_beta_post(p$gamma_val, beta_vals, data, prior, log = FALSE, verbose = FALSE)
     df <- data.frame(beta = beta_vals, posterior = as.numeric(post_vals))
 
+    # find beta modes
+    beta_modes <- find_all_roots(beta_marg_post_drv,
+                                 lower = beta_min, upper = beta_max,
+                                 gamma = p$gamma_val, data = data, prior = prior,
+                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+                                 eps_small = 1e-8)
+    if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
+
     ggplot(df, aes(x = beta, y = posterior)) +
       geom_line(color = "darkorange", linewidth = 1.2) +
       geom_vline(xintercept = p$mu_beta, linetype = "dashed", color = "gray") +
+      geom_vline(xintercept = beta_modes, linetype = "dashed", color = "black") +
       labs(x = expression(beta), y = paste("Marginal Posterior at γ =", p$gamma_val)) +
       theme_minimal(base_size = 14)
   })

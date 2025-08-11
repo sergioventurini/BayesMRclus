@@ -426,7 +426,6 @@ setGeneric("subset", function(x) standardGeneric("subset"))
 setMethod("subset",
   "bayesmr_fit",
   function(x, pars = character(), regex_pars = character(), ...) {
-    browser()
     x_mcmc <- bayesmr_fit_to_mcmc(x, include.burnin = TRUE, verbose = FALSE)
 
     parnames <- colnames(x_mcmc)
