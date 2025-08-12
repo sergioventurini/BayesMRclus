@@ -41,6 +41,7 @@ gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE, verbose = TRUE
       res[g, b] <- -0.5*(sum(p_gj) + sum(p_Gj) + p_gamma + p_beta)
     }
   }
+  res <- res[, , drop = TRUE]
 
   if (!log)
     res <- exp(res)
@@ -91,67 +92,172 @@ gamma_marg_post_mode <- function(beta, data, prior) {
   h2_j <- (beta^2)*psi2 + tau2_j
   A_beta <- sum(1/psi2_j) + (beta^2)*sum(1/h2_j) + 1/sigma2_gamma
   B_beta <- sum(gammahat_j/psi2_j) + beta*sum(Gammahat_j/h2_j) + mu_gamma/sigma2_gamma
-  res <- B_beta/A_beta
+  modes <- B_beta/A_beta
+
+  res <- list(modes = modes,
+              dens = gamma_beta_post(modes, beta, data, prior, log = FALSE, verbose = FALSE))
 
   res
 }
 
 find_all_roots <- function(f, ..., lower, upper, n = 1000,
                            tol_x = 1e-10, tol_f = 1e-12,
-                           eps_small = 1e-8) {
-  # Create coarse sampling grid
-  xs <- seq(lower, upper, length.out = n)
-  vals <- sapply(xs, f, ...)
+                           eps_small = 1e-8,
+                           expand = FALSE,
+                           step_out = 10,
+                           max_steps = 100) {
   
-  brackets <- list()
-  near_zero_intervals <- list()
+  find_roots_in_interval <- function(a, b) {
+    xs <- seq(a, b, length.out = n)
+    vals <- sapply(xs, f, ...)
+    
+    brackets <- list()
+    near_zero_intervals <- list()
+    
+    for (i in seq_len(n - 1)) {
+      if (vals[i] == 0) {
+        brackets[[length(brackets) + 1]] <- c(xs[i], xs[i])
+      } else if (vals[i] * vals[i + 1] < 0) {
+        brackets[[length(brackets) + 1]] <- c(xs[i], xs[i + 1])
+      } else if (min(abs(vals[i]), abs(vals[i + 1])) < eps_small) {
+        near_zero_intervals[[length(near_zero_intervals) + 1]] <- c(xs[i], xs[i + 1])
+      }
+    }
+    
+    refine_root <- function(a, b) {
+      if (a == b) return(a)
+      tryCatch({
+        uniroot(f, ..., lower = a, upper = b, tol = tol_x)$root
+      }, error = function(e) NA)
+    }
+    
+    roots <- numeric(0)
+    for (br in brackets) roots <- c(roots, refine_root(br[1], br[2]))
+    for (br in near_zero_intervals) {
+      mid <- mean(br)
+      if (abs(f(mid, ...)) < tol_f * 100) {
+        roots <- c(roots, refine_root(br[1], br[2]))
+      }
+    }
+    
+    roots <- roots[!is.na(roots)]
+    sort(unique(roots))
+  }
   
-  for (i in seq_len(n - 1)) {
-    # Exact zero at sample point
-    if (vals[i] == 0) {
-      brackets[[length(brackets) + 1]] <- c(xs[i], xs[i])
-    }
-    # Sign change
-    else if (vals[i] * vals[i + 1] < 0) {
-      brackets[[length(brackets) + 1]] <- c(xs[i], xs[i + 1])
-    }
-    # Possible multiple root (no sign change but small values)
-    else if (min(abs(vals[i]), abs(vals[i + 1])) < eps_small) {
-      near_zero_intervals[[length(near_zero_intervals) + 1]] <- c(xs[i], xs[i + 1])
+  # Initial search
+  all_roots <- find_roots_in_interval(lower, upper)
+  
+  if (expand) {
+    current_lower <- lower
+    current_upper <- upper
+    no_new_lower <- FALSE
+    no_new_upper <- FALSE
+    steps <- 0
+    
+    while ((!no_new_lower || !no_new_upper) && steps < max_steps) {
+      steps <- steps + 1
+      
+      # Expand left
+      if (!no_new_lower) {
+        new_lower <- current_lower - step_out
+        roots_left <- find_roots_in_interval(new_lower, current_lower)
+        roots_left <- roots_left[roots_left < current_lower]
+        if (length(roots_left) == 0) {
+          no_new_lower <- TRUE
+        } else {
+          all_roots <- c(all_roots, roots_left)
+          current_lower <- new_lower
+        }
+      }
+      
+      # Expand right
+      if (!no_new_upper) {
+        new_upper <- current_upper + step_out
+        roots_right <- find_roots_in_interval(current_upper, new_upper)
+        roots_right <- roots_right[roots_right > current_upper]
+        if (length(roots_right) == 0) {
+          no_new_upper <- TRUE
+        } else {
+          all_roots <- c(all_roots, roots_right)
+          current_upper <- new_upper
+        }
+      }
     }
   }
   
-  # Function to refine root in bracket with uniroot
-  refine_root <- function(a, b) {
-    if (a == b) return(a)  # already exact
-    tryCatch({
-      r <- uniroot(f, ..., lower = a, upper = b, tol = tol_x)$root
-      return(r)
-    }, error = function(e) NA)
-  }
+  sort(unique(all_roots))
+}
+
+beta_marg_post_mode <- function(gamma, data, prior, beta_min = -20, beta_max = 20,
+                                beta_step = 0.001, n = 1000, tol_x = 1e-10,
+                                tol_f = 1e-12, eps_small = 1e-8, log = FALSE) {
+  modes <- find_all_roots(beta_marg_post_drv,
+                          lower = beta_min, upper = beta_max,
+                          gamma = gamma, data = data, prior = prior,
+                          n = n, tol_x = tol_x, tol_f = tol_f,
+                          eps_small = eps_small, expand = TRUE,  # let the search automatically expand outside limits
+                          step_out = 10, max_steps = 100)
+  if (length(modes) > 1) modes <- modes[-2]
+
+  res <- list(modes = modes,
+              dens = gamma_beta_post(gamma, modes, data, prior, log = log, verbose = FALSE))
+
+  res
+}
+
+bayesmr_noclus_optim <- function(data, prior, start = rep(0, 2), maxiter = 1000, tol = 1e-10,
+                                 beta_min = -20, beta_max = 20, beta_step = 0.001,
+                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12, eps_small = 1e-8,
+                                 verbose = TRUE) {
+  gamma_chain <- beta_chain <- logpost <- NA
+
+  # start iterations
+  if (verbose) message("Running the optimization procedure...")
   
-  roots <- numeric(0)
-  
-  # Handle sign-change brackets
-  for (br in brackets) {
-    roots <- c(roots, refine_root(br[1], br[2]))
-  }
-  
-  # Handle near-zero intervals (possible multiple roots)
-  for (br in near_zero_intervals) {
-    mid <- mean(br)
-    if (abs(f(mid, ...)) < tol_f * 100) {
-      # Try small bracket around midpoint
-      r <- refine_root(br[1], br[2])
-      roots <- c(roots, r)
+  gamma_chain <- start[1]  # gamma starting value
+  beta_chain <- start[2]   # beta starting value
+  logpost <- gamma_beta_post(gamma_chain[1], beta_chain[1], data, prior, log = TRUE, verbose = FALSE)
+  if (verbose) message("  - iteration ", 1, " - gamma value: ", round(gamma_chain[1], digits = 6),
+                       " - beta value: ", round(beta_chain[1], digits = 6),
+                       " - log posterior value: ", format(logpost, nsamll = 8, scientific = FALSE))
+  for (i in 2:maxiter) {
+    # find gamma mode conditionally on beta
+    gamma_optim <- gamma_marg_post_mode(beta_chain[i - 1], data, prior)
+    gamma_chain <- c(gamma_chain, gamma_optim$modes)
+
+    # find beta mode(s) conditionally on gamma
+    beta_optim <- beta_marg_post_mode(gamma_chain[i], data, prior,
+                                      beta_min = beta_min, beta_max = beta_max,
+                                      beta_step = beta_step, n = n, tol_x = tol_x,
+                                      tol_f = tol_f, eps_small = eps_small, log = TRUE)
+    if (length(beta_optim$modes) == 1) {
+      beta_chain <- c(beta_chain, beta_optim$modes)
+    }
+    else {
+      if (identical(beta_optim$dens[1], beta_optim$dens[2]))
+        stop("the joint posterior has two modes.")
+      beta_chain <- c(beta_chain, beta_optim$modes[which.max(beta_optim$dens)])
+    }
+
+    logdens <- gamma_beta_post(gamma_chain[i], beta_chain[i], data, prior, log = TRUE, verbose = FALSE)
+    logpost <- c(logpost, logdens)
+
+    if (verbose) message("  - iteration ", i, " - gamma value: ", round(gamma_chain[i], digits = 6),
+                         " - beta value: ", round(beta_chain[i], digits = 6),
+                         " - log posterior value: ", format(logdens, nsamll = 8, scientific = FALSE))
+
+    # check convergence
+    if (max(abs(diff(gamma_chain[(i - 1):i])), abs(diff(beta_chain[(i - 1):i]))) < tol) {
+      break
     }
   }
-  
-  # Remove NA and duplicates
-  roots <- roots[!is.na(roots)]
-  roots <- sort(unique(roots))
-  
-  roots
+
+  # return results
+  out <- list(gamma_best = gamma_chain[i], beta_best = beta_chain[i],
+              gamma_chain = gamma_chain, beta_chain = beta_chain,
+              logpost = logpost, iter = i)
+
+  out
 }
 
 # Install packages
@@ -228,7 +334,11 @@ ui <- fluidPage(
   fluidRow(
     column(4, tags$h4("Plot Settings", style = "margin-top: 30px;")),
     column(4, selectInput("resolution", "Grid Resolution",
-      choices = c("Low" = 50, "Medium" = 100, "High" = 150), selected = 50))
+      choices = c("Low" = 50, "Medium" = 100, "High" = 150), selected = 50)),
+    column(4,
+        tags$div(
+          style = "border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; border-radius: 5px;",
+          "Note: the coloured dot and solid lines represent the joint posterior global maximum."))
   ),
 
   fluidRow(column(12, plotOutput("joint_plot", height = "700px"))),
@@ -292,25 +402,33 @@ server <- function(input, output, session) {
     df_plot$posterior <- as.vector(post_vals)
 
     # find beta modes
-    beta_modes <- find_all_roots(beta_marg_post_drv,
-                                 lower = beta_min, upper = beta_max,
-                                 gamma = p$gamma_val, data = data, prior = prior,
-                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12,
-                                 eps_small = 1e-8)
-    if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
+    # beta_modes <- find_all_roots(beta_marg_post_drv,
+    #                              lower = beta_min, upper = beta_max,
+    #                              gamma = p$gamma_val, data = data, prior = prior,
+    #                              n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+    #                              eps_small = 1e-8)
+    # if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
 
     # find gamma mode
-    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
+    # gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)
+
+    glob_max <- bayesmr_noclus_optim(data, prior, start = rep(0, 2), maxiter = 1000, tol = 1e-10,
+                                     beta_min = beta_min, beta_max = beta_max, beta_step = 0.001,
+                                     n = 1000, tol_x = 1e-10, tol_f = 1e-12, eps_small = 1e-8,
+                                     verbose = FALSE)
 
     ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
       geom_contour_filled(bins = 20) +
       scale_fill_viridis_d(option = "C") +
-      geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
-      geom_vline(xintercept = gamma_mode, linetype = "dashed", color = "black") +
-      geom_hline(yintercept = p$mu_beta, linetype = "dashed", color = "gray") +
-      geom_hline(yintercept = beta_modes, linetype = "dashed", color = "black") +
+      # geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
+      # geom_vline(xintercept = gamma_mode$modes, linetype = "dashed", color = "black") +
+      # geom_hline(yintercept = p$mu_beta, linetype = "dashed", color = "gray") +
+      # geom_hline(yintercept = beta_modes, linetype = "dashed", color = "black") +
+      geom_vline(xintercept = glob_max$gamma_best, linetype = "solid", color = "#21908C") +
+      geom_hline(yintercept = glob_max$beta_best, linetype = "solid", color = "#21908C") +
       labs(x = expression(gamma), y = expression(beta), fill = "Posterior") +
       coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
+      geom_point(aes(x = glob_max$gamma_best, y = glob_max$beta_best), color = "#21908C", size = 3) +
       theme_minimal(base_size = 14)
   })
 
@@ -338,12 +456,12 @@ server <- function(input, output, session) {
     df <- data.frame(gamma = gamma_vals, posterior = as.numeric(post_vals))
 
     # find gamma mode
-    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
+    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)
 
     ggplot(df, aes(x = gamma, y = posterior)) +
       geom_line(color = "steelblue", linewidth = 1.2) +
       geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
-      geom_vline(xintercept = gamma_mode, linetype = "dashed", color = "black") +
+      geom_vline(xintercept = gamma_mode$modes, linetype = "dashed", color = "black") +
       labs(x = expression(gamma), y = paste("Marginal Posterior at β =", p$beta_val)) +
       theme_minimal(base_size = 14)
   })

@@ -60,7 +60,11 @@ ui <- fluidPage(
   fluidRow(
     column(4, tags$h4("Plot Settings", style = "margin-top: 30px;")),
     column(4, selectInput("resolution", "Grid Resolution",
-      choices = c("Low" = 50, "Medium" = 100, "High" = 150), selected = 50))
+      choices = c("Low" = 50, "Medium" = 100, "High" = 150), selected = 50)),
+    column(4,
+        tags$div(
+          style = "border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; border-radius: 5px;",
+          "Note: the coloured dot and solid lines represent the joint posterior global maximum."))
   ),
 
   fluidRow(column(12, plotOutput("joint_plot", height = "700px"))),
@@ -124,22 +128,33 @@ server <- function(input, output, session) {
     df_plot$posterior <- as.vector(post_vals)
 
     # find beta modes
-    beta_modes <- beta_marg_post_mode(p$gamma_val, data, prior,
-                                      beta_min = beta_min, beta_max = beta_max,
-                                      beta_step = 0.001)[["modes"]]
+    # beta_modes <- find_all_roots(beta_marg_post_drv,
+    #                              lower = beta_min, upper = beta_max,
+    #                              gamma = p$gamma_val, data = data, prior = prior,
+    #                              n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+    #                              eps_small = 1e-8)
+    # if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
 
     # find gamma mode
-    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
+    # gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)
+
+    glob_max <- bayesmr_noclus_optim(data, prior, start = rep(0, 2), maxiter = 1000, tol = 1e-10,
+                                     beta_min = beta_min, beta_max = beta_max, beta_step = 0.001,
+                                     n = 1000, tol_x = 1e-10, tol_f = 1e-12, eps_small = 1e-8,
+                                     verbose = FALSE)
 
     ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
       geom_contour_filled(bins = 20) +
       scale_fill_viridis_d(option = "C") +
-      geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
-      geom_vline(xintercept = gamma_mode, linetype = "dashed", color = "black") +
-      geom_hline(yintercept = p$mu_beta, linetype = "dashed", color = "gray") +
-      geom_hline(yintercept = beta_modes, linetype = "dashed", color = "black") +
+      # geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
+      # geom_vline(xintercept = gamma_mode$modes, linetype = "dashed", color = "black") +
+      # geom_hline(yintercept = p$mu_beta, linetype = "dashed", color = "gray") +
+      # geom_hline(yintercept = beta_modes, linetype = "dashed", color = "black") +
+      geom_vline(xintercept = glob_max$gamma_best, linetype = "solid", color = "#21908C") +
+      geom_hline(yintercept = glob_max$beta_best, linetype = "solid", color = "#21908C") +
       labs(x = expression(gamma), y = expression(beta), fill = "Posterior") +
       coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
+      geom_point(aes(x = glob_max$gamma_best, y = glob_max$beta_best), color = "#21908C", size = 3) +
       theme_minimal(base_size = 14)
   })
 
@@ -167,12 +182,12 @@ server <- function(input, output, session) {
     df <- data.frame(gamma = gamma_vals, posterior = as.numeric(post_vals))
 
     # find gamma mode
-    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
+    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)
 
     ggplot(df, aes(x = gamma, y = posterior)) +
       geom_line(color = "steelblue", linewidth = 1.2) +
       geom_vline(xintercept = p$mu_gamma, linetype = "dashed", color = "gray") +
-      geom_vline(xintercept = gamma_mode, linetype = "dashed", color = "black") +
+      geom_vline(xintercept = gamma_mode$modes, linetype = "dashed", color = "black") +
       labs(x = expression(gamma), y = paste("Marginal Posterior at β =", p$beta_val)) +
       theme_minimal(base_size = 14)
   })
@@ -201,9 +216,12 @@ server <- function(input, output, session) {
     df <- data.frame(beta = beta_vals, posterior = as.numeric(post_vals))
 
     # find beta modes
-    beta_modes <- beta_marg_post_mode(p$gamma_val, data, prior,
-                                      beta_min = beta_min, beta_max = beta_max,
-                                      beta_step = 0.001)[["modes"]]
+    beta_modes <- find_all_roots(beta_marg_post_drv,
+                                 lower = beta_min, upper = beta_max,
+                                 gamma = p$gamma_val, data = data, prior = prior,
+                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+                                 eps_small = 1e-8)
+    if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
 
     ggplot(df, aes(x = beta, y = posterior)) +
       geom_line(color = "darkorange", linewidth = 1.2) +

@@ -24,9 +24,9 @@ control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
                 store.burnin = TRUE, threads = 1, parallel = "snow")
 
 prior <- bayesmr_prior(gammaj = list(psi2 = 0.1),
-                       Gammaj = list(tau2 = 0.06),
-                       gamma = list(mean = 3.9, var = 0.1),
-                       beta = list(mean = -0.7, var = 1.62))
+                       Gammaj = list(tau2 = 0.0001),
+                       gamma = list(mean = 0, var = 0.1),
+                       beta = list(mean = 0, var = 1.62))
 
 # MCMC simulation
 res_BMR <- bayesmr(zhaodata, control = control, prior = prior)

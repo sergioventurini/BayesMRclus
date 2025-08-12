@@ -60,24 +60,24 @@ bayesmr_noclus_optim <- function(data, prior, start = rep(0, 2), maxiter = 1000,
                                  beta_min = -20, beta_max = 20, beta_step = 0.001,
                                  n = 1000, tol_x = 1e-10, tol_f = 1e-12, eps_small = 1e-8,
                                  verbose = TRUE) {
-	n <- data@n
-  data_obs <- data@data
-	
-	gamma_chain <- beta_chain <- logdens <- numeric(1)
+	gamma_chain <- beta_chain <- logpost <- NA
 
   # start iterations
   if (verbose) message("Running the optimization procedure...")
   
-  gamma_chain[1] <- start[1]  # gamma starting value
-  beta_chain[1] <- start[2]   # beta starting value
-  logdens[1] <- gamma_beta_post(gamma_chain[1], beta_chain[1], data_obs, prior, log = TRUE, verbose = FALSE)
+  gamma_chain <- start[1]  # gamma starting value
+  beta_chain <- start[2]   # beta starting value
+  logpost <- gamma_beta_post(gamma_chain[1], beta_chain[1], data, prior, log = TRUE, verbose = FALSE)
+  if (verbose) message("  - iteration ", 1, " - gamma value: ", round(gamma_chain[1], digits = 6),
+                       " - beta value: ", round(beta_chain[1], digits = 6),
+                       " - log posterior value: ", format(logpost, nsamll = 8, scientific = FALSE))
   for (i in 2:maxiter) {
     # find gamma mode conditionally on beta
-    gamma_optim <- gamma_marg_post_mode(beta_chain[i - 1], data_obs, prior)
+    gamma_optim <- gamma_marg_post_mode(beta_chain[i - 1], data, prior)
     gamma_chain <- c(gamma_chain, gamma_optim$modes)
 
     # find beta mode(s) conditionally on gamma
-    beta_optim <- beta_marg_post_mode(gamma_chain[i], data_obs, prior,
+    beta_optim <- beta_marg_post_mode(gamma_chain[i], data, prior,
                                       beta_min = beta_min, beta_max = beta_max,
                                       beta_step = beta_step, n = n, tol_x = tol_x,
                                       tol_f = tol_f, eps_small = eps_small, log = TRUE)
@@ -90,12 +90,15 @@ bayesmr_noclus_optim <- function(data, prior, start = rep(0, 2), maxiter = 1000,
       beta_chain <- c(beta_chain, beta_optim$modes[which.max(beta_optim$dens)])
     }
 
-    logdens <- c(logdens,
-                 gamma_beta_post(gamma_chain[i], beta_chain[i], data_obs, prior, log = TRUE, verbose = FALSE))
+    logdens <- gamma_beta_post(gamma_chain[i], beta_chain[i], data, prior, log = TRUE, verbose = FALSE)
+    logpost <- c(logpost, logdens)
+
+    if (verbose) message("  - iteration ", i, " - gamma value: ", round(gamma_chain[i], digits = 6),
+                         " - beta value: ", round(beta_chain[i], digits = 6),
+                         " - log posterior value: ", format(logdens, nsamll = 8, scientific = FALSE))
 
     # check convergence
     if (max(abs(diff(gamma_chain[(i - 1):i])), abs(diff(beta_chain[(i - 1):i]))) < tol) {
-      message("Converged in ", i, " iterations!")
       break
     }
   }
@@ -103,7 +106,7 @@ bayesmr_noclus_optim <- function(data, prior, start = rep(0, 2), maxiter = 1000,
   # return results
 	out <- list(gamma_best = gamma_chain[i], beta_best = beta_chain[i],
               gamma_chain = gamma_chain, beta_chain = beta_chain,
-              logdens = logdens, iter = i)
+              logpost = logpost, iter = i)
 
 	out
 }

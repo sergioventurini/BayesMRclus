@@ -165,23 +165,20 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
                    beta_outcome = bmi_sbp[, "beta.outcome"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
-n <- nrow(data)
-zhaodata <- new("bayesmr_data", data = data, n = n)
 
 prior <- bayesmr_prior(gammaj = list(psi2 = 0.1),
-                       Gammaj = list(tau2 = 0.06),
-                       gamma = list(mean = 3.9, var = 0.1),
-                       beta = list(mean = -0.7, var = 1.62))
+                       Gammaj = list(tau2 = 0.1),
+                       gamma = list(mean = 0, var = 0.1),
+                       beta = list(mean = 0, var = 1.62))
 
 beta_min <- -5
 beta_max <- 5
 beta_step <- 0.001
 
-out <- bayesmr_noclus_optim(zhaodata, prior,
-                            start = rnorm(2, mean = 0, sd = 2),
+out <- bayesmr_noclus_optim(data, prior,
+                            start = rep(0, 2), #rnorm(2, mean = 0, sd = 2),
                             maxiter = 1000, tol = 1e-10,
                             beta_min = beta_min, beta_max = beta_min,
                             beta_step = beta_step,
                             n = 1000, tol_x = 1e-10, tol_f = 1e-12,
                             eps_small = 1e-8, verbose = TRUE)
-out

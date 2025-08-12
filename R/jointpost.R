@@ -208,9 +208,7 @@ beta_marg_post_mode <- function(gamma, data, prior, beta_min = -20, beta_max = 2
                           n = n, tol_x = tol_x, tol_f = tol_f,
                           eps_small = eps_small, expand = TRUE,  # let the search automatically expand outside limits
                           step_out = 10, max_steps = 100)
-  if (length(modes) > 1) {
-    modes <- modes[-2]
-  }
+  if (length(modes) > 1) modes <- modes[-2]
 
   res <- list(modes = modes,
               dens = gamma_beta_post(gamma, modes, data, prior, log = log, verbose = FALSE))
