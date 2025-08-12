@@ -73,7 +73,7 @@ beta_marg_post_drv <- function(beta, gamma, data, prior, beta_min = -20, beta_ma
   res
 }
 
-gamma_post_mode <- function(beta, data, prior) {
+gamma_marg_post_mode <- function(beta, data, prior) {
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
   sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
@@ -300,7 +300,7 @@ server <- function(input, output, session) {
     if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
 
     # find gamma mode
-    gamma_mode <- gamma_post_mode(p$beta_val, data, prior)
+    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
 
     ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
       geom_contour_filled(bins = 20) +
@@ -338,7 +338,7 @@ server <- function(input, output, session) {
     df <- data.frame(gamma = gamma_vals, posterior = as.numeric(post_vals))
 
     # find gamma mode
-    gamma_mode <- gamma_post_mode(p$beta_val, data, prior)
+    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
 
     ggplot(df, aes(x = gamma, y = posterior)) +
       geom_line(color = "steelblue", linewidth = 1.2) +

@@ -45,58 +45,88 @@
 #' @export
 find_all_roots <- function(f, ..., lower, upper, n = 1000,
                            tol_x = 1e-10, tol_f = 1e-12,
-                           eps_small = 1e-8) {
-  # Create coarse sampling grid
-  xs <- seq(lower, upper, length.out = n)
-  vals <- sapply(xs, f, ...)
+                           eps_small = 1e-8,
+                           expand = FALSE,
+                           step_out = 10,
+                           max_steps = 100) {
   
-  brackets <- list()
-  near_zero_intervals <- list()
+  find_roots_in_interval <- function(a, b) {
+    xs <- seq(a, b, length.out = n)
+    vals <- sapply(xs, f, ...)
+    
+    brackets <- list()
+    near_zero_intervals <- list()
+    
+    for (i in seq_len(n - 1)) {
+      if (vals[i] == 0) {
+        brackets[[length(brackets) + 1]] <- c(xs[i], xs[i])
+      } else if (vals[i] * vals[i + 1] < 0) {
+        brackets[[length(brackets) + 1]] <- c(xs[i], xs[i + 1])
+      } else if (min(abs(vals[i]), abs(vals[i + 1])) < eps_small) {
+        near_zero_intervals[[length(near_zero_intervals) + 1]] <- c(xs[i], xs[i + 1])
+      }
+    }
+    
+    refine_root <- function(a, b) {
+      if (a == b) return(a)
+      tryCatch({
+        uniroot(f, ..., lower = a, upper = b, tol = tol_x)$root
+      }, error = function(e) NA)
+    }
+    
+    roots <- numeric(0)
+    for (br in brackets) roots <- c(roots, refine_root(br[1], br[2]))
+    for (br in near_zero_intervals) {
+      mid <- mean(br)
+      if (abs(f(mid, ...)) < tol_f * 100) {
+        roots <- c(roots, refine_root(br[1], br[2]))
+      }
+    }
+    
+    roots <- roots[!is.na(roots)]
+    sort(unique(roots))
+  }
   
-  for (i in seq_len(n - 1)) {
-    # Exact zero at sample point
-    if (vals[i] == 0) {
-      brackets[[length(brackets) + 1]] <- c(xs[i], xs[i])
-    }
-    # Sign change
-    else if (vals[i] * vals[i + 1] < 0) {
-      brackets[[length(brackets) + 1]] <- c(xs[i], xs[i + 1])
-    }
-    # Possible multiple root (no sign change but small values)
-    else if (min(abs(vals[i]), abs(vals[i + 1])) < eps_small) {
-      near_zero_intervals[[length(near_zero_intervals) + 1]] <- c(xs[i], xs[i + 1])
+  # Initial search
+  all_roots <- find_roots_in_interval(lower, upper)
+  
+  if (expand) {
+    current_lower <- lower
+    current_upper <- upper
+    no_new_lower <- FALSE
+    no_new_upper <- FALSE
+    steps <- 0
+    
+    while ((!no_new_lower || !no_new_upper) && steps < max_steps) {
+      steps <- steps + 1
+      
+      # Expand left
+      if (!no_new_lower) {
+        new_lower <- current_lower - step_out
+        roots_left <- find_roots_in_interval(new_lower, current_lower)
+        roots_left <- roots_left[roots_left < current_lower]
+        if (length(roots_left) == 0) {
+          no_new_lower <- TRUE
+        } else {
+          all_roots <- c(all_roots, roots_left)
+          current_lower <- new_lower
+        }
+      }
+      
+      # Expand right
+      if (!no_new_upper) {
+        new_upper <- current_upper + step_out
+        roots_right <- find_roots_in_interval(current_upper, new_upper)
+        roots_right <- roots_right[roots_right > current_upper]
+        if (length(roots_right) == 0) {
+          no_new_upper <- TRUE
+        } else {
+          all_roots <- c(all_roots, roots_right)
+          current_upper <- new_upper
+        }
+      }
     }
   }
   
-  # Function to refine root in bracket with uniroot
-  refine_root <- function(a, b) {
-    if (a == b) return(a)  # already exact
-    tryCatch({
-      r <- uniroot(f, ..., lower = a, upper = b, tol = tol_x)$root
-      return(r)
-    }, error = function(e) NA)
-  }
-  
-  roots <- numeric(0)
-  
-  # Handle sign-change brackets
-  for (br in brackets) {
-    roots <- c(roots, refine_root(br[1], br[2]))
-  }
-  
-  # Handle near-zero intervals (possible multiple roots)
-  for (br in near_zero_intervals) {
-    mid <- mean(br)
-    if (abs(f(mid, ...)) < tol_f * 100) {
-      # Try small bracket around midpoint
-      r <- refine_root(br[1], br[2])
-      roots <- c(roots, r)
-    }
-  }
-  
-  # Remove NA and duplicates
-  roots <- roots[!is.na(roots)]
-  roots <- sort(unique(roots))
-  
-  roots
+  sort(unique(all_roots))
 }

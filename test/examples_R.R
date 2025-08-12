@@ -46,8 +46,7 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
 
 prior <- bayesmr_prior(gammaj = list(psi2 = 1e-2),
                        Gammaj = list(tau2 = 1e-3),
-                       gamma = list(mean = 0,
-                                    var = 1e-1),
+                       gamma = list(mean = 0, var = 1e-1),
                        beta = list(mean = 0, var = 1e1))
 
 gamma <- seq(-.05, .05, .01)
@@ -72,8 +71,7 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
 
 prior <- bayesmr_prior(gammaj = list(psi2 = 1e0),
                        Gammaj = list(tau2 = 1e-3),
-                       gamma = list(mean = 0,
-                                    var = 1e-1),
+                       gamma = list(mean = 0, var = 1e-1),
                        beta = list(mean = 1, var = 1e1))
 
 gamma <- 0
@@ -85,7 +83,7 @@ plot(beta, out, xlab = "beta", ylab = "full conditional distribution",
 abline(v = prior$beta$mean, lty = 2)
 summary(as.vector(out))
 
-###
+### Find beta marginal posterior modes (given gamma)
 
 library(BayesMRclus)
 
@@ -95,29 +93,95 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
 
-prior <- bayesmr_prior(gammaj = list(psi2 = 1e-2),
-                       Gammaj = list(tau2 = 0),
-                       gamma = list(mean = 0,
-                                    var = .1),
-                       beta = list(mean = 0, var = 4.28))
+prior <- bayesmr_prior(gammaj = list(psi2 = 0.1),
+                       Gammaj = list(tau2 = 0.06),
+                       gamma = list(mean = 3.9, var = 0.01),
+                       beta = list(mean = -0.7, var = 1.62))
 
 gamma <- 0
 beta_min <- -5
 beta_max <- 5
 beta_step <- 0.001
+beta_modes <- beta_marg_post_mode(gamma, data, prior,
+                                  beta_min = beta_min, beta_max = beta_max,
+                                  beta_step = beta_step,
+                                  n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+                                  eps_small = 1e-8)
+beta_modes
 beta_seq <- seq(beta_min, beta_max, beta_step)
 out <- beta_marg_post_drv(beta_seq, gamma, data, prior)
 plot(beta_seq, out, type = "l")
 abline(h = 0, lty = 1, col = "gray")
 abline(v = prior$beta$mean, lty = 2, col = "gray")
+abline(v = beta_modes$modes, lty = 2, col = "gray")
 
-# uniroot(beta_marg_post_drv, interval = range(beta_seq),
-#         gamma = gamma, data = data, prior = prior,
-#         tol = 1e-5, maxiter = 1000, trace = 2)
-roots <- find_all_roots(beta_marg_post_drv,
-                        lower = beta_min, upper = beta_max,
-                        gamma = gamma, data = data, prior = prior,
-                        n = 1000, tol_x = 1e-10, tol_f = 1e-12,
-                        eps_small = 1e-8)
-roots
-abline(v = roots, lty = 2, col = "gray")
+### Find tau2 value where beta marginal posterior bifurcates (given gamma)
+
+library(BayesMRclus)
+
+data("bmi_sbp", package = "BayesMRclus")
+data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
+                   beta_outcome = bmi_sbp[, "beta.outcome"],
+                   se_exposure = bmi_sbp[, "se.exposure"],
+                   se_outcome = bmi_sbp[, "se.outcome"])
+
+prior <- bayesmr_prior(gammaj = list(psi2 = 1e-1),
+                       Gammaj = list(tau2 = 1e-2),
+                       gamma = list(mean = 0, var = .1),
+                       beta = list(mean = 0, var = .1))
+
+tau2_min <- 0
+tau2_max <- 5
+tau2_step <- 0.0001
+tau2_seq <- seq(tau2_min, tau2_max, tau2_step)
+
+gamma <- 0
+beta_min <- -5
+beta_max <- 5
+beta_step <- 0.001
+
+res <- beta_mode_dist(gamma, data, prior,
+                      tau2_min = tau2_min, tau2_max = tau2_max,
+                      tau2_step = tau2_step,
+                      beta_min = beta_min, beta_max = beta_max,
+                      beta_step = beta_step,
+                      n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+                      eps_small = 1e-8, verbose = TRUE)
+
+tau2_star <- res$tau2_star
+iter <- res$iter
+plot(tau2_seq[1:iter], res$dist,
+     type = "l", xlab = "tau2", ylab = "distance",
+     main = "Distance between beta marginal posterior modes")
+iter
+tau2_star
+
+### Numerical optimization of the joint posterior
+
+library(BayesMRclus)
+
+data("bmi_sbp", package = "BayesMRclus")
+data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
+                   beta_outcome = bmi_sbp[, "beta.outcome"],
+                   se_exposure = bmi_sbp[, "se.exposure"],
+                   se_outcome = bmi_sbp[, "se.outcome"])
+n <- nrow(data)
+zhaodata <- new("bayesmr_data", data = data, n = n)
+
+prior <- bayesmr_prior(gammaj = list(psi2 = 0.1),
+                       Gammaj = list(tau2 = 0.06),
+                       gamma = list(mean = 3.9, var = 0.1),
+                       beta = list(mean = -0.7, var = 1.62))
+
+beta_min <- -5
+beta_max <- 5
+beta_step <- 0.001
+
+out <- bayesmr_noclus_optim(zhaodata, prior,
+                            start = rnorm(2, mean = 0, sd = 2),
+                            maxiter = 1000, tol = 1e-10,
+                            beta_min = beta_min, beta_max = beta_min,
+                            beta_step = beta_step,
+                            n = 1000, tol_x = 1e-10, tol_f = 1e-12,
+                            eps_small = 1e-8, verbose = TRUE)
+out

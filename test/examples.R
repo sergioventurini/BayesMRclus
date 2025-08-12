@@ -22,12 +22,11 @@ set.seed(seed)
 control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
                 random.start = TRUE, verbose = TRUE, nchains = 3, thin = 100,
                 store.burnin = TRUE, threads = 1, parallel = "snow")
-prior <- bayesmr_prior(gammaj = list(psi2 = 1e-2),
-                       Gammaj = list(tau2 = 1e-3),
-                       gamma = list(mean = mean(data[, 1]),
-                                    var = var(data[, 1])/nrow(data)),
-                       beta = list(mean = 3, var = 1e-1))
-                       # beta = list(mean = 1, var = 3))
+
+prior <- bayesmr_prior(gammaj = list(psi2 = 0.1),
+                       Gammaj = list(tau2 = 0.06),
+                       gamma = list(mean = 3.9, var = 0.1),
+                       beta = list(mean = -0.7, var = 1.62))
 
 # MCMC simulation
 res_BMR <- bayesmr(zhaodata, control = control, prior = prior)

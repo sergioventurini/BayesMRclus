@@ -124,15 +124,12 @@ server <- function(input, output, session) {
     df_plot$posterior <- as.vector(post_vals)
 
     # find beta modes
-    beta_modes <- find_all_roots(beta_marg_post_drv,
-                                 lower = beta_min, upper = beta_max,
-                                 gamma = p$gamma_val, data = data, prior = prior,
-                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12,
-                                 eps_small = 1e-8)
-    if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
+    beta_modes <- beta_marg_post_mode(p$gamma_val, data, prior,
+                                      beta_min = beta_min, beta_max = beta_max,
+                                      beta_step = 0.001)[["modes"]]
 
     # find gamma mode
-    gamma_mode <- gamma_post_mode(p$beta_val, data, prior)
+    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
 
     ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
       geom_contour_filled(bins = 20) +
@@ -170,7 +167,7 @@ server <- function(input, output, session) {
     df <- data.frame(gamma = gamma_vals, posterior = as.numeric(post_vals))
 
     # find gamma mode
-    gamma_mode <- gamma_post_mode(p$beta_val, data, prior)
+    gamma_mode <- gamma_marg_post_mode(p$beta_val, data, prior)[["modes"]]
 
     ggplot(df, aes(x = gamma, y = posterior)) +
       geom_line(color = "steelblue", linewidth = 1.2) +
@@ -204,12 +201,9 @@ server <- function(input, output, session) {
     df <- data.frame(beta = beta_vals, posterior = as.numeric(post_vals))
 
     # find beta modes
-    beta_modes <- find_all_roots(beta_marg_post_drv,
-                                 lower = beta_min, upper = beta_max,
-                                 gamma = p$gamma_val, data = data, prior = prior,
-                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12,
-                                 eps_small = 1e-8)
-    if (length(beta_modes) > 1) beta_modes <- beta_modes[-2]
+    beta_modes <- beta_marg_post_mode(p$gamma_val, data, prior,
+                                      beta_min = beta_min, beta_max = beta_max,
+                                      beta_step = 0.001)[["modes"]]
 
     ggplot(df, aes(x = beta, y = posterior)) +
       geom_line(color = "darkorange", linewidth = 1.2) +
