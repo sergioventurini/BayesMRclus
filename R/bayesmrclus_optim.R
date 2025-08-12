@@ -68,9 +68,10 @@ bayesmr_noclus_optim <- function(data, prior, start = rep(0, 2), maxiter = 1000,
   gamma_chain <- start[1]  # gamma starting value
   beta_chain <- start[2]   # beta starting value
   logpost <- gamma_beta_post(gamma_chain[1], beta_chain[1], data, prior, log = TRUE, verbose = FALSE)
-  if (verbose) message("  - iteration ", 1, " - gamma value: ", round(gamma_chain[1], digits = 6),
-                       " - beta value: ", round(beta_chain[1], digits = 6),
-                       " - log posterior value: ", format(logpost, nsamll = 8, scientific = FALSE))
+  if (verbose)
+    message("  - iteration ", 1, " - gamma value: ", round(gamma_chain[1], digits = 6),
+            " - beta value: ", round(beta_chain[1], digits = 6),
+            " - log posterior value: ", format(logpost, nsamll = 8, scientific = FALSE))
   for (i in 2:maxiter) {
     # find gamma mode conditionally on beta
     gamma_optim <- gamma_marg_post_mode(beta_chain[i - 1], data, prior)
@@ -97,7 +98,7 @@ bayesmr_noclus_optim <- function(data, prior, start = rep(0, 2), maxiter = 1000,
                          " - beta value: ", round(beta_chain[i], digits = 6),
                          " - log posterior value: ", format(logdens, nsamll = 8, scientific = FALSE))
 
-    # check convergence
+    # check convergence in terms of change in parameter values
     if (max(abs(diff(gamma_chain[(i - 1):i])), abs(diff(beta_chain[(i - 1):i]))) < tol) {
       break
     }

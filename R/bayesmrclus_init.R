@@ -88,10 +88,10 @@ bayesmr_init <- function(data, p, G, random.start, partition) {
   # }
   
   # initialize gamma
-  gamma <- rnorm(1)
+  gamma <- rnorm(1, mean = 0, sd = .1)
 
   # initialize beta
-  beta <- rnorm(1)
+  beta <- rnorm(1, mean = 0, sd = .1)
   
   return(list(gamma = gamma, beta = beta))
 }
