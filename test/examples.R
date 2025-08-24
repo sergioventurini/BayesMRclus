@@ -97,13 +97,41 @@ sample_points <- subset(
 ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
   geom_contour_filled(bins = 20) +
   scale_fill_viridis_d(option = "C") +
-  geom_point(x = glob_max$gamma_best, y = glob_max$beta_best, color = "#21908C", size = 3) +
   geom_point(data = sample_points, aes(x = gamma, y = beta),
              color = "gray", size = 0.1, inherit.aes = FALSE) +
   geom_segment(aes(x = glob_max$gamma_best, xend = glob_max$gamma_best,
         y = beta_min, yend = beta_max), color = "#21908C") +
   geom_segment(aes(x = gamma_min, xend = gamma_max,
         y = glob_max$beta_best, yend = glob_max$beta_best), color = "#21908C") +
+  geom_point(x = glob_max$gamma_best, y = glob_max$beta_best, color = "#21908C", size = 3) +
   labs(x = expression(gamma), y = expression(beta), fill = "Posterior") +
   coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
   theme_minimal(base_size = 14)
+
+###
+
+# weight of beta prior over beta full conditional
+b <- seq(-5, 5, .01)
+par <- list(gamma = 0)
+prior <- bayesmr_prior(gammaj = list(psi2 = 0.01),
+                       Gammaj = list(tau2 = 0.5),
+                       gamma = list(mean = 0, var = 0.01),
+                       beta = list(mean = 0, var = 1))
+hpar <- list(mu_beta = prior$beta$mean,
+             sigma2_beta = prior$beta$var,
+             psi2 = prior$gammaj$psi2,
+             tau2 = prior$Gammaj$tau2)
+
+out <- logpost_beta_util(b, par, hpar, data)
+beta_prior_w <- out[, 2]/rowSums(out)
+beta_prior_w <- out[, 2] - out[, 1]
+beta_prior_w <- out[, 2]/out[, 1]
+plot(b, beta_prior_w, type = "l")
+
+summary(out)
+plot(b, out[, 1], type = "l", ylim = c(min(out), max(out)))
+lines(b, out[, 2], col = "red")
+
+summary(exp(out))
+plot(b, exp(out[, 1]), type = "l", ylim = c(min(exp(out)), max(exp(out))))
+lines(b, exp(out[, 2]), col = "red")

@@ -68,7 +68,8 @@ void bayesmr_mcmc_noclus(
     gamma_chain[(niter - 1)] = R::rnorm(B_beta/A_beta, sqrt(1/A_beta));
     
     // generate beta by random walk Metropolis-Hastings
-    beta_prop = R::runif(beta_old - sigma2_beta, beta_old + sigma2_beta);
+    // beta_prop = R::runif(beta_old - sigma2_beta, beta_old + sigma2_beta);  // uniform proposal
+    beta_prop = R::rnorm(beta_old, sqrt(sigma2_beta));  // normal proposal
     logpost_beta(lpost_beta_prop, beta_prop, gamma_chain[(niter - 1)], rhyper_beta_mean,
       rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n, Gammahat_j, sigma2_Y);
     logpost_beta(lpost_beta_old, beta_old, gamma_chain[(niter - 1)], rhyper_beta_mean,

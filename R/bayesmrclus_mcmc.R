@@ -163,19 +163,74 @@ logpost_beta <- function(b, par, hpar, data) {
   tau2 <- hpar[["tau2"]]
   
   tau2_j <- sigma2_Y + tau2
-  h2_j <- matrix(NA, nrow = nrow(data), ncol = length(b))
-  for (i in 1:length(b)) {
-    h2_j[, i] <- (b[i]^2)*psi2 + tau2_j
-  }
   
   loglik_Gammahat <- numeric(length(b))
   for (i in 1:length(b)) {
-    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - b[i]*gamma)^2/h2_j[, i])
+    h2_j <- (b[i]^2)*psi2 + tau2_j
+    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - b[i]*gamma)^2/h2_j)
   }
   logprior_beta <- -0.5*(b - mu_beta)^2/sigma2_beta
   res <- loglik_Gammahat + logprior_beta
 
   return(res)
+}
+
+#' Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution
+#'
+#' \code{metropolis()} implements a general Metropolis MCMC algorithm that can be applied to any
+#' posterior probability provided by the user.
+#'
+#' @param g A function defining the logarithm of the posterior density.
+#' @param par A numeric value representing the starting value.
+#' @param hpar A numeric value corresponding to the neighborhood where one looks
+#'   for a proposal value.
+#' @param data Integer value specifying the total the number of iterations
+#'   of the algorithm.
+#' @return A list with two components, \code{S} is a vector of the simulated draws,
+#' and \code{accept_rate}, which gives the acceptance rate of the algorithm.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#' @seealso \code{\link{TODO}()} for computing ...
+#' @examples
+#' data(bmi_sbp)
+#' 
+#' hpar <- list(mu_beta = 0,
+#'              sigma2_beta = 0.1,
+#'              psi2 = 0.3,
+#'              tau2 = 0.4)
+#'
+#' b <- seq(-0.8, 0.8, length.out = 100)
+#' data <- bmi_sbp[, c("beta.exposure",
+#'                     "beta.outcome",
+#'                     "se.exposure",
+#'                     "se.outcome")]
+#' par <- list(gamma = 0.5)
+#' res <- logpost_beta(b, par, hpar, data)
+#' summary(res)
+#'
+#' @export
+logpost_beta_util <- function(b, par, hpar, data) {
+  gammahat_j <- data[, 1]  # SNP-Exposure effect
+  Gammahat_j <- data[, 2]  # SNP-Outcome effect
+  sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
+  sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
+
+  gamma <- par[["gamma"]]
+
+  mu_beta <- hpar[["mu_beta"]]
+  sigma2_beta <- hpar[["sigma2_beta"]]
+  psi2 <- hpar[["psi2"]]
+  tau2 <- hpar[["tau2"]]
+  
+  tau2_j <- sigma2_Y + tau2
+  
+  loglik_Gammahat <- numeric(length(b))
+  for (i in 1:length(b)) {
+    h2_j <- (b[i]^2)*psi2 + tau2_j
+    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - b[i]*gamma)^2/h2_j)
+  }
+  logprior_beta <- -0.5*(b - mu_beta)^2/sigma2_beta
+
+  data.frame(loglik_Gammahat = loglik_Gammahat, logprior_beta = logprior_beta)
 }
 
 #' Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution
