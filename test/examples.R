@@ -112,17 +112,13 @@ ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
 
 # weight of beta prior over beta full conditional
 b <- seq(-5, 5, .01)
-par <- list(gamma = 0)
+gamma <- 0
 prior <- bayesmr_prior(gammaj = list(psi2 = 0.01),
                        Gammaj = list(tau2 = 0.5),
                        gamma = list(mean = 0, var = 0.01),
                        beta = list(mean = 0, var = 1))
-hpar <- list(mu_beta = prior$beta$mean,
-             sigma2_beta = prior$beta$var,
-             psi2 = prior$gammaj$psi2,
-             tau2 = prior$Gammaj$tau2)
 
-out <- logpost_beta_util(b, par, hpar, data)
+out <- logpost_beta_util(b, gamma, prior, data)
 beta_prior_w <- out[, 2]/rowSums(out)
 beta_prior_w <- out[, 2] - out[, 1]
 beta_prior_w <- out[, 2]/out[, 1]

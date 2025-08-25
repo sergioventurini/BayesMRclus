@@ -208,27 +208,25 @@ logpost_beta <- function(b, par, hpar, data) {
 #' summary(res)
 #'
 #' @export
-logpost_beta_util <- function(b, par, hpar, data) {
+logpost_beta_util <- function(beta, gamma, prior, data) {
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
   sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
   sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
 
-  gamma <- par[["gamma"]]
-
-  mu_beta <- hpar[["mu_beta"]]
-  sigma2_beta <- hpar[["sigma2_beta"]]
-  psi2 <- hpar[["psi2"]]
-  tau2 <- hpar[["tau2"]]
+  mu_beta <- prior[["beta"]][["mean"]]
+  sigma2_beta <- prior[["beta"]][["var"]]
+  psi2 <- prior[["gammaj"]][["psi2"]]
+  tau2 <- prior[["Gammaj"]][["tau2"]]
   
   tau2_j <- sigma2_Y + tau2
   
   loglik_Gammahat <- numeric(length(b))
-  for (i in 1:length(b)) {
-    h2_j <- (b[i]^2)*psi2 + tau2_j
-    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - b[i]*gamma)^2/h2_j)
+  for (i in 1:length(beta)) {
+    h2_j <- (beta[i]^2)*psi2 + tau2_j
+    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - beta[i]*gamma)^2/h2_j)
   }
-  logprior_beta <- -0.5*(b - mu_beta)^2/sigma2_beta
+  logprior_beta <- -0.5*(beta - mu_beta)^2/sigma2_beta
 
   data.frame(loglik_Gammahat = loglik_Gammahat, logprior_beta = logprior_beta)
 }
