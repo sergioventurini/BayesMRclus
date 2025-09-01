@@ -12,7 +12,7 @@
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
@@ -146,7 +146,7 @@ setMethod("plot",
 #' @aliases bayesmr_model
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
@@ -254,7 +254,7 @@ setMethod("show",
 #' @rdname bayesmr_fit-class
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
@@ -622,7 +622,7 @@ setMethod("plot",
 #'   the list.
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples

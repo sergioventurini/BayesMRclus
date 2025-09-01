@@ -80,7 +80,7 @@ graph + panel_bg(fill = "gray90", color = NA)
 }
 }
 \references{
-Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 }
 \seealso{

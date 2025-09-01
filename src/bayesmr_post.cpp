@@ -12,7 +12,7 @@ void logpost_beta(double* lpost, const double beta, const double gamma, const do
   for(int i = 0; i < n; i++){
     tau2_j[i] = sigma2_Y[i] + tau2;
     h2_j[i] = pow(beta, 2)*psi2 + tau2_j[i];
-    tmp += pow(Gammahat_j[i] - beta*gamma, 2)/h2_j[i];
+    tmp += log(h2_j[i]) + pow(Gammahat_j[i] - beta*gamma, 2)/h2_j[i];
   }
   double loglik_Gammahat = -0.5*tmp;
   double logprior_beta = -0.5*pow(beta - mu_beta, 2)/sigma2_beta;

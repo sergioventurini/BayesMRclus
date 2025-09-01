@@ -71,7 +71,8 @@ gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE, verbose = TRUE
         message("Computing gamma/beta joint posterior for gamma = ", g, " and beta = ", b)
 
       p_beta <- (beta[b] - mu_beta)^2/sigma2_beta
-      p_Gj <- (Gammahat_j - beta[b]*gamma[g])^2/(beta[b]^2*psi2 + tau2_j)
+      h2_j <- beta[b]^2*psi2 + tau2_j
+      p_Gj <- log(h2_j) + (Gammahat_j - beta[b]*gamma[g])^2/h2_j
       
       res[g, b] <- -0.5*(sum(p_gj) + sum(p_Gj) + p_gamma + p_beta)
     }
@@ -129,7 +130,7 @@ gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE, verbose = TRUE
 #' res$accept_rate
 #'
 #' @export
-beta_marg_post_drv <- function(beta, gamma, data, prior, beta_min = -20, beta_max = 20) {
+beta_marg_post_drv <- function(beta, gamma, data, prior, beta_min = -20, beta_max = 20) {  #TODO
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
   sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
@@ -146,8 +147,10 @@ beta_marg_post_drv <- function(beta, gamma, data, prior, beta_min = -20, beta_ma
   for (b in 1:length(beta)) {
     h_j_beta <- beta[b]^2*psi2 + tau2_j
 
-    res[b] <- beta[b]^2*(gamma*psi2*sum(Gammahat_j/h_j_beta^2)) +
-              beta[b]*(gamma^2*sum(tau2_j/h_j_beta^2) - psi2*sum(Gammahat_j^2/h_j_beta^2) + 1/sigma2_beta) -
+    res[b] <- beta[b]^3*psi2^2*sum(1/h_j_beta^2) +
+              beta[b]^2*(gamma*psi2*sum(Gammahat_j/h_j_beta^2)) +
+              beta[b]*(gamma^2*sum(tau2_j/h_j_beta^2) - psi2*sum(Gammahat_j^2/h_j_beta^2) +
+                       psi2*sum(tau2_j/h_j_beta^2) + 1/sigma2_beta) -
               (gamma*sum(Gammahat_j*tau2_j/h_j_beta^2) + mu_beta/sigma2_beta)
   }
 
@@ -368,6 +371,83 @@ beta_mode_dist <- function(gamma, data, prior,
               iter = t - 1,
               modes = beta_modes_all,
               dist = beta_dist_all)
+
+  res
+}
+
+#' Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution
+#'
+#' \code{metropolis()} implements a general Metropolis MCMC algorithm that can be applied to any
+#' posterior probability provided by the user.
+#'
+#' @param data Integer value specifying the total the number of iterations
+#'   of the algorithm.
+#' @param prior A numeric value corresponding to the neighborhood where one looks
+#'   for a proposal value.
+#' @param iter Integer value specifying the total the number of iterations
+#'   of the algorithm.
+#' @param start A numeric vector providing the parameter starting values.
+#' @param tune A numeric vector providing the Metropolis-Hastings tuning parameters.
+#' @param proposal A length-one character vector with the name of the proposal
+#'   distribution; currently, accepted values are "unif" or "norm".
+#' @return A list with two components, \code{S} is a vector of the simulated draws,
+#' and \code{accept_rate}, which gives the acceptance rate of the algorithm.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#' @seealso \code{\link{TODO}()} for computing ...
+#' @examples
+#' data(bmi_sbp)
+#' 
+#' data <- bmi_sbp[, c("beta.exposure",
+#'                     "beta.outcome",
+#'                     "se.exposure",
+#'                     "se.outcome")]
+#'
+#' beta_z <- 0.3
+#' beta_se_z <- 0.2
+#' tau2_z <- 1e-3
+#' hpar <- list(mu_gamma = mean(data[, 1]),
+#'              sigma2_gamma = var(data[, 1])/nrow(data),
+#'              mu_beta = beta_z,
+#'              sigma2_beta = beta_se_z^2,
+#'              psi2 = mean(data[, 3]^2),
+#'              tau2 = tau2_z)
+#'
+#' iter <- 1e4
+#' start <- rnorm(2)
+#' tune <- 1.5
+#' res <- mcmc_bayesmr(data, hpar, iter, start, tune)
+#' summary(res$draws)
+#' res$accept_rate
+#'
+#' @export
+logpost_beta <- function(beta, gamma, prior, data, log = TRUE) {
+  gammahat_j <- data[, 1]  # SNP-Exposure effect
+  Gammahat_j <- data[, 2]  # SNP-Outcome effect
+  sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
+  sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
+
+  mu_beta <- prior[["beta"]][["mean"]]
+  sigma2_beta <- prior[["beta"]][["var"]]
+  psi2 <- prior[["gammaj"]][["psi2"]]
+  tau2 <- prior[["Gammaj"]][["tau2"]]
+  
+  tau2_j <- sigma2_Y + tau2
+  
+  loglik_Gammahat <- numeric(length(beta))
+  for (i in 1:length(beta)) {
+    h2_j <- (beta[i]^2)*psi2 + tau2_j
+    loglik_Gammahat[i] <- -0.5*sum(log(h2_j) + (Gammahat_j - beta[i]*gamma)^2/h2_j)
+    # loglik_Gammahat[i] <- sum(dnorm(Gammahat_j, mean = beta[i]*gamma, sd = sqrt(h2_j), log = TRUE))
+  }
+  logprior_beta <- -0.5*(beta - mu_beta)^2/sigma2_beta
+  # logprior_beta <- dnorm(beta, mean = mu_beta, sd = sqrt(sigma2_beta), log = TRUE)
+
+  # data.frame(loglik_Gammahat = loglik_Gammahat, logprior_beta = logprior_beta,
+  #            lopost_beta = loglik_Gammahat + logprior_beta)
+  res <- loglik_Gammahat + logprior_beta
+
+  if (!log)
+    res <- exp(res)
 
   res
 }

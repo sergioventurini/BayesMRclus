@@ -3,15 +3,6 @@ if (!requireNamespace("BayesMRclus", quietly = TRUE)) {
 }
 library(BayesMRclus)
 
-# Prepare data
-data("bmi.sbp", package = "mr.raps")
-data <- data.frame(
-  beta_exposure = bmi.sbp[, "beta.exposure"],
-  beta_outcome = bmi.sbp[, "beta.outcome"],
-  se_exposure = bmi.sbp[, "se.exposure"],
-  se_outcome = bmi.sbp[, "se.outcome"]
-)
-
 # Slider with a specified column width
 slider_cols <- function(cols, inputId, label, min, max, value, step = NULL) {
   column(cols,
@@ -35,6 +26,34 @@ ui <- fluidPage(
       text-align: left !important;
     }
   ")),
+
+  fluidRow(
+    column(3, 
+      selectInput(
+        inputId = "dataset",          # name used in server
+        label = "Choose a dataset:",  # label shown to user
+        choices = c("bmi.sbp", "bmi.ais", "bmi.cad", "crp.cad", "simulated"),  # available options
+        selected = "bmi.sbp"             # default selection
+      )
+    ),
+    column(3,
+      tags$b("P-value for SNPs selection:"),
+      textInput("pval", NULL, value = "1e-4")
+    ),
+    column(3,
+      tags$b("Number of selected SNPs:"),
+      div(
+        textOutput("n_selected"),
+        class = "form-control", style = "background-color: #f9f9f9;"
+      )
+    ),
+    column(3,
+      conditionalPanel(
+        condition = "input.dataset == 'simulated'",
+        numericInput("sim_seed", "Random seed:", value = 123, step = 1)
+      )
+    )
+  ),
 
   fluidRow(column(12, tags$h4("Axis Ranges", style = "margin-top: 20px;"))),
   fluidRow(
@@ -83,6 +102,61 @@ ui <- fluidPage(
 # Server
 server <- function(input, output, session) {
 
+
+  dataset_map <- list(
+    bmi.sbp       = "mr.raps",
+    bmi.ais       = "mr.raps",
+    bmi.cad       = "mr.raps",
+    crp.cad       = "mr.raps"
+  )
+
+  datasetInput <- reactive({
+    if (input$dataset == "simulated") {
+      set.seed(input$sim_seed)
+      nsnips <- 1500
+      g <- 0.2
+      b <- 0.4
+      psi2 <- 0.1
+      tau2 <- 0.1
+      sigma2_X <- rep(0.0001, nsnips)
+      sigma2_Y <- rep(0.00001, nsnips)
+      gamma_j <- rnorm(nsnips, mean = g, sd = sqrt(psi2))
+      Gamma_j <- rnorm(nsnips, mean = b*gamma_j, sd = sqrt(tau2))
+      gammahat_j <- rnorm(nsnips, mean = gamma_j, sd = sqrt(sigma2_X))
+      Gammahat_j <- rnorm(nsnips, mean = Gamma_j, sd = sqrt(sigma2_Y))
+      data.frame(
+        beta.exposure = gammahat_j,
+        beta.outcome  = Gammahat_j,
+        se.exposure   = sqrt(sigma2_X),
+        se.outcome    = sqrt(sigma2_Y),
+        pval.selection = rbeta(nsnips, shape1 = 1e-1, shape2 = 1e4)
+      )
+    } else {
+      pkg <- dataset_map[[input$dataset]]
+      get(input$dataset, paste0("package:", pkg))
+    }
+  })
+
+  fixed_var <- "pval.selection"
+
+  filteredData <- reactive({
+    data <- datasetInput()
+    if (fixed_var %in% names(data)) {
+      pval <- suppressWarnings(as.numeric(input$pval))
+      if (is.na(pval) || pval <= 0 || pval >= 1) {
+        return(data)
+      } else {
+        return(subset(data, data[[fixed_var]] <= pval))
+      }
+    } else {
+      data
+    }
+  })
+  
+  output$n_selected <- renderText({
+    nrow(filteredData())
+  })
+
   plotParams <- reactive({
     list(
       mu_gamma     = input$mu_gamma,
@@ -108,6 +182,13 @@ server <- function(input, output, session) {
     if (is.na(beta_min) || is.na(beta_max) || beta_min >= beta_max) {
       beta_min <- -1; beta_max <- 1
     }
+
+    data <- data.frame(
+      beta_exposure = filteredData()[, "beta.exposure"],
+      beta_outcome = filteredData()[, "beta.outcome"],
+      se_exposure = filteredData()[, "se.exposure"],
+      se_outcome = filteredData()[, "se.outcome"]
+    )
 
     p <- plotParams()
 
@@ -166,6 +247,13 @@ server <- function(input, output, session) {
       gamma_min <- -0.05; gamma_max <- 0.05
     }
 
+    data <- data.frame(
+      beta_exposure = filteredData()[, "beta.exposure"],
+      beta_outcome = filteredData()[, "beta.outcome"],
+      se_exposure = filteredData()[, "se.exposure"],
+      se_outcome = filteredData()[, "se.outcome"]
+    )
+
     p <- plotParams()
 
     res <- as.numeric(input$resolution)
@@ -199,6 +287,13 @@ server <- function(input, output, session) {
     if (is.na(beta_min) || is.na(beta_max) || beta_min >= beta_max) {
       beta_min <- -1; beta_max <- 1
     }
+
+    data <- data.frame(
+      beta_exposure = filteredData()[, "beta.exposure"],
+      beta_outcome = filteredData()[, "beta.outcome"],
+      se_exposure = filteredData()[, "se.exposure"],
+      se_outcome = filteredData()[, "se.outcome"]
+    )
 
     p <- plotParams()
 

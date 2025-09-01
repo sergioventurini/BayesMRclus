@@ -1,4 +1,36 @@
 # Functions
+logpost_beta <- function(beta, gamma, prior, data, log = TRUE) {
+  gammahat_j <- data[, 1]  # SNP-Exposure effect
+  Gammahat_j <- data[, 2]  # SNP-Outcome effect
+  sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
+  sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
+
+  mu_beta <- prior[["beta"]][["mean"]]
+  sigma2_beta <- prior[["beta"]][["var"]]
+  psi2 <- prior[["gammaj"]][["psi2"]]
+  tau2 <- prior[["Gammaj"]][["tau2"]]
+  
+  tau2_j <- sigma2_Y + tau2
+  
+  loglik_Gammahat <- numeric(length(beta))
+  for (i in 1:length(beta)) {
+    h2_j <- (beta[i]^2)*psi2 + tau2_j
+    loglik_Gammahat[i] <- -0.5*sum(log(h2_j) + (Gammahat_j - beta[i]*gamma)^2/h2_j)
+    # loglik_Gammahat[i] <- sum(dnorm(Gammahat_j, mean = beta[i]*gamma, sd = sqrt(h2_j), log = TRUE))
+  }
+  logprior_beta <- -0.5*(beta - mu_beta)^2/sigma2_beta
+  # logprior_beta <- dnorm(beta, mean = mu_beta, sd = sqrt(sigma2_beta), log = TRUE)
+
+  # data.frame(loglik_Gammahat = loglik_Gammahat, logprior_beta = logprior_beta,
+  #            lopost_beta = loglik_Gammahat + logprior_beta)
+  res <- loglik_Gammahat + logprior_beta
+
+  if (!log)
+    res <- exp(res)
+
+  res
+}
+
 logpost_beta_util <- function(beta, gamma, prior, data) {
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
@@ -15,7 +47,7 @@ logpost_beta_util <- function(beta, gamma, prior, data) {
   loglik_Gammahat <- numeric(length(beta))
   for (i in 1:length(beta)) {
     h2_j <- (beta[i]^2)*psi2 + tau2_j
-    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - beta[i]*gamma)^2/h2_j)
+    loglik_Gammahat[i] <- -0.5*sum(log(h2_j) + (Gammahat_j - beta[i]*gamma)^2/h2_j)
     # loglik_Gammahat[i] <- sum(dnorm(Gammahat_j, mean = beta[i]*gamma, sd = sqrt(h2_j), log = TRUE))
   }
   logprior_beta <- -0.5*(beta - mu_beta)^2/sigma2_beta
@@ -61,7 +93,8 @@ gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE, verbose = TRUE
         message("Computing gamma/beta joint posterior for gamma = ", g, " and beta = ", b)
 
       p_beta <- (beta[b] - mu_beta)^2/sigma2_beta
-      p_Gj <- (Gammahat_j - beta[b]*gamma[g])^2/(beta[b]^2*psi2 + tau2_j)
+      h2_j <- beta[b]^2*psi2 + tau2_j
+      p_Gj <- log(h2_j) + (Gammahat_j - beta[b]*gamma[g])^2/h2_j
       
       res[g, b] <- -0.5*(sum(p_gj) + sum(p_Gj) + p_gamma + p_beta)
     }
@@ -91,8 +124,10 @@ beta_marg_post_drv <- function(beta, gamma, data, prior, beta_min = -20, beta_ma
   for (b in 1:length(beta)) {
     h_j_beta <- beta[b]^2*psi2 + tau2_j
 
-    res[b] <- beta[b]^2*(gamma*psi2*sum(Gammahat_j/h_j_beta^2)) +
-              beta[b]*(gamma^2*sum(tau2_j/h_j_beta^2) - psi2*sum(Gammahat_j^2/h_j_beta^2) + 1/sigma2_beta) -
+    res[b] <- beta[b]^3*psi2^2*sum(1/h_j_beta^2) +
+              beta[b]^2*(gamma*psi2*sum(Gammahat_j/h_j_beta^2)) +
+              beta[b]*(gamma^2*sum(tau2_j/h_j_beta^2) - psi2*sum(Gammahat_j^2/h_j_beta^2) +
+                       psi2*sum(tau2_j/h_j_beta^2) + 1/sigma2_beta) -
               (gamma*sum(Gammahat_j*tau2_j/h_j_beta^2) + mu_beta/sigma2_beta)
   }
 
@@ -302,15 +337,6 @@ library(ggplot2)
 library(shiny)
 library(mr.raps)
 
-# Prepare data
-data("bmi.sbp", package = "mr.raps")
-data <- data.frame(
-  beta_exposure = bmi.sbp[, "beta.exposure"],
-  beta_outcome = bmi.sbp[, "beta.outcome"],
-  se_exposure = bmi.sbp[, "se.exposure"],
-  se_outcome = bmi.sbp[, "se.outcome"]
-)
-
 # Slider with a specified column width
 slider_cols <- function(cols, inputId, label, min, max, value, step = NULL) {
   column(cols,
@@ -335,6 +361,34 @@ ui <- fluidPage(
     }
   ")),
 
+  fluidRow(
+    column(3, 
+      selectInput(
+        inputId = "dataset",          # name used in server
+        label = "Choose a dataset:",  # label shown to user
+        choices = c("bmi.sbp", "bmi.ais", "bmi.cad", "crp.cad", "simulated"),  # available options
+        selected = "bmi.sbp"             # default selection
+      )
+    ),
+    column(3,
+      tags$b("P-value for SNPs selection:"),
+      textInput("pval", NULL, value = "1e-4")
+    ),
+    column(3,
+      tags$b("Number of selected SNPs:"),
+      div(
+        textOutput("n_selected"),
+        class = "form-control", style = "background-color: #f9f9f9;"
+      )
+    ),
+    column(3,
+      conditionalPanel(
+        condition = "input.dataset == 'simulated'",
+        numericInput("sim_seed", "Random seed:", value = 123, step = 1)
+      )
+    )
+  ),
+
   fluidRow(column(12, tags$h4("Axis Ranges", style = "margin-top: 20px;"))),
   fluidRow(
     column(3, tags$div("$$\\beta \\text{ min}$$"), textInput("beta_min", NULL, value = "-1")),
@@ -345,7 +399,7 @@ ui <- fluidPage(
 
   fluidRow(
     slider_cols(3, "mu_beta", "$$\\mu_\\beta$$", -5, 5, 0, step = 0.1),
-    slider_cols(3, "sigma2_beta", "$$\\sigma^2_\\beta$$", 0, 10, 0.1, step = 0.01),
+    slider_cols(3, "sigma2_beta", "$$\\sigma^2_\\beta$$", 0, 10000, 0.1, step = 0.01),
     slider_cols(3, "psi2", "$$\\psi^2$$", 0, 10, 0.1, step = 0.01),
     slider_cols(3, "tau2", "$$\\tau^2$$", 0, 10, 0.1, step = 0.01)
   ),
@@ -362,6 +416,60 @@ ui <- fluidPage(
 
 # Server
 server <- function(input, output, session) {
+
+  dataset_map <- list(
+    bmi.sbp       = "mr.raps",
+    bmi.ais       = "mr.raps",
+    bmi.cad       = "mr.raps",
+    crp.cad       = "mr.raps"
+  )
+
+  datasetInput <- reactive({
+    if (input$dataset == "simulated") {
+      set.seed(input$sim_seed)
+      nsnips <- 1500
+      g <- 0.2
+      b <- 0.4
+      psi2 <- 0.1
+      tau2 <- 0.1
+      sigma2_X <- rep(0.0001, nsnips)
+      sigma2_Y <- rep(0.00001, nsnips)
+      gamma_j <- rnorm(nsnips, mean = g, sd = sqrt(psi2))
+      Gamma_j <- rnorm(nsnips, mean = b*gamma_j, sd = sqrt(tau2))
+      gammahat_j <- rnorm(nsnips, mean = gamma_j, sd = sqrt(sigma2_X))
+      Gammahat_j <- rnorm(nsnips, mean = Gamma_j, sd = sqrt(sigma2_Y))
+      data.frame(
+        beta.exposure = gammahat_j,
+        beta.outcome  = Gammahat_j,
+        se.exposure   = sqrt(sigma2_X),
+        se.outcome    = sqrt(sigma2_Y),
+        pval.selection = rbeta(nsnips, shape1 = 1e-1, shape2 = 1e4)
+      )
+    } else {
+      pkg <- dataset_map[[input$dataset]]
+      get(input$dataset, paste0("package:", pkg))
+    }
+  })
+
+  fixed_var <- "pval.selection"
+
+  filteredData <- reactive({
+    data <- datasetInput()
+    if (fixed_var %in% names(data)) {
+      pval <- suppressWarnings(as.numeric(input$pval))
+      if (is.na(pval) || pval <= 0 || pval >= 1) {
+        return(data)
+      } else {
+        return(subset(data, data[[fixed_var]] <= pval))
+      }
+    } else {
+      data
+    }
+  })
+  
+  output$n_selected <- renderText({
+    nrow(filteredData())
+  })
 
   plotParams <- reactive({
     list(
@@ -381,6 +489,13 @@ server <- function(input, output, session) {
       beta_min <- -1; beta_max <- 1
     }
 
+    data <- data.frame(
+      beta_exposure = filteredData()[, "beta.exposure"],
+      beta_outcome = filteredData()[, "beta.outcome"],
+      se_exposure = filteredData()[, "se.exposure"],
+      se_outcome = filteredData()[, "se.outcome"]
+    )
+
     p <- plotParams()
 
     res <- 300
@@ -393,7 +508,8 @@ server <- function(input, output, session) {
       beta   = list(mean = p$mu_beta, var = p$sigma2_beta)
     )
 
-    post_vals <- gamma_beta_post(p$gamma_val, beta_vals, data, prior, log = FALSE, verbose = FALSE)
+    # post_vals <- gamma_beta_post(p$gamma_val, beta_vals, data, prior, log = FALSE, verbose = FALSE)
+    post_vals <- logpost_beta(beta_vals, p$gamma_val, prior, data, log = FALSE)
     df <- data.frame(beta = beta_vals, posterior = as.numeric(post_vals))
 
     # find beta modes
@@ -406,7 +522,7 @@ server <- function(input, output, session) {
 
     ggplot(df, aes(x = beta, y = posterior)) +
       geom_line(color = "darkorange", linewidth = 1.2) +
-      geom_vline(xintercept = p$mu_beta, linetype = "dashed", color = "gray") +
+      # geom_vline(xintercept = p$mu_beta, linetype = "dashed", color = "gray") +
       geom_vline(xintercept = beta_modes, linetype = "dashed", color = "black") +
       labs(x = expression(beta), y = paste("Marginal Posterior at γ =", p$gamma_val)) +
       theme_minimal(base_size = 14)
@@ -419,6 +535,13 @@ server <- function(input, output, session) {
     if (is.na(beta_min) || is.na(beta_max) || beta_min >= beta_max) {
       beta_min <- -1; beta_max <- 1
     }
+
+    data <- data.frame(
+      beta_exposure = filteredData()[, "beta.exposure"],
+      beta_outcome = filteredData()[, "beta.outcome"],
+      se_exposure = filteredData()[, "se.exposure"],
+      se_outcome = filteredData()[, "se.outcome"]
+    )
 
     p <- plotParams()
 
@@ -450,7 +573,7 @@ server <- function(input, output, session) {
 
     ggplot(df_long, aes(x = beta, y = value, color = component)) +
       geom_line(linewidth = 1.2) +
-      geom_vline(xintercept = p$mu_beta, linetype = "dashed", color = "gray") +
+      # geom_vline(xintercept = p$mu_beta, linetype = "dashed", color = "gray") +
       geom_vline(xintercept = beta_modes, linetype = "dashed", color = "black") +
       labs(x = expression(beta), 
            y = paste("Marginal Log Curves at γ =", p$gamma_val),

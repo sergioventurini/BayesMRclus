@@ -4,18 +4,18 @@
 \alias{logpost_beta_util}
 \title{Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution}
 \usage{
-logpost_beta_util(b, par, hpar, data)
+logpost_beta_util(beta, gamma, prior, data)
 }
 \arguments{
-\item{par}{A numeric value representing the starting value.}
-
-\item{hpar}{A numeric value corresponding to the neighborhood where one looks
-for a proposal value.}
-
 \item{data}{Integer value specifying the total the number of iterations
 of the algorithm.}
 
 \item{g}{A function defining the logarithm of the posterior density.}
+
+\item{par}{A numeric value representing the starting value.}
+
+\item{hpar}{A numeric value corresponding to the neighborhood where one looks
+for a proposal value.}
 }
 \value{
 A list with two components, \code{S} is a vector of the simulated draws,

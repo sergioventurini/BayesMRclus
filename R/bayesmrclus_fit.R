@@ -20,7 +20,7 @@
 #' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
 #'   included in the returned object.
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #' @examples
 #' \dontrun{
@@ -153,7 +153,7 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 #' @seealso \code{\link{bayesmr}()}.
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @export
@@ -166,4 +166,42 @@ bayesmr_logLik <- function(data, gammaj, Gammaj) {
         sum(dnorm(Gammaj_hat, Gammaj, sigmaj_Y, log = TRUE))
 
 	return(ll)
+}
+
+#' Integrated log-likelihood for BayesMR models.
+#'
+#' \code{bayesmr_logLik()} computes the integrated log-likelihood value for a
+#' BayesMR model.
+#'
+#' @param data A data frame ...
+#' @param gammaj A numeric vector ...
+#' @param Gammaj A numeric vector ...
+#'
+#' @return A length-one numeric vector of the integrated log-likelihood value.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @seealso \code{\link{bayesmr}()}.
+#'
+#' @references
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#'
+#' @export
+bayesmr_ilogLik <- function(data, gamma, beta, par) {
+  gammaj_hat <- data[, 1]
+  Gammaj_hat <- data[, 2]
+  sigmaj_X <- data[, 3]
+  sigmaj_Y <- data[, 4]
+
+  psi2 <- par[["psi2"]]
+  tau2 <- par[["tau2"]]
+
+  psi2_j <- sigmaj_X^2 + psi2
+  tau2_j <- sigmaj_Y^2 + tau2
+  h2_j <- beta^2*psi2 + tau2_j
+  ll <- sum(dnorm(gammaj_hat, mean = gamma, sd = sqrt(psi2_j), log = TRUE)) +
+        sum(dnorm(Gammaj_hat, mean = beta*gamma, sd = sqrt(h2_j), log = TRUE))
+
+  return(ll)
 }

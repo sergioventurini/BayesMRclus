@@ -93,10 +93,10 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
 
-prior <- bayesmr_prior(gammaj = list(psi2 = 0.1),
-                       Gammaj = list(tau2 = 0.06),
-                       gamma = list(mean = 3.9, var = 0.01),
-                       beta = list(mean = -0.7, var = 1.62))
+prior <- bayesmr_prior(gammaj = list(psi2 = 1),
+                       Gammaj = list(tau2 = 1),
+                       gamma = list(mean = 0, var = 1),
+                       beta = list(mean = 0, var = 1))
 
 gamma <- 0
 beta_min <- -5
@@ -169,16 +169,55 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
 prior <- bayesmr_prior(gammaj = list(psi2 = 0.1),
                        Gammaj = list(tau2 = 0.1),
                        gamma = list(mean = 0, var = 0.1),
-                       beta = list(mean = 0, var = 1.62))
+                       beta = list(mean = 0, var = 0.1))
 
 beta_min <- -5
 beta_max <- 5
 beta_step <- 0.001
 
 out <- bayesmr_noclus_optim(data, prior,
-                            start = rep(0, 2), #rnorm(2, mean = 0, sd = 2),
+                            start = rnorm(2, mean = 0, sd = 20),
                             maxiter = 1000, tol = 1e-10,
                             beta_min = beta_min, beta_max = beta_min,
                             beta_step = beta_step,
                             n = 1000, tol_x = 1e-10, tol_f = 1e-12,
                             eps_small = 1e-8, verbose = TRUE)
+gamma_beta_post(out$gamma_best, out$beta_best, data, prior, log = TRUE, verbose = FALSE)
+
+### beta full conditional
+
+library(BayesMRclus)
+
+data("bmi_sbp", package = "BayesMRclus")
+data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
+                   beta_outcome = bmi_sbp[, "beta.outcome"],
+                   se_exposure = bmi_sbp[, "se.exposure"],
+                   se_outcome = bmi_sbp[, "se.outcome"])
+
+prior <- bayesmr_prior(gammaj = list(psi2 = 1),
+                       Gammaj = list(tau2 = 1),
+                       gamma = list(mean = 0, var = 1),
+                       beta = list(mean = 0, var = 1))
+
+beta_min <- -10
+beta_max <- 10
+beta_step <- 0.01
+beta_seq <- seq(beta_min, beta_max, beta_step)
+gamma_val <- 0.1
+out <- logpost_beta(beta_seq, gamma, prior, data, log = FALSE)
+plot(beta_seq, out, type = "l")
+integrate(f = logpost_beta, lower = beta_min, upper = beta_max,
+          subdivisions = 1e6, prior = prior, data = data, gamma = gamma_val,
+          log = FALSE)
+
+log_h2 <- Gj <- numeric(length(beta_seq))
+for (i in 1:length(beta_seq)) {
+  h2_j <- beta_seq[i]^2*prior[["gammaj"]][["psi2"]] +
+            data$se_outcome^2 + prior[["Gammaj"]][["tau2"]]
+  log_h2[i] <- -0.5*sum(log(h2_j))
+  Gj[i] <- -0.5*sum((data$beta_outcome - beta_seq[i]*gamma_val)^2/h2_j)
+}
+plot(beta_seq, log_h2, type = "l")
+lines(beta_seq, Gj, lty = 2)
+abline(h = gamma_val^2/prior[["gammaj"]][["psi2"]])
+abline(v = 0, lty = 2)

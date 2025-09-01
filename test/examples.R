@@ -23,9 +23,9 @@ control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
                 random.start = TRUE, verbose = TRUE, nchains = 3, thin = 100,
                 store.burnin = TRUE, threads = 1, parallel = "snow")
 
-prior <- bayesmr_prior(gammaj = list(psi2 = 0.01),
-                       Gammaj = list(tau2 = 0.5),
-                       gamma = list(mean = 0, var = 0.01),
+prior <- bayesmr_prior(gammaj = list(psi2 = 1),
+                       Gammaj = list(tau2 = 1),
+                       gamma = list(mean = 0, var = 1),
                        beta = list(mean = 0, var = 1))
 
 # MCMC simulation

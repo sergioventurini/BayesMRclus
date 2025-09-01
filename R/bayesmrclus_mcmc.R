@@ -167,7 +167,7 @@ logpost_beta <- function(b, par, hpar, data) {
   loglik_Gammahat <- numeric(length(b))
   for (i in 1:length(b)) {
     h2_j <- (b[i]^2)*psi2 + tau2_j
-    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - b[i]*gamma)^2/h2_j)
+    loglik_Gammahat[i] <- -0.5*(sum(log(h2_j) + (Gammahat_j - b[i]*gamma)^2/h2_j))
   }
   logprior_beta <- -0.5*(b - mu_beta)^2/sigma2_beta
   res <- loglik_Gammahat + logprior_beta
@@ -224,7 +224,7 @@ logpost_beta_util <- function(beta, gamma, prior, data) {
   loglik_Gammahat <- numeric(length(b))
   for (i in 1:length(beta)) {
     h2_j <- (beta[i]^2)*psi2 + tau2_j
-    loglik_Gammahat[i] <- -0.5*sum((Gammahat_j - beta[i]*gamma)^2/h2_j)
+    loglik_Gammahat[i] <- -0.5*(sum(log(h2_j)) + sum((Gammahat_j - beta[i]*gamma)^2/h2_j))
   }
   logprior_beta <- -0.5*(beta - mu_beta)^2/sigma2_beta
 

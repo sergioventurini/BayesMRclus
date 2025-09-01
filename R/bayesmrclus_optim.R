@@ -20,7 +20,7 @@
 #' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
 #'   included in the returned object.
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2024), "Bayesian Hierarchical Modeling for
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #' @examples
 #' \dontrun{
