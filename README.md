@@ -10,7 +10,7 @@ status](https://www.r-pkg.org/badges/version/BayesMRclus)](https://cran.r-projec
 
 ## Overview
 
-###### Current release: 0.0.4
+###### Current release: 0.0.5
 ###### R version required: at least 3.5.0
 `R` package for performing inference in a Bayesian setting for two-sample summary-data Mendelian randomization (MR) design with and without clustering of the genetic variants.
 

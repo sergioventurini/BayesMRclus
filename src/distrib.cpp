@@ -3,9 +3,9 @@
 #include "bayesmr.h"
 
 // Probability function for the product of independent bernoulli random variables
-void dprodber(double* prob, const int* d, const double* pi, int m, int logscale){
+void dprodber(double* prob, const int* d, const double* pi, int m, bool logscale = true){
   double prob_tmp = 0;
-  if(logscale){
+  if(!logscale){
     *prob = 0;
     for(int i = 0; i < m; i++){
       prob_tmp = d[i]*log(pi[i]) + (1 - d[i])*log(1 - pi[i]);
@@ -25,7 +25,37 @@ void dprodber(double* prob, const int* d, const double* pi, int m, int logscale)
 }
 
 // Density function for a multivariate normal random variable
-void dmultinorm(double* dens, const double* x, const double* mean, const double* sigma, int n, int p, int logscale){
+arma::vec dmvnorm_fast(const arma::mat& X,
+                       const arma::vec& mu,
+                       const arma::mat& Sigma,
+                       bool logscale = true){
+  
+  int n = X.n_rows;
+  int k = X.n_cols;
+  
+  // Pre-compute Cholesky and constants
+  arma::mat L = arma::chol(Sigma, "lower");
+  double log_det_sigma = 2.0 * arma::sum(arma::log(L.diag()));
+  
+  arma::vec result(n);
+  
+  for(int i = 0; i < n; i++){
+    arma::vec diff = X.row(i).t() - mu;
+    arma::vec z = arma::solve(arma::trimatl(L), diff);
+    
+    result(i) = -0.5 * (k * log_2pi + log_det_sigma + arma::dot(z, z));
+  }
+  
+  if(!logscale){
+    result = arma::exp(result);
+  }
+  
+  return result;
+}
+
+// Density function for a multivariate normal random variable
+void dmultinorm(double* log_dens, const double* x, const double* mean, const double* sigma, int n, int p,
+                bool logscale = true){
   arma::mat x_arma(n, p);
   arma::vec mean_arma(p);
   arma::mat sigma_arma(p, p);
@@ -43,12 +73,12 @@ void dmultinorm(double* dens, const double* x, const double* mean, const double*
   arma::log_det(logdet, sign, sigma_arma);
   arma::vec distval = mahalanobis(x_arma, mean_arma, sigma_arma);
   for(int i = 0; i < n; i++){
-    dens[i] = -(p * log(2*M_PI) + logdet + distval[i])/2.0;
+    log_dens[i] = -0.5*(p * log(2.0*M_PI) + logdet + distval[i]);
   }
 
-  if(logscale == 0){
+  if(!logscale){
     for(int i = 0; i < n; i++){
-      dens[i] = exp(dens[i]);
+      log_dens[i] = exp(log_dens[i]);
     }
   }
 }
@@ -92,7 +122,8 @@ void rmultinorm(double* dev, int n, const double* mean, const double* sigma, int
 }
 
 // Density function for an inverse gamma random variable
-void dinvgamma(double* dens, const double* x, const double alpha, const double beta, int n, int logscale){
+void dinvgamma(double* log_dens, const double* x, const double alpha, const double beta, int n,
+               bool logscale = true){
   if((alpha <= 0) || (beta <= 0)){
     error("alpha (shape) and beta (scale) parameters in dinvgamma() need to be both strictly positive.\n");
   }
@@ -100,12 +131,12 @@ void dinvgamma(double* dens, const double* x, const double alpha, const double b
   double lbeta = log(beta);
   double lgalpha = R::lgammafn(alpha);
   for(int i = 0; i < n; i++){
-    dens[i] = alpha * lbeta - lgalpha - (alpha + 1) * log(x[i]) - (beta/x[i]);
+    log_dens[i] = alpha * lbeta - lgalpha - (alpha + 1) * log(x[i]) - (beta/x[i]);
   }
 
-  if(logscale == 0){
+  if(!logscale){
     for(int i = 0; i < n; i++){
-      dens[i] = exp(dens[i]);
+      log_dens[i] = exp(log_dens[i]);
     }
   }
 }
@@ -122,7 +153,8 @@ void rinvgamma(double* dev, int n, const double alpha, const double beta){
 }
 
 // Density function for a Dirichlet random variable
-void ddirichlet(double* dens, const double* x, const double* par, int n, int p, int logscale){
+void ddirichlet(double* log_dens, const double* x, const double* par, int n, int p,
+                bool logscale = true){
   double tmp = 0;
   arma::mat x_arma(n, p);
   for(int j = 0; j < p; j++){
@@ -155,9 +187,9 @@ void ddirichlet(double* dens, const double* x, const double* par, int n, int p, 
     for(int j = 0; j < p; j++){
       s += (par[j] - 1)*log(x_arma(i, j));
     }
-    dens[i] = s - logD;
-    if(logscale == 0){
-      dens[i] = exp(dens[i]);
+    log_dens[i] = s - logD;
+    if(!logscale){
+      log_dens[i] = exp(log_dens[i]);
     }
   }
 }
@@ -178,4 +210,49 @@ void rdirichlet(double* dev, int n, const double* par, int p){
       dev[n*j + i] = z(i, j)/s(i);
     }
   }
+}
+
+bool bivnorm_validate_covariance(double sigma_xx, double sigma_yy, double sigma_xy){
+    if(sigma_xx <= 0.0 || sigma_yy <= 0.0) return false;
+    double det = sigma_xx * sigma_yy - sigma_xy * sigma_xy;
+    return det > 0.0;
+}
+
+// Bivariate normal
+std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec,
+                             const std::vector<double>& y_vec,
+                             double mu_x, double mu_y,
+                             double sigma_xx, double sigma_yy, double sigma_xy,
+                             bool logscale){
+  size_t n = x_vec.size();
+  if(n != y_vec.size()){
+    // Handle size mismatch - return empty vector or throw exception
+    return std::vector<double>();
+  }
+  
+  std::vector<double> result(n);
+  
+  // Validate covariance matrix
+  if(!bivnorm_validate_covariance(sigma_xx, sigma_yy, sigma_xy)){
+    std::fill(result.begin(), result.end(), logscale ? neg_inf : 0.0);
+    return result;
+  }
+  
+  // Precompute constants
+  double det_sigma = sigma_xx * sigma_yy - sigma_xy * sigma_xy;
+  double inv_det = 1.0 / det_sigma;
+  double log_const = -0.5 * (log_2pi + std::log(det_sigma));
+  
+  // Compute density for each observation
+  for(size_t i = 0; i < n; ++i){
+    double dx = x_vec[i] - mu_x;
+    double dy = y_vec[i] - mu_y;
+    
+    double quad_form = inv_det * (sigma_yy * dx * dx - 2.0 * sigma_xy * dx * dy + sigma_xx * dy * dy);
+    double log_dens = log_const - 0.5 * quad_form;
+    
+    result[i] = logscale ? log_dens : std::exp(log_dens);
+  }
+  
+  return result;
 }

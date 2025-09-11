@@ -10,6 +10,7 @@
 #include <R.h>
 #include <RcppArmadillo.h>
 #include <Rcpp.h>
+#include <vector>
 #include <cmath>
 #include <climits>
 #include <string>
@@ -19,6 +20,7 @@ static const double machine_eps = 2.220446049250313080847e-16;
 static const double log_pi = std::log(M_PI);
 static const double log_2pi = std::log(2.0 * M_PI);
 static const double log_two = std::log(2.0);
+static const double neg_inf = -INFINITY;
 
 // MAIN FUNCTIONS -----------------------------------------------------------------------------------------------------
 RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
@@ -35,17 +37,23 @@ RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
 
 // DISTRIBUTION FUNCTIONS ---------------------------------------------------------------------------------------------
 void dprodber(double* prob, const int* d, const double* pi, int m,
-  int logscale);
-void dmultinorm(double* dens, const double* x, const double* mean,
-  const double* sigma, int n, int p, int logscale = 0);
+  bool logscale);
+void dmultinorm(double* log_dens, const double* x, const double* mean,
+  const double* sigma, int n, int p, bool logscale);
+arma::vec dmvnorm_fast(const arma::mat& X, const arma::vec& mu,
+  const arma::mat& Sigma, bool logscale);
 void rmultinorm(double* dev, int n, const double* mean,
   const double* sigma, int p);
-void dinvgamma(double* dens, const double* x, const double alpha,
-  const double beta, int n, int logscale);
+void dinvgamma(double* log_dens, const double* x, const double alpha,
+  const double beta, int n, bool logscale);
 void rinvgamma(double* dev, int n, const double alpha, const double beta);
-void ddirichlet(double* dens, const double* x, const double* par, int n, int p,
-  int logscale);
+void ddirichlet(double* log_dens, const double* x, const double* par, int n, int p,
+  bool logscale);
 void rdirichlet(double* dev, int n, const double* par, int p);
+bool bivnorm_validate_covariance(double sigma_xx, double sigma_yy, double sigma_xy);
+std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec,
+  const std::vector<double>& y_vec, double mu_x, double mu_y,
+  double sigma_xx, double sigma_yy, double sigma_xy, bool logscale);
 
 // MODEL DISTRIBUTIONS ------------------------------------------------------------------------------------------------
 void logpost_beta(double* lpost, const double beta, const double gamma,

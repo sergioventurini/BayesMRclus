@@ -2,17 +2,24 @@ library(BayesMRclus)
 
 # prepare data
 data("bmi_sbp", package = "BayesMRclus")
+bmi_sbp <- subset(bmi_sbp, pval.selection < 5e-4)
 data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
                    beta_outcome = bmi_sbp[, "beta.outcome"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
+
+data_tmp <- data
+flip <- data_tmp$beta_exposure < 0
+data_tmp$beta_exposure[flip] <- -data_tmp$beta_exposure[flip]
+data_tmp$beta_outcome[flip]  <- -data_tmp$beta_outcome[flip]
+
 n <- nrow(data)
-zhaodata <- new("bayesmr_data", data = data, n = n)
+zhaodata <- new("bayesmr_data", data = data_tmp, n = n)
 summary(zhaodata)
 plot(zhaodata)
 
 # simulation setup
-prm.prop <- list(beta = 1.5)
+prm.prop <- list(beta = .65)
 burnin <- 100000
 nsim <- 200000
 
@@ -107,27 +114,3 @@ ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
   labs(x = expression(gamma), y = expression(beta), fill = "Posterior") +
   coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
   theme_minimal(base_size = 14)
-
-###
-
-# weight of beta prior over beta full conditional
-b <- seq(-5, 5, .01)
-gamma <- 0
-prior <- bayesmr_prior(gammaj = list(psi2 = 0.01),
-                       Gammaj = list(tau2 = 0.5),
-                       gamma = list(mean = 0, var = 0.01),
-                       beta = list(mean = 0, var = 1))
-
-out <- logpost_beta_util(b, gamma, prior, data)
-beta_prior_w <- out[, 2]/rowSums(out)
-beta_prior_w <- out[, 2] - out[, 1]
-beta_prior_w <- out[, 2]/out[, 1]
-plot(b, beta_prior_w, type = "l")
-
-summary(out)
-plot(b, out[, 1], type = "l", ylim = c(min(out), max(out)))
-lines(b, out[, 2], col = "red")
-
-summary(exp(out))
-plot(b, exp(out[, 1]), type = "l", ylim = c(min(exp(out)), max(exp(out))))
-lines(b, exp(out[, 2]), col = "red")
