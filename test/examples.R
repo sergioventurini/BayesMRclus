@@ -15,25 +15,26 @@ data_tmp$beta_outcome[flip]  <- -data_tmp$beta_outcome[flip]
 
 n <- nrow(data)
 zhaodata <- new("bayesmr_data", data = data_tmp, n = n)
-summary(zhaodata)
-plot(zhaodata)
+# summary(zhaodata)
+# plot(zhaodata)
 
 # simulation setup
-prm.prop <- list(beta = .65)
+prm.prop <- list(beta = .1)
 burnin <- 100000
 nsim <- 200000
 
-seed <- 2301
-set.seed(seed)
+# seed <- 2301
+# set.seed(seed)
 
+nchains <- 3
 control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
-                random.start = TRUE, verbose = TRUE, nchains = 3, thin = 100,
-                store.burnin = TRUE, threads = 1, parallel = "snow")
+                random.start = TRUE, verbose = TRUE, nchains = nchains, thin = 100,
+                store.burnin = TRUE, threads = nchains, parallel = "snow")
 
-prior <- bayesmr_prior(gammaj = list(psi2 = 1),
-                       Gammaj = list(tau2 = 1),
-                       gamma = list(mean = 0, var = 1),
-                       beta = list(mean = 0, var = 1))
+prior <- bayesmr_prior(gammaj = list(psi2 = .0001),
+                       Gammaj = list(tau2 = .0001),
+                       gamma = list(mean = 0, var = 1e2),
+                       beta = list(mean = 0, var = 1e2))
 
 # MCMC simulation
 res_BMR <- bayesmr(zhaodata, control = control, prior = prior)
@@ -70,24 +71,25 @@ heidel.diag(res_BMR_sub)
 densplot(res_BMR_sub)
 
 # contour plot showing the sampled values
-gamma_min <- -0.05
-gamma_max <- 0.05
-beta_min  <- -4
-beta_max  <- 4
+gamma_min <- 0
+gamma_max <- 0.03
+beta_min  <- -0.5
+beta_max  <- 1
 
 res <- 100
 gamma_vals <- seq(gamma_min, gamma_max, length.out = res)
 beta_vals  <- seq(beta_min, beta_max, length.out = res)
 
-post_vals <- gamma_beta_post(gamma_vals, beta_vals, data, prior, log = FALSE, verbose = FALSE)
+post_vals <- gamma_beta_post(gamma_vals, beta_vals,
+                             data_tmp, prior, log = TRUE)
 
 df_plot <- expand.grid(gamma = gamma_vals, beta = beta_vals)
 df_plot$posterior <- as.vector(post_vals)
 
-glob_max <- bayesmr_noclus_optim(data, prior, start = rep(0, 2), maxiter = 1000, tol = 1e-10,
-                                 beta_min = beta_min, beta_max = beta_max, beta_step = 0.001,
-                                 n = 1000, tol_x = 1e-10, tol_f = 1e-12, eps_small = 1e-8,
-                                 verbose = FALSE)
+map <- bayesmr_noclus_optim(data_tmp, prior, init = rnorm(2, mean = 0, sd = 20))
+all.equal(map$value,
+          gamma_beta_post(map$par["gamma"], map$par["beta"],
+                          data_tmp, prior, log = TRUE))
 
 res_BMR_sub <- subset(res_BMR, regex_pars = c("gamma", "beta"))
 sample_points <- res_BMR_sub[[1]]
@@ -106,11 +108,44 @@ ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
   scale_fill_viridis_d(option = "C") +
   geom_point(data = sample_points, aes(x = gamma, y = beta),
              color = "gray", size = 0.1, inherit.aes = FALSE) +
-  geom_segment(aes(x = glob_max$gamma_best, xend = glob_max$gamma_best,
+  geom_segment(aes(x = map$par[1], xend = map$par[1],
         y = beta_min, yend = beta_max), color = "#21908C") +
   geom_segment(aes(x = gamma_min, xend = gamma_max,
-        y = glob_max$beta_best, yend = glob_max$beta_best), color = "#21908C") +
-  geom_point(x = glob_max$gamma_best, y = glob_max$beta_best, color = "#21908C", size = 3) +
+        y = map$par[2], yend = map$par[2]), color = "#21908C") +
+  geom_point(x = map$par[1], y = map$par[2], color = "#21908C", size = 3) +
   labs(x = expression(gamma), y = expression(beta), fill = "Posterior") +
+  coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
+  theme_minimal(base_size = 14)
+
+# log-likelihood contour plot
+gamma_min <- 0
+gamma_max <- 0.03
+beta_min  <- -0.5
+beta_max  <- 1
+
+res <- 100
+gamma_vals <- seq(gamma_min, gamma_max, length.out = res)
+beta_vals  <- seq(beta_min, beta_max, length.out = res)
+
+ll_vals <- bayesmr_logLik(gamma_vals, beta_vals, data_tmp, prior,
+                          log = TRUE)
+
+df_plot <- expand.grid(gamma = gamma_vals, beta = beta_vals)
+df_plot$ll <- as.vector(ll_vals)
+
+mle <- bayesmr_noclus_mle(data_tmp, prior, init = rnorm(2, mean = 0, sd = 20))
+all.equal(mle$value,
+          bayesmr_logLik(mle$par["gamma"], mle$par["beta"],
+                         data_tmp, prior, log = TRUE))
+
+ggplot(df_plot, aes(x = gamma, y = beta, z = ll)) +
+  geom_contour_filled(bins = 20) +
+  scale_fill_viridis_d(option = "C") +
+  geom_segment(aes(x = mle$par[1], xend = mle$par[1],
+                   y = beta_min, yend = beta_max), color = "#21908C") +
+  geom_segment(aes(x = gamma_min, xend = gamma_max,
+                   y = mle$par[2], yend = mle$par[2]), color = "#21908C") +
+  geom_point(x = mle$par[1], y = mle$par[2], color = "#21908C", size = 3) +
+  labs(x = expression(gamma), y = expression(beta), fill = "Log-likelihood") +
   coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
   theme_minimal(base_size = 14)

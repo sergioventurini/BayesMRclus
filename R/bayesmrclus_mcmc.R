@@ -32,29 +32,44 @@
 #' out <- metropolis(lpost, 5, 20, 10000, s)
 #'
 #' @export
-metropolis <- function(logpost, current, proposal = "unif", C, iter, ...) {
-  S <- rep(0, iter)
-  n_accept <- 0
-  for (j in 1:iter) {
-    if (proposal == "unif") {  # uniform proposal distribution centred around the current value
-      candidate <- runif(1, min = current - C, max = current + C)
+metropolis <- function(logpost, current, proposal = c("unif", "norm"), C, iter, ...) {
+  proposal <- match.arg(proposal)
+
+  S <- numeric(iter)
+  n_accept <- 0L
+
+  # evaluate logpost(current) once per iteration (updated when accepted)
+  logpost_current <- logpost(current, ...)
+  for (j in seq_len(iter)) {
+    # draw candidate
+    candidate <- switch(proposal,
+                        unif = runif(1, min = current - C, max = current + C),
+                        norm = rnorm(1, mean = current, sd = C))
+
+    # compute log ratio once
+    logpost_candidate <- logpost(candidate, ...)
+    log_ratio <- logpost_candidate - logpost_current
+
+    # numerical stability & handle non-finite values:
+    if (!is.finite(log_ratio)) {
+      accept_prob <- 0
+    } else {
+      # acceptance probability = min(1, exp(log_ratio))
+      # avoid calling exp on large positive log_ratio by using pmin
+      accept_prob <- if (log_ratio <= 0) exp(log_ratio) else 1
     }
-    else if (proposal == "norm") {  # or normal proposal distribution centred around the current value
-      candidate <- rnorm(1, mean = current, sd = C)
+
+    # accept / reject
+    if (runif(1) < accept_prob) {
+      current <- candidate
+      logpost_current <- logpost_candidate
+      n_accept <- n_accept + 1L
     }
-    else {
-      stop("the specified proposal distribution is not available")
-    }
-    prob <- exp(logpost(candidate, ...) - logpost(current, ...))
-    accept <- ifelse(runif(1) < prob, 1, 0)
-    current <- ifelse(accept == 1, candidate, current)
+
     S[j] <- current
   }
-  n_accept <- sum(accept)
 
-  res <- list(S = S, accept_rate = n_accept / iter)
-
-  return(res)
+  list(S = S, accept_rate = n_accept / iter)
 }
 
 #' Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution
@@ -102,16 +117,20 @@ metropolis <- function(logpost, current, proposal = "unif", C, iter, ...) {
 #' res$accept_rate
 #'
 #' @export
-mcmc_bayesmr <- function(data, prior, iter, start, tune, proposal = "norm", verbose = TRUE) {
-  if (is.null(proposal)) {
-    proposal <- "unif"
-  }
+mcmc_bayesmr <- function(data, prior, iter, start, tune,
+  proposal = c("unif", "norm"), verbose = TRUE) {
+  proposal <- match.arg(proposal)
 
-  gammahat_j <- data[, 1]  # SNP-Exposure effect
-  Gammahat_j <- data[, 2]  # SNP-Outcome effect
-  sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
-  sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
+  # unpack data columns (assume they are in the order: gammahat, Gammahat, seX, seY)
+  gammahat_j <- data[, 1]
+  Gammahat_j <- data[, 2]
+  seX_j <- data[, 3]
+  seY_j <- data[, 4]
 
+  sigma2_X <- seX_j^2
+  sigma2_Y <- seY_j^2
+
+  # unpack prior
   mu_gamma <- prior[["gamma"]][["mean"]]
   sigma2_gamma <- prior[["gamma"]][["var"]]
   mu_beta <- prior[["beta"]][["mean"]]
@@ -119,35 +138,59 @@ mcmc_bayesmr <- function(data, prior, iter, start, tune, proposal = "norm", verb
   psi2 <- prior[["gammaj"]][["psi2"]]
   tau2 <- prior[["Gammaj"]][["tau2"]]
 
-  psi2_j <- sigma2_X + psi2
-  tau2_j <- sigma2_Y + tau2
+  # precompute per-SNP constants
+  psi2_j <- sigma2_X + psi2    # vector
+  tau2_j <- sigma2_Y + tau2    # vector
 
+  # starting values
   gamma_p <- start[1]
-  beta_p <- start[2]
+  beta_p  <- start[2]
 
-  draws <- data.frame(gamma = numeric(0), beta = numeric(0))
+  # pre-allocate draws as matrix (faster than data.frame in loop)
+  draws_mat <- matrix(NA_real_, nrow = iter, ncol = 2)
+  colnames(draws_mat) <- c("gamma", "beta")
+
   C <- tune
-  accept_rate <- 0
-  for (m in 1:iter) {
-    # gamma update using its full conditional
-    h2_j <- (beta_p^2)*psi2 + tau2_j
-    A_beta <- sum(1/psi2_j) + (beta_p^2)*sum(1/h2_j) + 1/sigma2_gamma
-    B_beta <- sum(gammahat_j/psi2_j) + beta_p*sum(Gammahat_j/h2_j) + mu_gamma/sigma2_gamma
-    gamma_p <- rnorm(1, B_beta/A_beta, sqrt(1/A_beta))
-    draws[m, 1] <- gamma_p
+  acc_sum <- 0      # will accumulate acceptance rates from metropolis (which returns proportion)
+
+  for (m in seq_len(iter)) {
+    ## --- gamma update: direct sample from conditional (as in original) ---
+    # these use per-SNP vectors and current beta_p
+    a_j <- (beta_p^2) * psi2 + tau2_j      # vector
+    c_beta <- beta_p * psi2                # scalar
+    v_j <- a_j * psi2_j - c_beta^2        # vector
+
+    # avoid divide-by-zero / non-finite v_j (defensive)
+    if (any(!is.finite(v_j)) || any(v_j <= 0)) {
+      stop("non-finite or non-positive v_j encountered in gamma update.")
+    }
+
+    A_beta <- sum(tau2_j / v_j) + (beta_p^2) * sum(sigma2_X / v_j) + 1 / sigma2_gamma
+    B_beta <- sum(tau2_j * gammahat_j / v_j) + beta_p * sum(sigma2_X * Gammahat_j / v_j) + mu_gamma / sigma2_gamma
+
+    gamma_p <- rnorm(1, mean = B_beta / A_beta, sd = sqrt(1 / A_beta))
+    draws_mat[m, 1] <- gamma_p
 
     # beta update using a M-H step
-    mh <- metropolis(logpost = logpost_beta, current = beta_p, proposal = proposal,
-                     C = C, iter = 1, gamma_p, prior, data)
-    beta_p <- mh$S
-    draws[m, 2] <- beta_p
-    accept_rate <- accept_rate + mh$accept_rate
+    ## --- beta update: single-step Metropolis (uses metropolis_opt with iter = 1) ---
+    mh <- metropolis(logpost = logpost_beta,    # same external function name as original
+                     current = beta_p,
+                     proposal = proposal,
+                     C = C,
+                     iter = 1,
+                     gamma = gamma_p,
+                     prior = prior,
+                     data = data)
 
-    if (verbose)
-      if ((m %% 500) == 0) print(paste0("Simulation ", m, " of ", format(iter)))
+    beta_p <- as.numeric(mh$S[1])
+    draws_mat[m, 2] <- beta_p
+
+    acc_sum <- acc_sum + mh$accept_rate
+
+    if (verbose && (m %% 500L) == 0L) {
+      message(sprintf("Simulation %d of %d", m, iter))
+    }
   }
 
-  res <- list(draws = draws, accept_rate = accept_rate/iter)
-
-  return(res)
+  list(draws = draws_mat, accept_rate = acc_sum / iter)
 }

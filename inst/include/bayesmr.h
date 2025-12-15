@@ -8,9 +8,11 @@
                          // http://arma.sourceforge.net/docs.html)
 
 #include <R.h>
+#include <Rmath.h>
 #include <RcppArmadillo.h>
 #include <Rcpp.h>
 #include <vector>
+#include <numeric>
 #include <cmath>
 #include <climits>
 #include <string>
@@ -50,15 +52,20 @@ void rinvgamma(double* dev, int n, const double alpha, const double beta);
 void ddirichlet(double* log_dens, const double* x, const double* par, int n, int p,
   bool logscale);
 void rdirichlet(double* dev, int n, const double* par, int p);
-bool bivnorm_validate_covariance(double sigma_xx, double sigma_yy, double sigma_xy);
-std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec,
-  const std::vector<double>& y_vec, double mu_x, double mu_y,
-  double sigma_xx, double sigma_yy, double sigma_xy, bool logscale);
+std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::vector<double>& y_vec,
+  const std::vector<double>& mu_x, const std::vector<double>& mu_y,
+  const std::vector<double>& sigma_xx, const std::vector<double>& sigma_yy,
+  const std::vector<double>& sigma_xy, bool logscale);
 
 // MODEL DISTRIBUTIONS ------------------------------------------------------------------------------------------------
 void logpost_beta(double* lpost, const double beta, const double gamma,
   const double mu_beta, const double sigma2_beta, const double psi2,
-  const double tau2, int n, const double* Gammahat_j, const double* sigma2_Y);
+  const double tau2, int n, const double* gammahat_j, const double* Gammahat_j,
+  const double* sigma2_X, const double* sigma2_Y);
+double bayesmr_logLik(const double beta, const double gamma,
+  const double psi2, const double tau2, int n,
+  const double* gammahat_j, const double* Gammahat_j,
+  const double* sigma2_X, const double* sigma2_Y);
 
 // MATRIX UTILITIES ---------------------------------------------------------------------------------------------------
 void colsums(double* colsums, const double* A, int nrows, int ncols);

@@ -2,8 +2,8 @@ dinvgamma <- function(x, alpha, beta = 1, log = FALSE) {
 	if ((alpha <= 0) | (beta <= 0)) {
 		stop("alpha (shape) and/or beta (scale) parameter negative in dinvgamma().\n")
 	}
-	log.density <- alpha*log(beta) - lgamma(alpha) - (alpha + 1)*log(x) - (beta/x)
-	if (log) return(log.density) else return(exp(log.density))
+	log_density <- alpha*log(beta) - lgamma(alpha) - (alpha + 1)*log(x) - (beta/x)
+	if (log) return(log_density) else return(exp(log_density))
 }
 
 ddirichlet <- function(x, alpha) {
@@ -32,6 +32,9 @@ ddirichlet <- function(x, alpha) {
 }
 
 dbivnorm <- function(x, y, mu_x, mu_y, sigma_xx, sigma_yy, sigma_xy, log = FALSE) {
+    if (length(x) != length(y))
+      stop("the x and y vectors must have the same length.")
+
     if(sigma_xx <= 0 || sigma_yy <= 0) {
         if(log) return(-Inf) else return(0)
     }

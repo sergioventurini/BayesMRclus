@@ -7,7 +7,7 @@
 bayesmr_fit(data, p, G, control, prior, start)
 }
 \arguments{
-\item{data}{An object of class \code{\link{bayesmr_data}})..}
+\item{data}{An object of class \code{\link{bayesmr_data}}).}
 
 \item{p}{A length-one numeric vector indicating the number of dimensions of the
 latent space.}

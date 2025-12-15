@@ -4,7 +4,15 @@
 \alias{mcmc_bayesmr}
 \title{Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution}
 \usage{
-mcmc_bayesmr(data, prior, iter, start, tune, proposal = "norm", verbose = TRUE)
+mcmc_bayesmr(
+  data,
+  prior,
+  iter,
+  start,
+  tune,
+  proposal = c("unif", "norm"),
+  verbose = TRUE
+)
 }
 \arguments{
 \item{data}{Integer value specifying the total the number of iterations

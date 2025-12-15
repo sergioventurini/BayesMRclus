@@ -4,7 +4,7 @@
 \alias{gamma_beta_post}
 \title{Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution}
 \usage{
-gamma_beta_post(gamma, beta, data, prior, log = TRUE, verbose = TRUE)
+gamma_beta_post(gamma, beta, data, prior, log = TRUE)
 }
 \arguments{
 \item{data}{Integer value specifying the total the number of iterations

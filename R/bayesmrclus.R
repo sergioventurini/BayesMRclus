@@ -115,7 +115,7 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
   # perform MCMC simulation
   if (nchains > 1L && (have_mc || have_snow)) {
     bayesmr_fit_parallel <- function(c, data.c, p.c, G.c, control.c, prior.c, lib) {
-      suppressMessages(require(bayesmr, lib.loc = lib))
+      suppressMessages(require(BayesMRclus, lib.loc = lib))
       control.c[["verbose"]] <- FALSE
       # message("Starting cluster node ", c, " on local machine")
       start.c <- bayesmr_init(data = data.c, p = p.c, G = G.c, random.start = control.c[["random.start"]],
@@ -186,7 +186,7 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
 
       if (verbose) message("Initialization of the algorithm...")
   
-      bayesmr.start <- bayesmr_init(data, p, G, random.start, partition = partition)
+      bayesmr_start <- bayesmr_init(data, p, G, random.start, partition = partition)
       if (is.null(prior)) {
         prior <- bayesmr_prior()
       } else {
@@ -199,7 +199,7 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
         # message("done!")
       }
 
-      res[[ch]] <- bayesmr_fit(data = data, p = p, G = G, control = control, prior = prior, start = bayesmr.start)
+      res[[ch]] <- bayesmr_fit(data = data, p = p, G = G, control = control, prior = prior, start = bayesmr_start)
 
       if (verbose && nchains > 1L) message("--- END OF CHAIN ", ch, " OF ", nchains, " ---\n")
     }

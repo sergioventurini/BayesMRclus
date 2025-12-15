@@ -4,7 +4,7 @@
 \alias{metropolis}
 \title{Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution}
 \usage{
-metropolis(logpost, current, proposal = "unif", C, iter, ...)
+metropolis(logpost, current, proposal = c("unif", "norm"), C, iter, ...)
 }
 \arguments{
 \item{logpost}{A function defining the logarithm of the posterior density.}

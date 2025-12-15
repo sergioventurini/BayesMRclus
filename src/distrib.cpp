@@ -212,47 +212,45 @@ void rdirichlet(double* dev, int n, const double* par, int p){
   }
 }
 
-bool bivnorm_validate_covariance(double sigma_xx, double sigma_yy, double sigma_xy){
-    if(sigma_xx <= 0.0 || sigma_yy <= 0.0) return false;
-    double det = sigma_xx * sigma_yy - sigma_xy * sigma_xy;
-    return det > 0.0;
-}
-
 // Bivariate normal
-std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec,
-                             const std::vector<double>& y_vec,
-                             double mu_x, double mu_y,
-                             double sigma_xx, double sigma_yy, double sigma_xy,
-                             bool logscale){
-  size_t n = x_vec.size();
-  if(n != y_vec.size()){
-    // Handle size mismatch - return empty vector or throw exception
-    return std::vector<double>();
+std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::vector<double>& y_vec,
+  const std::vector<double>& mu_x, const std::vector<double>& mu_y,
+  const std::vector<double>& sigma_xx, const std::vector<double>& sigma_yy,
+  const std::vector<double>& sigma_xy, bool logscale){
+  const size_t n = x_vec.size();
+  if (y_vec.size() != n || mu_x.size() != n || mu_y.size() != n ||
+    sigma_xx.size() != n || sigma_yy.size() != n || sigma_xy.size() != n){
+      Rcpp::stop("all input vectors must have the same length.");
   }
-  
-  std::vector<double> result(n);
-  
-  // Validate covariance matrix
-  if(!bivnorm_validate_covariance(sigma_xx, sigma_yy, sigma_xy)){
-    std::fill(result.begin(), result.end(), logscale ? neg_inf : 0.0);
-    return result;
+
+  std::vector<double> out(n);
+
+  for (size_t i = 0; i < n; ++i){
+    const double sxx = sigma_xx[i];
+    const double syy = sigma_yy[i];
+    const double sxy = sigma_xy[i];
+    const double det = sxx * syy - sxy * sxy;
+
+    // Invalid covariance?
+    if (sxx <= 0.0 || syy <= 0.0 || det <= 0.0) {
+      out[i] = logscale ?
+        -std::numeric_limits<double>::infinity() :
+        0.0;
+      continue;
+    }
+
+    const double inv_det = 1.0 / det;
+    const double dx = x_vec[i] - mu_x[i];
+    const double dy = y_vec[i] - mu_y[i];
+
+    const double q =
+      inv_det * (syy * dx * dx - 2.0 * sxy * dx * dy + sxx * dy * dy);
+
+    const double logdens =
+      -0.5 * (log_2pi + std::log(det) + q);
+
+    out[i] = logscale ? logdens : std::exp(logdens);
   }
-  
-  // Precompute constants
-  double det_sigma = sigma_xx * sigma_yy - sigma_xy * sigma_xy;
-  double inv_det = 1.0 / det_sigma;
-  double log_const = -0.5 * (log_2pi + std::log(det_sigma));
-  
-  // Compute density for each observation
-  for(size_t i = 0; i < n; ++i){
-    double dx = x_vec[i] - mu_x;
-    double dy = y_vec[i] - mu_y;
-    
-    double quad_form = inv_det * (sigma_yy * dx * dx - 2.0 * sigma_xy * dx * dy + sigma_xx * dy * dy);
-    double log_dens = log_const - 0.5 * quad_form;
-    
-    result[i] = logscale ? log_dens : std::exp(log_dens);
-  }
-  
-  return result;
+
+  return out;
 }

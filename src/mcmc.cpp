@@ -18,121 +18,192 @@ void bayesmr_mcmc_noclus(
   const double rhyper_gamma_var,
   const double rhyper_beta_mean,
   const double rhyper_beta_var,
-  const double sigma2_beta,                   // beta proposal spread
+  const double sigma2_beta,                   // beta proposal variance (note sqrt used)
   int totiter,
   int n,
   int p,
   int G,
   int verbose){
-  int niter = 0;
+  // Sanity
+  if (n <= 0 || totiter <= 0) return;
 
-  double beta_prop = 0, beta_old = 0, accept_beta = 0;
+  // Convert input data into vectors once (faster & safer)
+  std::vector<double> gammahat_j(n);
+  std::vector<double> Gammahat_j(n);
+  std::vector<double> sigma2_X(n);
+  std::vector<double> sigma2_Y(n);
 
-  double* gammahat_j = new double[n];
-  double* Gammahat_j = new double[n];
-  double* sigma2_X = new double[n];
-  double* sigma2_Y = new double[n];
-  double* psi2_j = new double[n];
-  double* tau2_j = new double[n];
-  double* h2_j = new double[n];
-  double sum_A_beta_1 = 0, sum_A_beta_2 = 0, sum_B_beta_1 = 0, sum_B_beta_2 = 0;
-  for(int i = 0; i < n; i++){
+  // Pre-allocate arrays reused every iteration
+  std::vector<double> psi2_j(n);
+  std::vector<double> tau2_j(n);
+  std::vector<double> a_j(n);
+  std::vector<double> v_j(n);
+
+  for (int i = 0; i < n; ++i) {
     gammahat_j[i] = data[i];
     Gammahat_j[i] = data[n + i];
-    sigma2_X[i] = pow(data[2*n + i], 2);
-    sigma2_Y[i] = pow(data[3*n + i], 2);
+    double sx = data[2 * n + i];
+    double sy = data[3 * n + i];
+    sigma2_X[i] = sx * sx;
+    sigma2_Y[i] = sy * sy;
     psi2_j[i] = sigma2_X[i] + hyper_gammaj_psi2;
     tau2_j[i] = sigma2_Y[i] + rhyper_Gammaj_tau2;
-    h2_j[i] = (pow(beta_p, 2))*hyper_gammaj_psi2 + tau2_j[i];
-    sum_A_beta_1 += 1/psi2_j[i];
-    sum_A_beta_2 += 1/h2_j[i];
-    sum_B_beta_1 += gammahat_j[i]/psi2_j[i];
-    sum_B_beta_2 += Gammahat_j[i]/(beta_p*h2_j[i]);
   }
 
+  // RNG
   GetRNGstate();
 
-  double A_beta = 0, B_beta = 0;
-  double prob = 0, ran_unif = 0;
-  int accpeted_beta = 0;
-  double* lpost_beta_prop = new double;
-  double* lpost_beta_old = new double;
-  accept[0] = 0;
-  beta_old = beta_p;
-  while (niter < totiter){
-    niter++;
-    // generate gamma by Gibbs sampling
-    A_beta = sum_A_beta_1 + pow(beta_old, 2)*sum_A_beta_2 + 1/rhyper_gamma_var;
-    B_beta = sum_B_beta_1 + pow(beta_old, 2)*sum_B_beta_2 +
-      rhyper_gamma_mean/rhyper_gamma_var;
-    gamma_chain[(niter - 1)] = R::rnorm(B_beta/A_beta, sqrt(1/A_beta));
-    
-    // generate beta by random walk Metropolis-Hastings
-    // beta_prop = R::runif(beta_old - sigma2_beta, beta_old + sigma2_beta);  // uniform proposal
-    beta_prop = R::rnorm(beta_old, sqrt(sigma2_beta));  // normal proposal
-    logpost_beta(lpost_beta_prop, beta_prop, gamma_chain[(niter - 1)], rhyper_beta_mean,
-      rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n, Gammahat_j, sigma2_Y);
-    logpost_beta(lpost_beta_old, beta_old, gamma_chain[(niter - 1)], rhyper_beta_mean,
-      rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n, Gammahat_j, sigma2_Y);
-    prob = exp(*lpost_beta_prop - *lpost_beta_old);
-    
-    ran_unif = R::runif(0, 1);
-    accpeted_beta = (ran_unif < prob) ? 1 : 0;
-    accept[0] += accpeted_beta;
-    beta_old = (accpeted_beta == 1) ? beta_prop : beta_old;
-    beta_chain[(niter - 1)] = beta_old;
-    accept_beta = accept[0];  // [SV: this is redundant --> simplify in the future]
+  // bookkeeping
+  double beta_old = beta_p;
+  double accept_beta = 0.0;   // track total accept for this chain
+  accept[0] = 0.0;
 
-    // print the information
-    if(((niter % 500) == 0) && verbose){
-      REprintf("   iteration %d/%d ==> acceptance beta: %1.4f\n", niter, totiter, accept_beta/(G*niter));
+  // local temporaries
+  const double hyper_gamma_var_inv = 1.0 / rhyper_gamma_var;
+  const double sqrt_rhyper_gamma_var = std::sqrt(rhyper_gamma_var);
+  const double sqrt_rhyper_beta_var = std::sqrt(rhyper_beta_var);
+  const double sqrt_sigma2_beta = std::sqrt(sigma2_beta);
+
+  // main MCMC loop
+  for (int iter = 1; iter <= totiter; ++iter) {
+    // -------------------------
+    // 1) Gibbs update for gamma
+    // -------------------------
+    // Compute sums needed for A_beta and B_beta efficiently, avoiding repeated pow()
+    const double beta2 = beta_old * beta_old;
+    const double beta_inv = (beta_old != 0.0) ? 1.0 / beta_old : 0.0; // used for sum_B_beta_2
+
+    double sum_A_beta_1 = 0.0;
+    double sum_A_beta_2 = 0.0;
+    double sum_B_beta_1 = 0.0;
+    double sum_B_beta_2 = 0.0;
+
+    bool invalid_v = false;
+    for (int i = 0; i < n; ++i) {
+      a_j[i] = beta2 * hyper_gammaj_psi2 + tau2_j[i];
+      const double c = beta_old * hyper_gammaj_psi2;
+      const double c2 = c * c;
+      v_j[i] = a_j[i] * psi2_j[i] - c2;
+
+      // If determinant non-positive -> mark invalid (posterior undefined); handle gracefully
+      if (v_j[i] <= 0.0) {
+        invalid_v = true;
+        break;
+      }
+
+      // accumulate
+      const double inv_v = 1.0 / v_j[i];
+      sum_A_beta_1 += tau2_j[i] * inv_v;
+      sum_A_beta_2 += sigma2_X[i] * inv_v;
+      sum_B_beta_1 += gammahat_j[i] * tau2_j[i] * inv_v;
+      // guard against division by zero on beta_old
+      if (beta_old != 0.0) {
+        sum_B_beta_2 += (Gammahat_j[i] * sigma2_X[i]) * (inv_v * beta_inv);
+      } else {
+        // if beta_old == 0, the expression becomes infinite/undefined; set flag
+        invalid_v = true;
+        break;
+      }
     }
 
-    // calculate the loglikelihood, logprior and logposterior for the sampled parameter values
-    logprior[niter - 1] = 0;
-    // for(int g = 0; g < G; g++){
-    //   for(int j = 0; j < p; j++){
-    //     for(int i = 0; i < n; i++){
-    //       z_g[i + n*j] = z[i + n*j + n*p*g];
-    //     }
-    //   }
-    //   for(int j = 0; j < p; j++){
-    //     sigma_g[j + p*j] = eta[g];
-    //   }
-    //   dmultinorm(lprior_z, z_g, mean_g, sigma_g, n, p, 1);
-    //   sum_lprior_z = 0;
-    //   for(int i = 0; i < n; i++){
-    //     sum_lprior_z += lprior_z[i];
-    //   }
-    //   lprior_alpha = R::dnorm(alpha[g], 0, sqrt(sigma2[g]), 1);
-    //   sum_z2 = 0;
-    //   for(int j = 0; j < p; j++){
-    //     for(int i = 0; i < n; i++){
-    //       sum_z2 += z_g[i + n*j]*z_g[i + n*j];
-    //     }
-    //   }
-    //   dinvgamma(lprior_eta, &eta[g], hyper_eta_a[g], hyper_eta_b[g], 1, 1);
-    //   dinvgamma(lprior_sigma2, &sigma2[g], hyper_sigma2_a, hyper_sigma2_b, 1, 1);
-    //   logprior[niter - 1] += sum_lprior_z + lprior_alpha + *lprior_eta + *lprior_sigma2;
-    // }
-    // ddirichlet(lprior_lambda, lambda, hyper_lambda, 1, G, 1);
-    // logprior[niter - 1] += *lprior_lambda;
-    // loglik_bayesmr(&loglik[niter - 1], Dm, z, alpha, d_sigma2, lambda, x, n, p, S, G, "binomial");
-    loglik[niter - 1] = 0;
-    logpost[niter - 1] = loglik[niter - 1] + logprior[niter - 1];
+    // If matrix was singular or beta==0 caused issues, reject/handle:
+    // For simplicity: if invalid, we skip the Gibbs update and keep previous gamma
+    double gamma_new = gamma_p; // fallback (starting gamma)
+    if (!invalid_v) {
+      const double A_beta = sum_A_beta_1 + beta2 * sum_A_beta_2 + hyper_gamma_var_inv;
+      const double B_beta = sum_B_beta_1 + beta2 * sum_B_beta_2 + (rhyper_gamma_mean * hyper_gamma_var_inv);
+      // Draw gamma ~ N(mean = B/A, var = 1/A)
+      const double mean_gamma = B_beta / A_beta;
+      const double sd_gamma = std::sqrt(1.0 / A_beta);
+      gamma_new = R::rnorm(mean_gamma, sd_gamma);
+    } else {
+      // keep previous gamma (or you might want to set to prior mean)
+      // We choose to keep previous gamma (gamma_p is starting value; or you can track last sampled)
+      // For clarity, set gamma_new to last stored gamma in chain if available:
+      if ( (iter - 2) >= 0 ) {
+          gamma_new = gamma_chain[iter - 2];
+      } else {
+          gamma_new = gamma_p;
+      }
+    }
+
+    gamma_chain[iter - 1] = gamma_new;
+
+    // -------------------------------------------
+    // 2) Metropolis-Hastings update for beta
+    // -------------------------------------------
+    // Propose new beta (random-walk Normal)
+    double beta_prop = R::rnorm(beta_old, sqrt_sigma2_beta);
+
+    // compute log-posterior for proposed and current betas
+    double lpost_prop = 0.0;
+    double lpost_old = 0.0;
+
+    logpost_beta(&lpost_prop, beta_prop, gamma_new,
+      rhyper_beta_mean, rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
+      gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
+
+    logpost_beta(&lpost_old, beta_old, gamma_new,
+      rhyper_beta_mean, rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
+      gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
+
+    // compute acceptance probability (handle -inf or NaN)
+    double prob = 0.0;
+    if (!std::isfinite(lpost_prop)) {
+      prob = 0.0;
+    } else if (!std::isfinite(lpost_old)) {
+      // if old is -inf but new is finite, accept
+      prob = 1.0;
+    } else {
+      const double diff = lpost_prop - lpost_old;
+      // guard against overflow
+      if (diff >= 0.0) prob = 1.0;
+      else prob = std::exp(diff);
+    }
+
+    double u = R::runif(0.0, 1.0);
+    int accepted_beta = (u < prob) ? 1 : 0;
+    if (accepted_beta) {
+      beta_old = beta_prop;
+      accept_beta += 1.0;
+    }
+    accept[0] += accepted_beta;   // cumulative acceptances (user originally used accept[0])
+
+    // store beta
+    beta_chain[iter - 1] = beta_old;
+
+    // ---------------------------------------------------
+    // 3) compute log-densities: logprior, loglik, logpost
+    // ---------------------------------------------------
+    // logprior: normal for gamma and beta (log-scale)
+    const double logprior_gamma = R::dnorm(gamma_new, rhyper_gamma_mean, sqrt_rhyper_gamma_var, 1);
+    const double logprior_beta  = R::dnorm(beta_old, rhyper_beta_mean, sqrt_rhyper_beta_var, 1);
+    logprior[iter - 1] = logprior_gamma + logprior_beta;
+
+    // loglik using optimized bayesmr_logLik
+    extern double bayesmr_logLik(const double beta, const double gamma,
+      const double psi2, const double tau2, int n,
+      const double* gammahat_j, const double* Gammahat_j,
+      const double* sigma2_X, const double* sigma2_Y);
+
+    loglik[iter - 1] = bayesmr_logLik(beta_old, gamma_new,
+      hyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
+      gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
+
+    // logpost
+    logpost[iter - 1] = loglik[iter - 1] + logprior[iter - 1];
+
+    // optional progress printing
+    if ((iter % 500) == 0 && verbose) {
+      double accept_rate = accept_beta / static_cast<double>(G*iter);
+      REprintf("   iteration %d/%d ==> acceptance beta: %1.4f\n", iter, totiter, accept_rate);
+    }
+
+    // interruption point (allow user to interrupt R)
     R_CheckUserInterrupt();
-  }
+  } // end iterations
 
   PutRNGstate();
 
-  delete[] gammahat_j;
-  delete[] Gammahat_j;
-  delete[] sigma2_X;
-  delete[] sigma2_Y;
-  delete[] psi2_j;
-  delete[] tau2_j;
-  delete[] h2_j;
-
-  delete   lpost_beta_prop;
-  delete   lpost_beta_old;
+  // done - vectors auto-clean
 }
