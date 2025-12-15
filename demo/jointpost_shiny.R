@@ -1,7 +1,11 @@
 if (!requireNamespace("BayesMRclus", quietly = TRUE)) {
   remotes::install_github("sergioventurini/BayesMRclus")
 }
+if (!requireNamespace("mr.raps", quietly = TRUE)) {
+  devtools::install_github("qingyuanzhao/mr.raps")
+}
 library(BayesMRclus)
+library(mr.raps)
 
 # Slider with a specified column width
 slider_cols <- function(cols, inputId, label, min, max, value, step = NULL) {
