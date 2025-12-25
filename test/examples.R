@@ -31,6 +31,7 @@ control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
                 random.start = TRUE, verbose = TRUE, nchains = nchains, thin = 100,
                 store.burnin = TRUE, threads = nchains, parallel = "snow")
 
+# tau2_est <- tau2_dl(data_tmp, secondorder = TRUE)
 prior <- bayesmr_prior(gammaj = list(psi2 = .0001),
                        Gammaj = list(tau2 = .0001),
                        gamma = list(mean = 0, var = 1e2),

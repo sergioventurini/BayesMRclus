@@ -8,6 +8,7 @@
 
 static const R_CallMethodDef R_CallDef[] = {
   CALLDEF(bayesmr_mcmc, 16),
+  CALLDEF(bayesmr_mcmc_ranhet, 22),
   {NULL, NULL, 0}
 };
 
@@ -15,7 +16,7 @@ void
 #ifdef HAVE_VISIBILITY_ATTRIBUTE
 __attribute__ ((visibility ("default")))
 #endif
-R_init_bayesmr(DllInfo *dll) {
+R_init_bayesmrclus(DllInfo *dll) {
   R_registerRoutines(dll, NULL, R_CallDef, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
   R_forceSymbols(dll, TRUE);

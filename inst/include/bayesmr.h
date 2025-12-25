@@ -17,6 +17,7 @@
 #include <climits>
 #include <string>
 #include <algorithm>
+#include <stdexcept>
 
 static const double machine_eps = 2.220446049250313080847e-16;
 static const double log_pi = std::log(M_PI);
@@ -30,6 +31,12 @@ RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
   SEXP rhyper_gammaj_psi2, SEXP rhyper_Gammaj_tau2,
   SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var, SEXP rhyper_beta_mean,
   SEXP rhyper_beta_var, SEXP rverbose);
+RcppExport SEXP bayesmr_mcmc_ranhet(SEXP radData, SEXP radgamma, SEXP radbeta,
+  SEXP radpsi, SEXP radtau, SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter,
+  SEXP rsigma2_beta, SEXP rC_psi, SEXP rC_tau, SEXP rhyper_gamma_mean,
+  SEXP rhyper_gamma_var, SEXP rhyper_beta_mean, SEXP rhyper_beta_var,
+  SEXP rhyper_psi_alpha, SEXP rhyper_psi_nu, SEXP rhyper_tau_alpha,
+  SEXP rhyper_tau_nu, SEXP rverbose);
 // RcppExport SEXP bayesmr_relabel(SEXP radtheta, SEXP radz, SEXP radalpha,
 //   SEXP radeta, SEXP radsigma2, SEXP radlambda, SEXP radprob, SEXP raix_ind,
 //   SEXP rinit, SEXP rn, SEXP rp, SEXP rS, SEXP rM, SEXP rR, SEXP rG,
@@ -56,11 +63,34 @@ std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::ve
   const std::vector<double>& mu_x, const std::vector<double>& mu_y,
   const std::vector<double>& sigma_xx, const std::vector<double>& sigma_yy,
   const std::vector<double>& sigma_xy, bool logscale);
+std::vector<double> dhalft(const std::vector<double>& x, const std::vector<double>& alpha,
+  const std::vector<double>& nu, bool log);
+std::vector<double> pst(const std::vector<double>& q, const std::vector<double>& mu,
+  const std::vector<double>& sigma, const std::vector<double>& nu,
+  bool lower_tail = true, bool log_p = false);
+std::vector<double> qst(const std::vector<double>& p, const std::vector<double>& mu,
+  const std::vector<double>& sigma, const std::vector<double>& nu,
+  bool lower_tail = true, bool log_p = false);
+std::vector<double> qtrunc(const std::vector<double>& p, double a, double b,
+  const std::vector<double>& mu, const std::vector<double>& sigma, const std::vector<double>& nu);
+std::vector<double> rtrunc(std::size_t n, double a, double b,
+  const std::vector<double>& mu, const std::vector<double>& sigma, const std::vector<double>& nu);
+std::vector<double> rhalft(std::size_t n, const std::vector<double>& alpha, const std::vector<double>& nu);
 
 // MODEL DISTRIBUTIONS ------------------------------------------------------------------------------------------------
 void logpost_beta(double* lpost, const double beta, const double gamma,
   const double mu_beta, const double sigma2_beta, const double psi2,
   const double tau2, int n, const double* gammahat_j, const double* Gammahat_j,
+  const double* sigma2_X, const double* sigma2_Y);
+void logpost_psi(double* lpost, const double psi,
+  const double beta, const double gamma, const double tau, int n,
+  const double alpha_psi, const double nu_psi,
+  const double* gammahat_j, const double* Gammahat_j,
+  const double* sigma2_X, const double* sigma2_Y);
+void logpost_tau(double* lpost, const double tau,
+  const double beta, const double gamma, const double psi, int n,
+  const double alpha_tau, const double nu_tau,
+  const double* gammahat_j, const double* Gammahat_j,
   const double* sigma2_X, const double* sigma2_Y);
 double bayesmr_logLik(const double beta, const double gamma,
   const double psi2, const double tau2, int n,
@@ -83,6 +113,14 @@ void bayesmr_mcmc_noclus(double* gamma_chain, double* beta_chain, double* accept
   const double rhyper_gamma_mean, const double rhyper_gamma_var,
   const double rhyper_beta_mean, const double rhyper_beta_var,
   const double sigma2_beta, int totiter, int n, int p, int G, int verbose);
+void bayesmr_mcmc_noclus_ranhet(double* gamma_chain, double* beta_chain,
+  double* psi2_chain, double* tau2_chain, double* accept, double* loglik,
+  double* logprior, double* logpost, double* data, double gamma_p, double beta_p,
+  double psi2_p, double tau2_p,  const double rhyper_alpha_psi2, const double rhyper_nu_psi2,
+  const double rhyper_alpha_tau2, const double rhyper_nu_tau2, const double rhyper_gamma_mean,
+  const double rhyper_gamma_var, const double rhyper_beta_mean, const double rhyper_beta_var,
+  const double sigma2_beta, const double C_psi2, const double C_tau2, int totiter,
+  int n, int p, int G, int verbose);
 
 // UTILITIES ----------------------------------------------------------------------------------------------------------
 void logit(double* res, const double* p, int n);
@@ -98,6 +136,6 @@ void permutations(int* perm, int n, int nperm, int byrow);
 void which_min(int* ans, const double* r, int n);
 
 // For registration
-void R_init_bayesmr(DllInfo *dll);
+void R_init_bayesmrclus(DllInfo *dll);
 
 #endif

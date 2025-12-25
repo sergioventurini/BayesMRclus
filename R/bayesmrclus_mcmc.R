@@ -172,7 +172,7 @@ mcmc_bayesmr <- function(data, prior, iter, start, tune,
     draws_mat[m, 1] <- gamma_p
 
     # beta update using a M-H step
-    ## --- beta update: single-step Metropolis (uses metropolis_opt with iter = 1) ---
+    ## --- beta update: single-step Metropolis (uses metropolis() with iter = 1) ---
     mh <- metropolis(logpost = logpost_beta,    # same external function name as original
                      current = beta_p,
                      proposal = proposal,

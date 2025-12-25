@@ -2,6 +2,24 @@
 
 #include "bayesmr.h"
 
+// ------------------------------------------------------------
+// Internal helpers (not visible outside this .cpp)
+// ------------------------------------------------------------
+namespace {
+
+std::size_t recycle_size(std::size_t a,
+                         std::size_t b,
+                         std::size_t c = 1,
+                         std::size_t d = 1){
+  return std::max({a, b, c, d});
+}
+
+double recycle_get(const std::vector<double>& v, std::size_t i){
+  return v[i % v.size()];
+}
+
+} // unnamed namespace
+
 // Probability function for the product of independent bernoulli random variables
 void dprodber(double* prob, const int* d, const double* pi, int m, bool logscale = true){
   double prob_tmp = 0;
@@ -253,4 +271,151 @@ std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::ve
   }
 
   return out;
+}
+
+std::vector<double> dhalft(const std::vector<double>& x, const std::vector<double>& alpha,
+  const std::vector<double>& nu, bool logscale){
+  std::size_t N = recycle_size(x.size(), alpha.size(), nu.size());
+
+  std::vector<double> out(N);
+
+  for (double a : alpha)
+    if (a <= 0.0)
+      throw std::domain_error("The alpha (scale) parameter must be positive.");
+
+  for (std::size_t i = 0; i < N; ++i) {
+    double xi = recycle_get(x, i);
+    double ai = recycle_get(alpha, i);
+    double ni = recycle_get(nu, i);
+
+    double log_dens =
+        std::log(2.0)
+        - std::log(ai)
+        + R::lgammafn((ni + 1.0) / 2.0)
+        - R::lgammafn(ni / 2.0)
+        - 0.5 * std::log(M_PI * ni)
+        - (ni + 1.0) / 2.0 *
+          std::log(1.0 + (xi / ai) * (xi / ai) / ni);
+
+    out[i] = logscale ? log_dens : std::exp(log_dens);
+  }
+
+  return out;
+}
+
+std::vector<double> pst(const std::vector<double>& q, const std::vector<double>& mu,
+  const std::vector<double>& sigma, const std::vector<double>& nu,
+  bool lower_tail, bool log_p){
+  std::size_t N = recycle_size(q.size(), mu.size(), sigma.size(), nu.size());
+  std::vector<double> out(N);
+
+  for (double s : sigma)
+    if (s <= 0.0)
+      throw std::domain_error("The sigma parameter must be positive.");
+
+  for (double n : nu)
+    if (n <= 0.0)
+      throw std::domain_error("The nu parameter must be positive.");
+
+  for (std::size_t i = 0; i < N; ++i) {
+    double qi = recycle_get(q, i);
+    double mi = recycle_get(mu, i);
+    double si = recycle_get(sigma, i);
+    double ni = recycle_get(nu, i);
+
+    if (ni > 1e6) {
+      out[i] = R::pnorm(qi, mi, si, lower_tail, log_p);
+    } else {
+      double z = (qi - mi) / si;
+      out[i] = R::pt(z, ni, lower_tail, log_p);
+    }
+  }
+
+  return out;
+}
+
+std::vector<double> qst(const std::vector<double>& p, const std::vector<double>& mu,
+  const std::vector<double>& sigma, const std::vector<double>& nu, bool lower_tail,
+  bool log_p){
+  std::size_t N = recycle_size(p.size(), mu.size(), sigma.size(), nu.size());
+  std::vector<double> out(N);
+
+  for (double s : sigma)
+    if (s <= 0.0)
+      throw std::domain_error("The sigma parameter must be positive.");
+
+  for (double n : nu)
+    if (n <= 0.0)
+      throw std::domain_error("The nu parameter must be positive.");
+
+  for (std::size_t i = 0; i < N; ++i) {
+    double pi = recycle_get(p, i);
+    double mi = recycle_get(mu, i);
+    double si = recycle_get(sigma, i);
+    double ni = recycle_get(nu, i);
+
+    if (log_p)
+      pi = std::exp(pi);
+
+    if (pi < 0.0 || pi > 1.0)
+      throw std::domain_error("p must be in [0,1].");
+
+    if (ni > 1e6) {
+      out[i] = R::qnorm(pi, mi, si, lower_tail, false);
+    } else {
+      out[i] = mi + si * R::qt(pi, ni, lower_tail, false);
+    }
+  }
+
+  return out;
+}
+
+std::vector<double> qtrunc(const std::vector<double>& p, double a, double b,
+  const std::vector<double>& mu, const std::vector<double>& sigma,
+  const std::vector<double>& nu){
+  if (a >= b)
+    throw std::domain_error("Lower bound a is not less than upper bound b.");
+
+  std::size_t N = recycle_size(p.size(), mu.size(), sigma.size(), nu.size());
+  std::vector<double> out(N);
+
+  for (std::size_t i = 0; i < N; ++i) {
+    double pi = recycle_get(p, i);
+    double mi = recycle_get(mu, i);
+    double si = recycle_get(sigma, i);
+    double ni = recycle_get(nu, i);
+
+    if (pi < 0.0 || pi > 1.0)
+      throw std::domain_error("p must be in [0,1].");
+
+    double Ga = R::pt((a - mi) / si, ni, true, false);
+    double Gb = R::pt((b - mi) / si, ni, true, false);
+
+    out[i] = mi + si * R::qt(Ga + pi * (Gb - Ga), ni, true, false);
+  }
+
+  return out;
+}
+
+std::vector<double> rtrunc(std::size_t n, double a, double b,
+  const std::vector<double>& mu, const std::vector<double>& sigma,
+  const std::vector<double>& nu){
+  if (a >= b)
+    throw std::domain_error("Lower bound a is not less than upper bound b.");
+
+  std::vector<double> u(n);
+  for (std::size_t i = 0; i < n; ++i)
+    u[i] = unif_rand();
+
+  return qtrunc(u, a, b, mu, sigma, nu);
+}
+
+std::vector<double> rhalft(std::size_t n, const std::vector<double>& alpha, const std::vector<double>& nu){
+  for (double a : alpha)
+    if (a <= 0.0)
+      throw std::domain_error("The alpha parameter must be positive.");
+
+  std::vector<double> mu(1, 0.0);
+
+  return rtrunc(n, 0.0, R_PosInf, mu, alpha, nu);
 }
