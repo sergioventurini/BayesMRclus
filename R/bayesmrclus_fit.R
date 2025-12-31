@@ -140,7 +140,7 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 
 #' Fitting function for BayesMR models with random heterogeneity.
 #'
-#' \code{bayesmr_full_fit()} is the main function that estimates a BayesMR model.
+#' \code{bayesmr_het_fit()} is the main function that estimates a BayesMR model.
 #'
 #' @param data An object of class \code{\link{bayesmr_data}}).
 #' @param p A length-one numeric vector indicating the number of dimensions of the
@@ -154,7 +154,7 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 #'   \code{\link{bayesmr_prior}()} for more details.
 #' @param start A named list of starting values for the MCMC algorithm (see
 #'   \code{\link{bayesmr_init}}).
-#' @return A \code{bayesmr_full_fit_list} object.
+#' @return A \code{bayesmr_het_fit_list} object.
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #' @seealso \code{\link{bayesmr_data}} for a description of the data format.
 #' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
@@ -179,7 +179,7 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 #'   alpha.prop = prm.prop[["alpha"]], random.start = TRUE, verbose = TRUE,
 #'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
 #'   parallel = "snow")
-#' sim.bayesmr <- bayesmr_full(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr_het(simdiss, p, G, control)
 #'
 #' summary(sim.bayesmr, include.burnin = FALSE)
 #'
@@ -196,7 +196,7 @@ bayesmr_fit <- function(data, p, G, control, prior, start) {
 #' graph + panel_bg(fill = "gray90", color = NA)
 #' }
 #' @export
-bayesmr_full_fit <- function(data, p, G, control, prior, start) {
+bayesmr_het_fit <- function(data, p, G, control, prior, start) {
   n <- data@n
   data_obs <- data@data
   totiter <- control[["burnin"]] + control[["nsim"]]
@@ -219,7 +219,7 @@ bayesmr_full_fit <- function(data, p, G, control, prior, start) {
   # start iteration
   if (control[["verbose"]]) message("Running the MCMC simulation...")
   
-  res.mcmc <- .Call('bayesmr_mcmc_ranhet', PACKAGE = 'BayesMRclus',
+  res.mcmc <- .Call('bayesmr_mcmc_het', PACKAGE = 'BayesMRclus',
     radData = as.double(unlist(data_obs)),
     radgamma = as.double(start$gamma),
     radbeta = as.double(start$beta),
@@ -275,7 +275,7 @@ bayesmr_full_fit <- function(data, p, G, control, prior, start) {
   logpost <- logpost[tokeep]
 
   # return results
-  out <- new("bayesmr_full_fit",
+  out <- new("bayesmr_het_fit",
     gamma.chain = gamma.chain,
     beta.chain = beta.chain,
     psi.chain = psi.chain,

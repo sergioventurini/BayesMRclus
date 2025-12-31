@@ -64,7 +64,7 @@ void logpost_psi(double* lpost, const double psi,
   std::vector<double> X(gammahat_j, gammahat_j + n);
   std::vector<double> Y(Gammahat_j,  Gammahat_j + n);
 
-  // Precompute beta-related constants
+  // Precompute constants
   const double beta2 = beta * beta;
   const double beta_gamma = beta * gamma;
   const double psi2 = psi * psi;
@@ -122,7 +122,7 @@ void logpost_tau(double* lpost, const double tau,
   std::vector<double> X(gammahat_j, gammahat_j + n);
   std::vector<double> Y(Gammahat_j,  Gammahat_j + n);
 
-  // Precompute beta-related constants
+  // Precompute constants
   const double beta2 = beta * beta;
   const double beta_gamma = beta * gamma;
   const double psi2 = psi * psi;

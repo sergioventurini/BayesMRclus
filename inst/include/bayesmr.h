@@ -31,7 +31,7 @@ RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
   SEXP rhyper_gammaj_psi2, SEXP rhyper_Gammaj_tau2,
   SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var, SEXP rhyper_beta_mean,
   SEXP rhyper_beta_var, SEXP rverbose);
-RcppExport SEXP bayesmr_mcmc_ranhet(SEXP radData, SEXP radgamma, SEXP radbeta,
+RcppExport SEXP bayesmr_mcmc_het(SEXP radData, SEXP radgamma, SEXP radbeta,
   SEXP radpsi, SEXP radtau, SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter,
   SEXP rsigma2_beta, SEXP rC_psi, SEXP rC_tau, SEXP rhyper_gamma_mean,
   SEXP rhyper_gamma_var, SEXP rhyper_beta_mean, SEXP rhyper_beta_var,
@@ -65,6 +65,8 @@ std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::ve
   const std::vector<double>& sigma_xy, bool logscale);
 std::vector<double> dhalft(const std::vector<double>& x, const std::vector<double>& alpha,
   const std::vector<double>& nu, bool log);
+double dhalft_scalar(const double& x, const double& alpha,
+  const double& nu, bool logscale);
 std::vector<double> pst(const std::vector<double>& q, const std::vector<double>& mu,
   const std::vector<double>& sigma, const std::vector<double>& nu,
   bool lower_tail = true, bool log_p = false);
@@ -113,7 +115,7 @@ void bayesmr_mcmc_noclus(double* gamma_chain, double* beta_chain, double* accept
   const double rhyper_gamma_mean, const double rhyper_gamma_var,
   const double rhyper_beta_mean, const double rhyper_beta_var,
   const double sigma2_beta, int totiter, int n, int p, int G, int verbose);
-void bayesmr_mcmc_noclus_ranhet(double* gamma_chain, double* beta_chain,
+void bayesmr_mcmc_noclus_het(double* gamma_chain, double* beta_chain,
   double* psi2_chain, double* tau2_chain, double* accept, double* loglik,
   double* logprior, double* logpost, double* data, double gamma_p, double beta_p,
   double psi2_p, double tau2_p,  const double rhyper_alpha_psi2, const double rhyper_nu_psi2,

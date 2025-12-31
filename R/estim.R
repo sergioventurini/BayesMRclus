@@ -87,3 +87,22 @@ tau2_dl <- function(data, secondorder = TRUE, beta_max = NULL, se_max = NULL) {
 
   list(tau2_hat = tau2_hat, betaj_hat = betaj_hat, sej_hat = sej_hat)
 }
+
+#' @export
+alpha_eb <- function(nu = 3, se, EX = NULL) {
+  if (nu <= 1)
+    stop("nu (degrees of freedom) must be larger than 1.")
+  if (!is.null(EX) && (EX <= 0))
+    stop("EX (expected value) must be strictly positive.")
+
+  if (is.null(EX)) {
+    mean_sigma2 <- mean(se^2)
+    EX <- sqrt(2*mean_sigma2/3)
+  }
+
+  tmp1 <- sqrt(pi/nu)
+  tmp2 <- (gamma(nu/2)*(nu - 1))/(2*gamma((nu + 1)/2))
+  alpha <- EX*tmp1*tmp2
+
+  alpha
+}

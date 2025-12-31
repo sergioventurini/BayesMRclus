@@ -1,3 +1,5 @@
+### bayesmr_data ###
+
 #' An S4 class to represent the data to use in a BayesMR model.
 #'
 #' @slot data A list whose elements are the dissimilarity matrices corresponding
@@ -134,6 +136,8 @@ setMethod("plot",
   }
 )
 
+### bayesmr_model ###
+
 #' An S4 class to represent a BayesMR model.
 #'
 #' @slot p A length-one character vector representing the number of dimensions
@@ -207,6 +211,8 @@ setMethod("show",
     cat("Number of clusters (G):", object@G, "\n")
   }
 )
+
+### bayesmr_fit ###
 
 #' An S4 class to represent the results of fitting BayesMR model.
 #'
@@ -912,40 +918,7 @@ setMethod("plot",
 	}
 )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### bayesmr_het_fit ###
 
 #' An S4 class to represent the results of fitting BayesMR model.
 #'
@@ -989,18 +962,18 @@ setMethod("plot",
 #'   subjects (\emph{S}).
 #' @slot model An object of class \code{\link{bayesmr_model}}.
 #'
-#' @name bayesmr_full_fit-class
-#' @rdname bayesmr_full_fit-class
+#' @name bayesmr_het_fit-class
+#' @rdname bayesmr_het_fit-class
 #'
 #' @references
 #'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
-#' showClass("bayesmr_full_fit")
+#' showClass("bayesmr_het_fit")
 #'
-#' @exportClass bayesmr_full_fit
-setClass(Class = "bayesmr_full_fit",
+#' @exportClass bayesmr_het_fit
+setClass(Class = "bayesmr_het_fit",
   slots = c(
     gamma.chain = "array",
     beta.chain = "array",
@@ -1016,9 +989,9 @@ setClass(Class = "bayesmr_full_fit",
   )
 )
 
-#' Create an instance of the \code{bayesmr_full_fit} class using new/initialize.
+#' Create an instance of the \code{bayesmr_het_fit} class using new/initialize.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_full_fit}}.
+#' @param .Object Prototype object from the class \code{\link{bayesmr_het_fit}}.
 #' @param z.chain An object of class \code{array}; posterior draws from
 #'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
 #' @param z.chain.p An object of class \code{array}; posterior draws from
@@ -1057,13 +1030,13 @@ setClass(Class = "bayesmr_full_fit",
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases initialize,bayesmr_full_fit-method
-#' @aliases bayesmr_full_fit-initialize
+#' @aliases initialize,bayesmr_het_fit-method
+#' @aliases bayesmr_het_fit-initialize
 #' 
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize",
-  "bayesmr_full_fit",
+  "bayesmr_het_fit",
     function(
       .Object,
       gamma.chain = array(),
@@ -1081,8 +1054,8 @@ setMethod("initialize",
     {
       .Object@gamma.chain <- gamma.chain
       .Object@beta.chain <- beta.chain
-      .Object@psi.chain <- beta.chain
-      .Object@tau.chain <- beta.chain
+      .Object@psi.chain <- psi.chain
+      .Object@tau.chain <- tau.chain
       .Object@accept <- accept
       .Object@data <- data
       .Object@dens <- dens
@@ -1094,19 +1067,19 @@ setMethod("initialize",
     }
 )
 
-#' Show an instance of the \code{bayesmr_full_fit} class.
+#' Show an instance of the \code{bayesmr_het_fit} class.
 #'
-#' @param object An object of class \code{\link{bayesmr_full_fit}}.
+#' @param object An object of class \code{\link{bayesmr_het_fit}}.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases show,bayesmr_full_fit-method
-#' @aliases bayesmr_full_fit-show
+#' @aliases show,bayesmr_het_fit-method
+#' @aliases bayesmr_het_fit-show
 #' 
 #' @importFrom methods show
 #' @exportMethod show
 setMethod("show",
-  "bayesmr_full_fit",
+  "bayesmr_het_fit",
   function(object) {
     cat("Bayesian Two-Sample Summary Data simulated chain\n")
     # cat("Number of latent dimensions (p):", object@model@p, "\n")
@@ -1116,9 +1089,9 @@ setMethod("show",
   }
 )
 
-#' Provide a summary of a \code{bayesmr_full_fit} class instance.
+#' Provide a summary of a \code{bayesmr_het_fit} class instance.
 #'
-#' @param object An object of class \code{\link{bayesmr_full_fit}}.
+#' @param object An object of class \code{\link{bayesmr_het_fit}}.
 #' @param include.burnin A length-one logical vector. If \code{TRUE} the
 #'   burnin iterations (if available) are included in the summary.
 #' @param summary.Z A length-one logical vector. If \code{TRUE} the summary
@@ -1127,12 +1100,12 @@ setMethod("show",
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases summary,bayesmr_full_fit-method
-#' @aliases bayesmr_full_fit-summary
+#' @aliases summary,bayesmr_het_fit-method
+#' @aliases bayesmr_het_fit-summary
 #' 
 #' @exportMethod summary
 setMethod("summary",
-  "bayesmr_full_fit",
+  "bayesmr_het_fit",
     function(object, include.burnin = FALSE, ...) {
       control <- object@control
 
@@ -1140,7 +1113,7 @@ setMethod("summary",
       p <- object@dim[["p"]]
       G <- object@dim[["G"]]
 
-      res.coda <- bayesmr_full_fit_to_mcmc(object, include.burnin = include.burnin, verbose = FALSE)
+      res.coda <- bayesmr_het_fit_to_mcmc(object, include.burnin = include.burnin, verbose = FALSE)
 
       out <- summary(res.coda)
 
@@ -1151,9 +1124,9 @@ setMethod("summary",
 #' @export
 setGeneric("subset", function(x) standardGeneric("subset"))
 
-#' Subsetting a \code{bayesmr_full_fit} object.
+#' Subsetting a \code{bayesmr_het_fit} object.
 #'
-#' @param x An object of class \code{\link{bayesmr_full_fit}}.
+#' @param x An object of class \code{\link{bayesmr_het_fit}}.
 #' @param pars An optional character vector of parameter names. If neither 
 #'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
 #'   parameters.
@@ -1164,14 +1137,14 @@ setGeneric("subset", function(x) standardGeneric("subset"))
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases subset,bayesmr_full_fit-method
-#' @aliases bayesmr_full_fit-subset
+#' @aliases subset,bayesmr_het_fit-method
+#' @aliases bayesmr_het_fit-subset
 #' 
 #' @export
 setMethod("subset",
-  "bayesmr_full_fit",
+  "bayesmr_het_fit",
   function(x, pars = character(), regex_pars = character(), ...) {
-    x_mcmc <- bayesmr_full_fit_to_mcmc(x, include.burnin = TRUE, verbose = FALSE)
+    x_mcmc <- bayesmr_het_fit_to_mcmc(x, include.burnin = TRUE, verbose = FALSE)
 
     parnames <- colnames(x_mcmc)
     pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
@@ -1182,9 +1155,9 @@ setMethod("subset",
   }
 )
 
-#' Provide a graphical summary of a \code{bayesmr_full_fit} class instance.
+#' Provide a graphical summary of a \code{bayesmr_het_fit} class instance.
 #'
-#' @param x An object of class \code{\link{bayesmr_full_fit}}.
+#' @param x An object of class \code{\link{bayesmr_het_fit}}.
 #' @param what A length-one character vector providing the plot type to produce.
 #'   Admissible values are those provided by the \pkg{\link{bayesplot}} package,
 #'   that is: \code{acf}, \code{areas}, \code{dens}, \code{hex}, \code{hist},
@@ -1206,12 +1179,12 @@ setMethod("subset",
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases plot,bayesmr_full_fit-method
-#' @aliases bayesmr_full_fit-plot
+#' @aliases plot,bayesmr_het_fit-method
+#' @aliases bayesmr_het_fit-plot
 #' 
 #' @exportMethod plot
 setMethod("plot",
-  signature(x = "bayesmr_full_fit"),
+  signature(x = "bayesmr_het_fit"),
   function(x, what = "trace", pars = character(), regex_pars = "lambda", include.burnin = FALSE,
     combo = NULL, ...) {
     stopifnot(is.character(pars),
@@ -1221,7 +1194,7 @@ setMethod("plot",
     if (!(what %in% unlist(all_plots_list, use.names = FALSE)))
       stop("the plot type specified is not available.")
 
-    x_mcmc <- bayesmr_full_fit_to_mcmc(x, include.burnin = include.burnin, verbose = FALSE)
+    x_mcmc <- bayesmr_het_fit_to_mcmc(x, include.burnin = include.burnin, verbose = FALSE)
 
     control <- x@control
 
@@ -1354,16 +1327,16 @@ setMethod("plot",
 #'   An S4 class to represent the results of fitting BayesMR model using multiple
 #'   Markov Chain Monte Carlo chains.
 #'
-#' @slot results An object of class \code{list}; list of \code{bayesmr_full_fit}
+#' @slot results An object of class \code{list}; list of \code{bayesmr_het_fit}
 #'   objects corresponding to the parallel MCMC chains simulated during the
 #'   estimation.
 #'
-#' @name bayesmr_full_fit_list-class
-#' @rdname bayesmr_full_fit_list-class
-#' @aliases bayesmr_full_fit_list
+#' @name bayesmr_het_fit_list-class
+#' @rdname bayesmr_het_fit_list-class
+#' @aliases bayesmr_het_fit_list
 #'
 #' @seealso
-#' \code{\link{bayesmr_full_fit}} for more details on the components of each element of
+#' \code{\link{bayesmr_het_fit}} for more details on the components of each element of
 #'   the list.
 #'
 #' @references
@@ -1371,29 +1344,29 @@ setMethod("plot",
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #'
 #' @examples
-#' showClass("bayesmr_full_fit_list")
+#' showClass("bayesmr_het_fit_list")
 #'
-#' @exportClass bayesmr_full_fit_list
-setClass(Class = "bayesmr_full_fit_list",
+#' @exportClass bayesmr_het_fit_list
+setClass(Class = "bayesmr_het_fit_list",
   slots = c(
     results = "list"
   )
 )
 
-#' Create an instance of the \code{bayesmr_full_fit_list} class using new/initialize.
+#' Create an instance of the \code{bayesmr_het_fit_list} class using new/initialize.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_full_fit_list}}.
-#' @param results A list whose elements are the \code{bayesmr_full_fit} objects for
+#' @param .Object Prototype object from the class \code{\link{bayesmr_het_fit_list}}.
+#' @param results A list whose elements are the \code{bayesmr_het_fit} objects for
 #'   each simulated chain.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases initialize,bayesmr_full_fit_list-method
-#' @aliases bayesmr_full_fit_list-initialize
+#' @aliases initialize,bayesmr_het_fit_list-method
+#' @aliases bayesmr_het_fit_list-initialize
 #' 
 #' @importFrom methods initialize
 #' @exportMethod initialize
-setMethod("initialize", "bayesmr_full_fit_list",
+setMethod("initialize", "bayesmr_het_fit_list",
   function(
     .Object,
     results = list()
@@ -1404,19 +1377,19 @@ setMethod("initialize", "bayesmr_full_fit_list",
   }
 )
 
-#' Show an instance of the \code{bayesmr_full_fit_list} class.
+#' Show an instance of the \code{bayesmr_het_fit_list} class.
 #'
-#' @param object An object of class \code{\link{bayesmr_full_fit_list}}.
+#' @param object An object of class \code{\link{bayesmr_het_fit_list}}.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases show,bayesmr_full_fit_list-method
-#' @aliases bayesmr_full_fit_list-show
+#' @aliases show,bayesmr_het_fit_list-method
+#' @aliases bayesmr_het_fit_list-show
 #' 
 #' @importFrom methods show
 #' @exportMethod show
 setMethod("show",
-  "bayesmr_full_fit_list",
+  "bayesmr_het_fit_list",
   function(object) {
     cat("List of Bayesian Two-Sample Summary Data simulated chains\n")
     cat("Number of simulated chains:", length(object@results), "\n")
@@ -1427,9 +1400,9 @@ setMethod("show",
   }
 )
 
-#' Provide a summary of a \code{bayesmr_full_fit_list} class instance.
+#' Provide a summary of a \code{bayesmr_het_fit_list} class instance.
 #'
-#' @param object An object of class \code{\link{bayesmr_full_fit_list}}.
+#' @param object An object of class \code{\link{bayesmr_het_fit_list}}.
 #' @param include.burnin A length-one logical vector. If \code{TRUE} the
 #'   burnin iterations (if available) are included in the summary.
 #' @param summary.Z A length-one logical vector. If \code{TRUE} the summary
@@ -1438,12 +1411,12 @@ setMethod("show",
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases summary,bayesmr_full_fit_list-method
-#' @aliases bayesmr_full_fit_list-summary
+#' @aliases summary,bayesmr_het_fit_list-method
+#' @aliases bayesmr_het_fit_list-summary
 #' 
 #' @exportMethod summary
 setMethod("summary",
-  "bayesmr_full_fit_list",
+  "bayesmr_het_fit_list",
     function(object, include.burnin = FALSE, ...) {
       control <- object@results[[1]]@control
       nchains <- control[["nchains"]]
@@ -1452,7 +1425,7 @@ setMethod("summary",
       p <- object@results[[1]]@dim[["p"]]
       G <- object@results[[1]]@dim[["G"]]
 
-      res.coda <- bayesmr_full_fit_list_to_mcmc.list(object, include.burnin = include.burnin, verbose = FALSE)
+      res.coda <- bayesmr_het_fit_list_to_mcmc.list(object, include.burnin = include.burnin, verbose = FALSE)
 
       out <- summary(res.coda)
 
@@ -1460,9 +1433,9 @@ setMethod("summary",
     }
 )
 
-#' Subsetting a \code{bayesmr_full_fit_list} object.
+#' Subsetting a \code{bayesmr_het_fit_list} object.
 #'
-#' @param x An object of class \code{\link{bayesmr_full_fit_list}}.
+#' @param x An object of class \code{\link{bayesmr_het_fit_list}}.
 #' @param pars An optional character vector of parameter names. If neither 
 #'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
 #'   parameters.
@@ -1473,14 +1446,14 @@ setMethod("summary",
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases subset,bayesmr_full_fit_list-method
-#' @aliases bayesmr_full_fit_list-subset
+#' @aliases subset,bayesmr_het_fit_list-method
+#' @aliases bayesmr_het_fit_list-subset
 #' 
 #' @export
 setMethod("subset",
-  "bayesmr_full_fit_list",
+  "bayesmr_het_fit_list",
   function(x, pars = character(), regex_pars = character(), ...) {
-    x_mcmc.list <- bayesmr_full_fit_list_to_mcmc.list(x, include.burnin = TRUE, verbose = FALSE)
+    x_mcmc.list <- bayesmr_het_fit_list_to_mcmc.list(x, include.burnin = TRUE, verbose = FALSE)
 
     parnames <- colnames(x_mcmc.list[[1]])
     pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
@@ -1491,9 +1464,9 @@ setMethod("subset",
   }
 )
 
-#' Provide a graphical summary of a \code{bayesmr_full_fit_list} class instance.
+#' Provide a graphical summary of a \code{bayesmr_het_fit_list} class instance.
 #'
-#' @param x An object of class \code{\link{bayesmr_full_fit_list}}.
+#' @param x An object of class \code{\link{bayesmr_het_fit_list}}.
 #' @param what A length-one character vector providing the plot type to produce.
 #'   Admissible values are those provided by the \pkg{\link{bayesplot}} package,
 #'   that is: \code{acf}, \code{areas}, \code{dens}, \code{hex}, \code{hist},
@@ -1515,12 +1488,12 @@ setMethod("subset",
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @aliases plot,bayesmr_full_fit_list-method
-#' @aliases bayesmr_full_fit_list-plot
+#' @aliases plot,bayesmr_het_fit_list-method
+#' @aliases bayesmr_het_fit_list-plot
 #' 
 #' @exportMethod plot
 setMethod("plot",
-  signature(x = "bayesmr_full_fit_list"),
+  signature(x = "bayesmr_het_fit_list"),
   function(x, what = "trace", pars = character(), regex_pars = "lambda", include.burnin = FALSE,
     combo = NULL, ...) {
     stopifnot(is.character(pars),
@@ -1530,7 +1503,7 @@ setMethod("plot",
     if (!(what %in% unlist(all_plots_list, use.names = FALSE)))
       stop("the plot type specified is not available.")
 
-    x_mcmc.list <- bayesmr_full_fit_list_to_mcmc.list(x, include.burnin = include.burnin, verbose = FALSE)
+    x_mcmc.list <- bayesmr_het_fit_list_to_mcmc.list(x, include.burnin = include.burnin, verbose = FALSE)
 
     control <- x@results[[1]]@control
 

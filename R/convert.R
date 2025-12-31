@@ -239,43 +239,12 @@ bayesmr_fit_list_to_mcmc.list <- function(res, include.burnin = FALSE, verbose =
   return(out)
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#' Conversion of an \code{bayesmr_full_fit} object to an object of class \code{mcmc}.
+#' Conversion of an \code{bayesmr_het_fit} object to an object of class \code{mcmc}.
 #' 
-#' \code{bayesmr_full_fit_to_mcmc} converts an object of class \code{bayesmr_full_fit}
+#' \code{bayesmr_het_fit_to_mcmc} converts an object of class \code{bayesmr_het_fit}
 #'   to an object with class \code{mcmc}.
 #' 
-#' @param res An object of type \code{bayesmr_full_fit}.
+#' @param res An object of type \code{bayesmr_het_fit}.
 #' @param include.burnin A logical scalar. If \code{TRUE} the burnin
 #'   iterations (if available) are not removed.
 #' @param verbose A logical scalar. If \code{TRUE} prints additional
@@ -283,7 +252,7 @@ bayesmr_fit_list_to_mcmc.list <- function(res, include.burnin = FALSE, verbose =
 #' @return An object of type \code{mcmc}.
 #' @seealso
 #'   \code{\link{bayesmr}()} for for fitting a DMBC model;
-#'   \code{\link{bayesmr_full_fit-class}};
+#'   \code{\link{bayesmr_het_fit-class}};
 #'   \code{\link[coda]{mcmc}}.
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #' @examples
@@ -302,11 +271,11 @@ bayesmr_fit_list_to_mcmc.list <- function(res, include.burnin = FALSE, verbose =
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], verbose = TRUE)
 #' sim.bayesmr <- bayesmr(simdiss, p, G, control)
-#' sim.mcmc <- bayesmr_full_fit_to_mcmc(sim.bayesmr@results[[1]], TRUE)
+#' sim.mcmc <- bayesmr_het_fit_to_mcmc(sim.bayesmr@results[[1]], TRUE)
 #' plot(sim.mcmc)
 #' }
 #' @export
-bayesmr_full_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE) {
+bayesmr_het_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE) {
   control <- res@control
   burnin <- control[["burnin"]]
   nsim <- control[["nsim"]]
@@ -365,13 +334,13 @@ bayesmr_full_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE
   return(out)
 }
 
-#' Conversion of an \code{bayesmr_full_fit_list} object to a \code{list}.
+#' Conversion of an \code{bayesmr_het_fit_list} object to a \code{list}.
 #' 
-#' \code{bayesmr_full_fit_list_to_list} converts an object of class
-#'   \code{bayesmr_full_fit_list} to a list of arrays including all the parameter.
+#' \code{bayesmr_het_fit_list_to_list} converts an object of class
+#'   \code{bayesmr_het_fit_list} to a list of arrays including all the parameter.
 #'   chains. It is intended for internal use mainly.
 #' 
-#' @param res An object of type \code{bayesmr_full_fit_list}.
+#' @param res An object of type \code{bayesmr_het_fit_list}.
 #' @param include.burnin A logical scalar. If \code{TRUE} the burnin
 #'   iterations (if available) are not removed.
 #' @param verbose A logical scalar. If \code{TRUE} prints additional
@@ -379,7 +348,7 @@ bayesmr_full_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE
 #' @return An object of type \code{mcmc.list}.
 #' @seealso
 #'   \code{\link{bayesmr}()} for for fitting a DMBC model;
-#'   \code{\link{bayesmr_full_fit_list-class}}.
+#'   \code{\link{bayesmr_het_fit_list-class}}.
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #' @examples
 #' \dontrun{
@@ -397,13 +366,13 @@ bayesmr_full_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
 #' sim.bayesmr <- bayesmr(simdiss, p, G, control)
-#' sim.list <- bayesmr_full_fit_list_to_list(sim.bayesmr, TRUE)
+#' sim.list <- bayesmr_het_fit_list_to_list(sim.bayesmr, TRUE)
 #' 
 #' library(bayesplot)
 #' mcmc_trace(sim.list, regex_pars = "lambda")
 #' }
 #' @export
-bayesmr_full_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = TRUE) {
+bayesmr_het_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = TRUE) {
   control <- res@results[[1]]@control
   burnin <- control[["burnin"]]
   nsim <- control[["nsim"]]
@@ -458,13 +427,13 @@ bayesmr_full_fit_list_to_list <- function(res, include.burnin = FALSE, verbose =
   return(out)
 }
 
-#' Conversion of an \code{bayesmr_full_fit_list} object to an object of class
+#' Conversion of an \code{bayesmr_het_fit_list} object to an object of class
 #'   \code{mcmc.list}.
 #' 
-#' \code{bayesmr_full_fit_list_to_mcmc.list} converts an object of class
-#'   \code{bayesmr_full_fit_list} to an object with class \code{mcmc.list}.
+#' \code{bayesmr_het_fit_list_to_mcmc.list} converts an object of class
+#'   \code{bayesmr_het_fit_list} to an object with class \code{mcmc.list}.
 #' 
-#' @param res An object of type \code{bayesmr_full_fit_list}.
+#' @param res An object of type \code{bayesmr_het_fit_list}.
 #' @param include.burnin A logical scalar. If \code{TRUE} the burnin
 #'   iterations (if available) are not removed.
 #' @param verbose A logical scalar. If \code{TRUE} prints additional
@@ -472,7 +441,7 @@ bayesmr_full_fit_list_to_list <- function(res, include.burnin = FALSE, verbose =
 #' @return An object of type \code{mcmc.list}.
 #' @seealso
 #'   \code{\link{bayesmr}()} for for fitting a DMBC model;
-#'   \code{\link{bayesmr_full_fit_list-class}};
+#'   \code{\link{bayesmr_het_fit_list-class}};
 #'   \code{\link[coda]{mcmc.list}}.
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #' @examples
@@ -491,11 +460,11 @@ bayesmr_full_fit_list_to_list <- function(res, include.burnin = FALSE, verbose =
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
 #' sim.bayesmr <- bayesmr(simdiss, p, G, control)
-#' sim.mcmc <- bayesmr_full_fit_list_to_mcmc.list(sim.bayesmr, TRUE)
+#' sim.mcmc <- bayesmr_het_fit_list_to_mcmc.list(sim.bayesmr, TRUE)
 #' plot(sim.mcmc)
 #' }
 #' @export
-bayesmr_full_fit_list_to_mcmc.list <- function(res, include.burnin = FALSE, verbose = TRUE) {
+bayesmr_het_fit_list_to_mcmc.list <- function(res, include.burnin = FALSE, verbose = TRUE) {
   control <- res@results[[1]]@control
   burnin <- control[["burnin"]]
   nsim <- control[["nsim"]]
@@ -504,7 +473,7 @@ bayesmr_full_fit_list_to_mcmc.list <- function(res, include.burnin = FALSE, verb
   store.burnin <- control[["store.burnin"]]
   totiter <- burnin + nsim
 
-  out <- bayesmr_full_fit_list_to_list(res, include.burnin = include.burnin, verbose = verbose)
+  out <- bayesmr_het_fit_list_to_list(res, include.burnin = include.burnin, verbose = verbose)
   if (store.burnin) {
     if (include.burnin) {
       out <- lapply(out, coda::mcmc, start = 1, end = totiter, thin = thin)

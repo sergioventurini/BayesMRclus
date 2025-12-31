@@ -66,6 +66,8 @@ bayesmr_control <- function(nsim = 5000,
                             seed = NULL,
                             parallel = "no",
                             beta.prop = 1.5,
+                            psi.prop = .1,
+                            tau.prop = .1,
                             random.start = TRUE,
                             partition = NULL,
                             procrustes = TRUE,
@@ -122,6 +124,14 @@ check_control <- function(control) {
     return(control_ok)
   }
   if (control[["beta.prop"]] < 0) {
+    control_ok <- FALSE
+    return(control_ok)
+  }
+  if (control[["psi.prop"]] < 0) {
+    control_ok <- FALSE
+    return(control_ok)
+  }
+  if (control[["tau.prop"]] < 0) {
     control_ok <- FALSE
     return(control_ok)
   }

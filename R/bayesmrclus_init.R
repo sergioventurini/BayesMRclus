@@ -87,11 +87,16 @@ bayesmr_init <- function(data, p, G, random.start, partition) {
   #   sigma2[g] <- vcov(alpha.glm)[1, 1]
   # }
   
+  # initialize psi and tau
+  psi_tau <- rhalft(2, alpha = .01, nu = 3)
+  psi <- psi_tau[1]
+  tau <- psi_tau[2]
+
   # initialize gamma
   gamma <- rnorm(1, mean = 0, sd = .1)
 
   # initialize beta
   beta <- rnorm(1, mean = 0, sd = .1)
   
-  return(list(gamma = gamma, beta = beta))
+  list(gamma = gamma, beta = beta, psi = psi, tau = tau)
 }

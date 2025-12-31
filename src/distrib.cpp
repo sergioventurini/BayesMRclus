@@ -294,13 +294,35 @@ std::vector<double> dhalft(const std::vector<double>& x, const std::vector<doubl
         + R::lgammafn((ni + 1.0) / 2.0)
         - R::lgammafn(ni / 2.0)
         - 0.5 * std::log(M_PI * ni)
-        - (ni + 1.0) / 2.0 *
-          std::log(1.0 + (xi / ai) * (xi / ai) / ni);
+        - (ni + 1.0) / 2.0 * std::log(1.0 + (xi / ai) * (xi / ai) / ni);
 
     out[i] = logscale ? log_dens : std::exp(log_dens);
   }
 
   return out;
+}
+
+double dhalft_scalar(const double& x, const double& alpha,
+  const double& nu, bool logscale){
+  if (alpha <= 0.0)
+    throw std::domain_error("The alpha (scale) parameter must be positive.");
+  if (nu <= 0.0)
+    throw std::domain_error("The nu (df) parameter must be positive.");
+
+  // support
+  if (x < 0.0)
+    return logscale ? R_NegInf : 0.0;
+
+  const double log_dens =
+      std::log(2.0)
+      - std::log(alpha)
+      + R::lgammafn((nu + 1.0) / 2.0)
+      - R::lgammafn(nu / 2.0)
+      - 0.5 * std::log(M_PI * nu)
+      - (nu + 1.0) / 2.0 *
+        std::log(1.0 + (x / alpha) * (x / alpha) / nu);
+
+  return logscale ? log_dens : std::exp(log_dens);
 }
 
 std::vector<double> pst(const std::vector<double>& q, const std::vector<double>& mu,

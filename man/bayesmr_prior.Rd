@@ -9,6 +9,8 @@
 bayesmr_prior(
   gammaj = list(psi2 = 1),
   Gammaj = list(tau2 = 1),
+  psi = list(alpha = 0.1, nu = 3),
+  tau = list(alpha = 0.1, nu = 3),
   gamma = list(mean = 0, var = 1),
   beta = list(mean = 0, var = 1)
 )
@@ -16,6 +18,8 @@ bayesmr_prior(
 prior_bayesmr(
   gammaj = list(psi2 = 1),
   Gammaj = list(tau2 = 1),
+  psi = list(alpha = 0.1, nu = 3),
+  tau = list(alpha = 0.1, nu = 3),
   gamma = list(mean = 0, var = 1),
   beta = list(mean = 0, var = 1)
 )

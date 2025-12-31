@@ -381,3 +381,118 @@ logpost_beta <- function(beta, gamma, prior, data, log = TRUE) {
 
   res
 }
+
+#' @export
+gamma_beta_psi_tau_post <- function(gamma, beta, psi, tau, data, prior, log = TRUE) {
+  # unpack data
+  gammahat_j <- data[, 1]  # SNP-Exposure effect
+  Gammahat_j <- data[, 2]  # SNP-Outcome effect
+  sigma2_X <- data[, 3]^2  # SNP-Exposure effect variance
+  sigma2_Y <- data[, 4]^2  # SNP-Outcome effect variance
+
+  # unpack prior
+  mu_gamma <- prior[["gamma"]][["mean"]]
+  sigma2_gamma <- prior[["gamma"]][["var"]]
+  mu_beta <- prior[["beta"]][["mean"]]
+  sigma2_beta <- prior[["beta"]][["var"]]
+  alpha_psi <- prior[["psi"]][["alpha"]]
+  nu_psi <- prior[["psi"]][["nu"]]
+  alpha_tau <- prior[["tau"]][["alpha"]]
+  nu_tau <- prior[["tau"]][["nu"]]
+
+  gamma_len <- length(gamma)
+  beta_len <- length(beta)
+  psi_len <- length(psi)
+  tau_len <- length(tau)
+  res <- array(NA, dim = c(gamma_len, beta_len, psi_len, tau_len))
+
+  for (g in 1:gamma_len) {
+    p_gamma <- (gamma[g] - mu_gamma)^2/sigma2_gamma
+    for (p in 1:psi_len) {
+      psi2 <- psi[p]^2
+      psi2_j <- sigma2_X + psi2
+      p_psi <- (1 + (psi[p]/alpha_psi)^2/nu_psi)^(-(nu_psi + 1)/2)
+      for (t in 1:tau_len) {
+        tau2 <- tau[t]^2
+        tau2_j <- sigma2_Y + tau2
+        p_tau <- (1 + (tau[t]/alpha_tau)^2/nu_tau)^(-(nu_tau + 1)/2)
+        for (b in 1:beta_len) {
+          a_j <- beta[b]^2*psi2 + tau2_j
+          c_beta <- beta[b]*psi2
+          v_j <- psi2_j*a_j - c_beta^2  # same as beta[b]^2*psi2*sigma2_X + psi2_j*tau2_j
+          p_gj <- a_j*(gammahat_j - gamma[g])^2
+          p_Gj <- psi2_j*(Gammahat_j - beta[b]*gamma[g])^2
+          p_gj_Gj <- -2*c_beta*(gammahat_j - gamma[g])*(Gammahat_j - beta[b]*gamma[g])
+          p_beta <- (beta[b] - mu_beta)^2/sigma2_beta
+          
+          res[g, b, p, t] <- -0.5*(sum(log(v_j) + (p_gj + p_Gj + p_gj_Gj)/v_j) + p_gamma + p_psi + p_tau + p_beta)
+        }
+      }
+    }
+  }
+  res <- res[, , , , drop = TRUE]
+
+  if (!log) res <- exp(res)
+
+  res
+}
+
+#' Log-likelihood for BayesMR models.
+#'
+#' \code{bayesmr_het_logLik()} computes the log-likelihood value for a BayesMR model.
+#'
+#' @param gamma A length-one numeric vector containing the gamma parameter value
+#' @param beta A length-one numeric vector containing the beta parameter value
+#' @param data An object of class \code{\link{bayesmr_data}}).
+#' @param prior A list containing the prior hyperparameters. See
+#'   \code{\link{bayesmr_prior}()} for more details.
+#'
+#' @return A numeric matrix of the log-likelihood values.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @seealso \code{\link{bayesmr}()}.
+#'
+#' @references
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#'
+#' @export
+bayesmr_het_logLik <- function(gamma, beta, psi, tau, data, log = TRUE) {
+  n <- nrow(data)
+
+  gammaj_hat <- data[, 1]
+  Gammaj_hat <- data[, 2]
+  sigmaj_X <- data[, 3]
+  sigmaj_Y <- data[, 4]
+  
+  gamma_len <- length(gamma)
+  beta_len <- length(beta)
+  psi_len <- length(psi)
+  tau_len <- length(tau)
+  res <- array(NA, dim = c(gamma_len, beta_len, psi_len, tau_len))
+  ll <- numeric(n)
+
+  for (g in 1:gamma_len) {
+    for (b in 1:beta_len) {
+      for (p in 1:psi_len) {
+        psi2_j <- sigmaj_X^2 + psi[p]^2
+        for (t in 1:tau_len) {
+          tau2_j <- sigmaj_Y^2 + tau[t]^2
+          for (i in 1:n) {
+            ll[i] <- dbivnorm(gammaj_hat[i], Gammaj_hat[i],
+                              gamma[g], beta[b]*gamma[g],
+                              psi2_j[i], beta[b]^2*psi[p]^2 + tau2_j[i], beta[b]*psi[p]^2,
+                              log = TRUE)
+          }
+          res[g, b, p, t] <- sum(ll)
+        }
+      }
+    }
+  }
+  res <- res[, , , , drop = TRUE]
+
+  if (!log) res <- exp(res)
+
+  res
+}

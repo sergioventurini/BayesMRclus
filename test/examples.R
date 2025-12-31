@@ -28,12 +28,15 @@ nsim <- 200000
 
 nchains <- 3
 control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
-                random.start = TRUE, verbose = TRUE, nchains = nchains, thin = 100,
-                store.burnin = TRUE, threads = nchains, parallel = "snow")
+                random.start = TRUE, verbose = TRUE, nchains = nchains, thin = 50,
+                store.burnin = TRUE, threads = ifelse(
+                  nchains <= parallel::detectCores(),
+                  nchains, parallel::detectCores() - 1),
+                parallel = "snow")
 
 # tau2_est <- tau2_dl(data_tmp, secondorder = TRUE)
-prior <- bayesmr_prior(gammaj = list(psi2 = .0001),
-                       Gammaj = list(tau2 = .0001),
+prior <- bayesmr_prior(gammaj = list(psi2 = .0001080392),
+                       Gammaj = list(tau2 = .0005981383),
                        gamma = list(mean = 0, var = 1e2),
                        beta = list(mean = 0, var = 1e2))
 
@@ -71,7 +74,7 @@ HPDinterval(res_BMR_sub)
 heidel.diag(res_BMR_sub)
 densplot(res_BMR_sub)
 
-# contour plot showing the sampled values
+# (unnormalized) posterior contour plot showing the sampled values
 gamma_min <- 0
 gamma_max <- 0.03
 beta_min  <- -0.5

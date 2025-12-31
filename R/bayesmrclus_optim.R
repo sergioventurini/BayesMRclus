@@ -15,6 +15,25 @@ bayesmr_logLik_optim <- function(par, data, prior) {
 }
 
 # needed because optim() requires a function returning a scalar
+bayesmr_het_logLik_optim <- function(par, data) {
+  gamma <- par[1]
+  beta  <- par[2]
+  psi  <- par[3]
+  tau  <- par[4]
+
+  as.numeric(
+    bayesmr_het_logLik(
+      gamma = gamma,
+      beta  = beta,
+      psi = psi,
+      tau = tau,
+      data  = data,
+      log   = TRUE
+    )
+  )
+}
+
+# needed because optim() requires a function returning a scalar
 gamma_beta_logpost_optim <- function(par, data, prior) {
   gamma <- par[1]
   beta  <- par[2]
@@ -23,6 +42,26 @@ gamma_beta_logpost_optim <- function(par, data, prior) {
     gamma_beta_post(
       gamma = gamma,
       beta  = beta,
+      data  = data,
+      prior = prior,
+      log   = TRUE
+    )
+  )
+}
+
+# needed because optim() requires a function returning a scalar
+gamma_beta_psi_tau_logpost_optim <- function(par, data, prior) {
+  gamma <- par[1]
+  beta  <- par[2]
+  psi  <- par[3]
+  tau  <- par[4]
+
+  as.numeric(
+    gamma_beta_psi_tau_post(
+      gamma = gamma,
+      beta  = beta,
+      psi = psi,
+      tau = tau,
       data  = data,
       prior = prior,
       log   = TRUE
@@ -108,6 +147,7 @@ bayesmr_noclus_mle <- function(
     solve(-opt$hessian),
     error = function(e) matrix(NA, 2, 2)
   )
+  sd <- sqrt(diag(vcov))
 
   # return results
   list(
@@ -116,8 +156,42 @@ bayesmr_noclus_mle <- function(
     convergence = opt$convergence,
     hessian = opt$hessian,
     vcov = vcov,
-    sd = sqrt(diag(vcov)),
-    optim = opt
+    sd = sd,
+    message = opt$message
+  )
+}
+
+#' @export
+bayesmr_noclus_het_mle <- function(
+  data,
+  init = c(gamma = 0, beta = 0, psi = 0.0001, tau = 0.0001),
+  control = list(fnscale = -1, factr = 1e7, maxit = 1000)) {
+  opt <- optim(
+    par = init,
+    fn = bayesmr_het_logLik_optim,
+    data = data,
+    method = "L-BFGS-B",
+    hessian = TRUE,
+    control = control,
+    lower = c(rep(-Inf, 2), rep(0, 2)),
+    upper = c(rep(Inf, 4))
+  )
+
+  vcov <- tryCatch(
+    solve(-opt$hessian),
+    error = function(e) matrix(NA, 2, 2)
+  )
+  sd <- sqrt(diag(vcov))
+
+  # return results
+  list(
+    par = setNames(opt$par, c("gamma", "beta", "psi", "tau")),
+    value = opt$value,
+    convergence = opt$convergence,
+    hessian = opt$hessian,
+    vcov = vcov,
+    sd = sd,
+    message = opt$message
   )
 }
 
@@ -183,14 +257,13 @@ bayesmr_noclus_optim <- function(
   data,
   prior,
   init = c(gamma = 0, beta = 0),
-  method = "BFGS",
   control = list(fnscale = -1, reltol = 1e-10, maxit = 1000)) {
   opt <- optim(
     par = init,
     fn = gamma_beta_logpost_optim,
     data = data,
     prior = prior,
-    method = method,
+    method = "BFGS",
     hessian = TRUE,
     control = control
   )
@@ -199,6 +272,7 @@ bayesmr_noclus_optim <- function(
     solve(-opt$hessian),
     error = function(e) matrix(NA, 2, 2)
   )
+  sd <- sqrt(diag(vcov))
 
   # return results
   list(
@@ -207,7 +281,43 @@ bayesmr_noclus_optim <- function(
     convergence = opt$convergence,
     hessian = opt$hessian,
     vcov = vcov,
-    sd = sqrt(diag(vcov)),
-    optim = opt
+    sd = sd,
+    message = opt$message
+  )
+}
+
+#' @export
+bayesmr_noclus_het_optim <- function(
+  data,
+  prior,
+  init = c(gamma = 0, beta = 0, psi = 0.0001, tau = 0.0001),
+  control = list(fnscale = -1, factr = 1e7, maxit = 1000)) {
+  opt <- optim(
+    par = init,
+    fn = gamma_beta_psi_tau_logpost_optim,
+    data = data,
+    prior = prior,
+    method = "L-BFGS-B",
+    hessian = TRUE,
+    control = control,
+    lower = c(rep(-Inf, 2), rep(0, 2)),
+    upper = c(rep(Inf, 4))
+  )
+
+  vcov <- tryCatch(
+    solve(-opt$hessian),
+    error = function(e) matrix(NA, 4, 4)
+  )
+  sd <- sqrt(diag(vcov))
+
+  # return results
+  list(
+    par = setNames(opt$par, c("gamma", "beta", "psi", "tau")),
+    value = opt$value,
+    convergence = opt$convergence,
+    hessian = opt$hessian,
+    vcov = vcov,
+    sd = sd,
+    message = opt$message
   )
 }
