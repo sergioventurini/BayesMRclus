@@ -56,16 +56,6 @@ plot(res_BMR, what = "trace", regex_pars = "gamma")
 # plot(res_BMR, what = "intervals", regex_pars = "beta")
 # plot(res_BMR, what = "acf_bar", regex_pars = "tau")
 
-# ch <- 1
-# beta_c <- res_BMR@results[[ch]]@beta.chain[1001:3000]
-# plot(beta_c, type = "l")
-# gamma_c <- res_BMR@results[[ch]]@gamma.chain[1001:3000]
-# plot(gamma_c, type = "l")
-# beta_gamma_c <- beta_c*gamma_c
-# plot(beta_gamma_c, type = "l")
-# summary(beta_gamma_c)
-# plot(beta_c, gamma_c, pch = 20)
-
 # coda analyses
 library(coda)
 # res_BMR_sub <- subset(res_BMR, regex_pars = c("gamma", "beta"))
