@@ -94,11 +94,57 @@ all.equal(map$value,
                                   map$par["psi"], map$par["tau"],
                                   data_tmp, prior, log = TRUE))
 
+# (unnormalized) posterior contour plot showing the sampled values
+gamma_min <- -.05
+gamma_max <- 0.1
+beta_min  <- -2.5
+beta_max  <- 3
+
+res <- 100
+gamma_vals <- seq(gamma_min, gamma_max, length.out = res)
+beta_vals  <- seq(beta_min, beta_max, length.out = res)
+
+psi_val <- map$par["psi"]
+tau_val <- map$par["tau"]
+
+post_vals <- gamma_beta_psi_tau_post(gamma_vals, beta_vals,
+                                     psi_val, tau_val,
+                                     data_tmp, prior, log = TRUE)
+
+df_plot <- expand.grid(gamma = gamma_vals, beta = beta_vals)
+df_plot$posterior <- as.vector(post_vals)
+
+res_BMR_sub <- subset(res_BMR, regex_pars = c("gamma", "beta"))
+sample_points <- res_BMR_sub[[1]]
+for (c in 2:control$nchains) {
+  sample_points <- rbind(sample_points, res_BMR_sub[[c]])
+}
+sample_points <- data.frame(sample_points)
+sample_points <- subset(
+  sample_points,
+  gamma >= gamma_min & gamma <= gamma_max &
+    beta >= beta_min & beta <= beta_max
+)
+
+ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
+  geom_contour_filled(bins = 20) +
+  scale_fill_viridis_d(option = "C") +
+  geom_point(data = sample_points, aes(x = gamma, y = beta),
+             color = "gray", size = 0.1, inherit.aes = FALSE) +
+  geom_segment(aes(x = map$par[1], xend = map$par[1],
+                   y = beta_min, yend = beta_max), color = "#21908C") +
+  geom_segment(aes(x = gamma_min, xend = gamma_max,
+                   y = map$par[2], yend = map$par[2]), color = "#21908C") +
+  geom_point(x = map$par[1], y = map$par[2], color = "#21908C", size = 3) +
+  labs(x = expression(gamma), y = expression(beta), fill = "Posterior") +
+  coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
+  theme_minimal(base_size = 14)
+
 # (unnormalized) joint psi/tau posterior contour plot showing the sampled values
 psi_min <- 0
-psi_max <- 0.035
+psi_max <- 0.075
 tau_min  <- 0
-tau_max  <- 0.075
+tau_max  <- 0.125
 
 res <- 100
 psi_vals <- seq(psi_min, psi_max, length.out = res)

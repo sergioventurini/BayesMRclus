@@ -94,6 +94,13 @@ void logpost_tau(double* lpost, const double tau,
   const double alpha_tau, const double nu_tau,
   const double* gammahat_j, const double* Gammahat_j,
   const double* sigma2_X, const double* sigma2_Y);
+void logpost_psi_tau(double* lpost,
+  const double psi, const double tau,
+  const double beta, const double gamma, int n,
+  const double alpha_psi, const double nu_psi,
+  const double alpha_tau, const double nu_tau,
+  const double* gammahat_j, const double* Gammahat_j,
+  const double* sigma2_X, const double* sigma2_Y);
 double bayesmr_logLik(const double beta, const double gamma,
   const double psi2, const double tau2, int n,
   const double* gammahat_j, const double* Gammahat_j,

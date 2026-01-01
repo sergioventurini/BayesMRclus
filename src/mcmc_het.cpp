@@ -153,7 +153,6 @@ void bayesmr_mcmc_noclus_het(
     // 3+4) Fixed MH update in (eta, omega)
     //      (no adaptation)
     // -------------------------------------
-
     const double beta_abs = std::fabs(beta_old);
 
     // current transformed parameters
@@ -185,46 +184,13 @@ void bayesmr_mcmc_noclus_het(
       psi_prop = eta_prop / beta_abs;
       tau_prop = std::sqrt(tmp);
 
-      // ---- proposed log-posterior ----
-      double lp_prop =
-        bayesmr_logLik(beta_old, gamma_old,
-                       psi_prop * psi_prop,
-                       tau_prop * tau_prop,
-                       n,
-                       gammahat_j.data(),
-                       Gammahat_j.data(),
-                       sigma2_X.data(),
-                       sigma2_Y.data());
+      logpost_psi_tau(&lpost_prop, psi_prop, tau_prop, beta_old, gamma_old, n,
+        rhyper_alpha_psi, rhyper_nu_psi, rhyper_alpha_tau, rhyper_nu_tau,
+        gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
 
-      lp_prop += dhalft_scalar(psi_prop,
-                               rhyper_alpha_psi,
-                               rhyper_nu_psi,
-                               true);
-
-      lp_prop += dhalft_scalar(tau_prop,
-                               rhyper_alpha_tau,
-                               rhyper_nu_tau,
-                               true);
-
-      // ---- current log-posterior ----
-      double lp_curr =
-        bayesmr_logLik(beta_old, gamma_old,
-                       psi2, tau2,
-                       n,
-                       gammahat_j.data(),
-                       Gammahat_j.data(),
-                       sigma2_X.data(),
-                       sigma2_Y.data());
-
-      lp_curr += dhalft_scalar(psi_old,
-                               rhyper_alpha_psi,
-                               rhyper_nu_psi,
-                               true);
-
-      lp_curr += dhalft_scalar(tau_old,
-                               rhyper_alpha_tau,
-                               rhyper_nu_tau,
-                               true);
+      logpost_psi_tau(&lpost_curr, psi_old, tau_old, beta_old, gamma_old, n,
+        rhyper_alpha_psi, rhyper_nu_psi, rhyper_alpha_tau, rhyper_nu_tau,
+        gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
 
       // ---- Jacobian correction ----
       // |J| = omega / (|beta| * tau)
@@ -232,7 +198,7 @@ void bayesmr_mcmc_noclus_het(
       double logJ_prop = std::log(omega_prop) - std::log(tau_prop);
       double logJ_curr = std::log(omega_old)  - std::log(tau_old);
 
-      double diff = (lp_prop + logJ_prop) - (lp_curr + logJ_curr);
+      double diff = (lpost_prop + logJ_prop) - (lpost_curr + logJ_curr);
       double prob = (diff >= 0.0 ? 1.0 : std::exp(diff));
 
       if (R::runif(0.0, 1.0) < prob) {
