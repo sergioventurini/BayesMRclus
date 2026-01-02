@@ -4,7 +4,7 @@
 \alias{logpost_gamma}
 \title{Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution}
 \usage{
-logpost_gamma(gamma, beta, prior, data)
+logpost_gamma(gamma, beta, prior, data, log = TRUE)
 }
 \arguments{
 \item{data}{Integer value specifying the total the number of iterations

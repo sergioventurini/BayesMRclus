@@ -102,7 +102,7 @@ bayesmr_logLik <- function(gamma, beta, data, prior, log = TRUE) {
 #' res$accept_rate
 #'
 #' @export
-gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE) {
+gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE, relative = FALSE) {
   # unpack data
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
@@ -142,6 +142,7 @@ gamma_beta_post <- function(gamma, beta, data, prior, log = TRUE) {
   res <- res[, , drop = TRUE]
 
   if (!log) res <- exp(res)
+  if (relative) res <- res/max(res, na.rm = TRUE)
 
   res
 }
@@ -254,7 +255,7 @@ gamma_marg_post_mode <- function(beta, data, prior) {
 #' summary(res)
 #'
 #' @export
-logpost_gamma <- function(gamma, beta, prior, data) {
+logpost_gamma <- function(gamma, beta, prior, data, log = TRUE) {
   # unpack data
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
@@ -277,9 +278,11 @@ logpost_gamma <- function(gamma, beta, prior, data) {
   A_beta <- sum(tau2_j/v_j + (beta^2)*sigma2_X/v_j) + 1/sigma2_gamma
   B_beta <- sum(tau2_j*gammahat_j/v_j + beta*sigma2_X*Gammahat_j/v_j) + mu_gamma/sigma2_gamma
 
-  res <- dnorm(gamma, B_beta/A_beta, sqrt(1/A_beta), log = TRUE)
+  res <- dnorm(gamma, B_beta/A_beta, sqrt(1/A_beta), log = log)
 
-  return(res)
+  if (!log) res <- exp(res)
+
+  res
 }
 
 #' Function to implement the Metropolis algorithm for an arbitrary posterior probability distribution
@@ -383,7 +386,7 @@ logpost_beta <- function(beta, gamma, prior, data, log = TRUE) {
 }
 
 #' @export
-gamma_beta_psi_tau_post <- function(gamma, beta, psi, tau, data, prior, log = TRUE) {
+gamma_beta_psi_tau_post <- function(gamma, beta, psi, tau, data, prior, log = TRUE, relative = FALSE) {
   # unpack data
   gammahat_j <- data[, 1]  # SNP-Exposure effect
   Gammahat_j <- data[, 2]  # SNP-Outcome effect
@@ -433,6 +436,7 @@ gamma_beta_psi_tau_post <- function(gamma, beta, psi, tau, data, prior, log = TR
   res <- res[, , , , drop = TRUE]
 
   if (!log) res <- exp(res)
+  if (relative) res <- res/max(res, na.rm = TRUE)
 
   res
 }

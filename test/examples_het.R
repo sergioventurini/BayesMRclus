@@ -85,7 +85,7 @@ all.equal(map$value,
                                   map$par["psi"], map$par["tau"],
                                   data_tmp, prior, log = TRUE))
 
-# (unnormalized) posterior contour plot showing the sampled values
+# (unnormalized) log-posterior contour plot showing the sampled values
 gamma_min <- -.05
 gamma_max <- 0.1
 beta_min  <- -2.5
@@ -100,7 +100,8 @@ tau_val <- map$par["tau"]
 
 post_vals <- gamma_beta_psi_tau_post(gamma_vals, beta_vals,
                                      psi_val, tau_val,
-                                     data_tmp, prior, log = TRUE)
+                                     data_tmp, prior,
+                                     log = TRUE, relative = TRUE)
 
 df_plot <- expand.grid(gamma = gamma_vals, beta = beta_vals)
 df_plot$posterior <- as.vector(post_vals)
@@ -131,7 +132,8 @@ ggplot(df_plot, aes(x = gamma, y = beta, z = posterior)) +
   coord_cartesian(xlim = c(gamma_min, gamma_max), ylim = c(beta_min, beta_max)) +
   theme_minimal(base_size = 14)
 
-# (unnormalized) joint psi/tau posterior contour plot showing the sampled values
+# (unnormalized) joint psi/tau log-posterior contour plot
+# showing the sampled values
 psi_min <- 0
 psi_max <- 0.075
 tau_min  <- 0
@@ -146,7 +148,8 @@ gamma_val <- map$par["gamma"]
 
 post_vals <- gamma_beta_psi_tau_post(gamma_val, beta_val,
                                      psi_vals, tau_vals,
-                                     data_tmp, prior, log = TRUE)
+                                     data_tmp, prior,
+                                     log = TRUE, relative = TRUE)
 
 df_plot <- expand.grid(psi = psi_vals, tau = tau_vals)
 df_plot$posterior <- as.vector(post_vals)
@@ -221,3 +224,103 @@ p
 #       zaxis = list(title = "log posterior")
 #     )
 #   )
+
+# (unnormalized) joint beta/tau log-posterior contour plot
+# showing the sampled values
+beta_min  <- -2.5
+beta_max  <- 3
+tau_min  <- 0
+tau_max  <- 0.125
+
+res <- 100
+beta_vals <- seq(beta_min, beta_max, length.out = res)
+tau_vals  <- seq(tau_min, tau_max, length.out = res)
+
+psi_val <- map$par["psi"]
+gamma_val <- map$par["gamma"]
+
+post_vals <- gamma_beta_psi_tau_post(gamma_val, beta_vals,
+                                     psi_val, tau_vals,
+                                     data_tmp, prior,
+                                     log = TRUE, relative = TRUE)
+
+df_plot <- expand.grid(beta = beta_vals, tau = tau_vals)
+df_plot$posterior <- as.vector(post_vals)
+
+res_BMR_sub <- subset(res_BMR, regex_pars = c("beta", "tau"))
+sample_points <- res_BMR_sub[[1]]
+if (control$nchains > 1) {
+  for (c in 2:control$nchains) {
+    sample_points <- rbind(sample_points, res_BMR_sub[[c]])
+  }
+}
+sample_points <- data.frame(sample_points)
+sample_points <- subset(
+  sample_points,
+  beta >= beta_min & beta <= beta_max &
+    tau >= tau_min & tau <= tau_max
+)
+
+ggplot(df_plot, aes(x = beta, y = tau, z = posterior)) +
+  geom_contour_filled(bins = 20) +
+  scale_fill_viridis_d(option = "C") +
+  geom_point(data = sample_points, aes(x = beta, y = tau),
+             color = "gray", size = 0.1, inherit.aes = FALSE) +
+  geom_segment(aes(x = map$par[2], xend = map$par[2],
+                   y = tau_min, yend = tau_max), color = "#21908C") +
+  geom_segment(aes(x = beta_min, xend = beta_max,
+                   y = map$par[4], yend = map$par[4]), color = "#21908C") +
+  geom_point(x = map$par[2], y = map$par[4], color = "#21908C", size = 3) +
+  labs(x = expression(beta), y = expression(tau), fill = "Posterior") +
+  coord_cartesian(xlim = c(beta_min, beta_max), ylim = c(tau_min, tau_max)) +
+  theme_minimal(base_size = 14)
+
+# (unnormalized) joint beta/psi log-posterior contour plot
+# showing the sampled values
+beta_min  <- -2.5
+beta_max  <- 3
+psi_min <- 0
+psi_max <- 0.075
+
+res <- 100
+beta_vals <- seq(beta_min, beta_max, length.out = res)
+psi_vals  <- seq(psi_min, psi_max, length.out = res)
+
+tau_val <- map$par["tau"]
+gamma_val <- map$par["gamma"]
+
+post_vals <- gamma_beta_psi_tau_post(gamma_val, beta_vals,
+                                     psi_vals, tau_val,
+                                     data_tmp, prior,
+                                     log = TRUE, relative = TRUE)
+
+df_plot <- expand.grid(beta = beta_vals, psi = psi_vals)
+df_plot$posterior <- as.vector(post_vals)
+
+res_BMR_sub <- subset(res_BMR, regex_pars = c("beta", "psi"))
+sample_points <- res_BMR_sub[[1]]
+if (control$nchains > 1) {
+  for (c in 2:control$nchains) {
+    sample_points <- rbind(sample_points, res_BMR_sub[[c]])
+  }
+}
+sample_points <- data.frame(sample_points)
+sample_points <- subset(
+  sample_points,
+  beta >= beta_min & beta <= beta_max &
+    psi >= psi_min & psi <= psi_max
+)
+
+ggplot(df_plot, aes(x = beta, y = psi, z = posterior)) +
+  geom_contour_filled(bins = 20) +
+  scale_fill_viridis_d(option = "C") +
+  geom_point(data = sample_points, aes(x = beta, y = psi),
+             color = "gray", size = 0.1, inherit.aes = FALSE) +
+  geom_segment(aes(x = map$par[2], xend = map$par[2],
+                   y = psi_min, yend = psi_max), color = "#21908C") +
+  geom_segment(aes(x = beta_min, xend = beta_max,
+                   y = map$par[3], yend = map$par[3]), color = "#21908C") +
+  geom_point(x = map$par[2], y = map$par[3], color = "#21908C", size = 3) +
+  labs(x = expression(beta), y = expression(psi), fill = "Posterior") +
+  coord_cartesian(xlim = c(beta_min, beta_max), ylim = c(psi_min, psi_max)) +
+  theme_minimal(base_size = 14)
