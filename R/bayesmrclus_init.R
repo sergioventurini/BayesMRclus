@@ -88,15 +88,14 @@ bayesmr_init <- function(data, p, G, random.start, partition) {
   # }
   
   # initialize psi and tau
-  psi_tau <- rhalft(2, alpha = .01, nu = 3)
+  psi_tau <- rhalft(2, alpha = .1, nu = 3)
   psi <- psi_tau[1]
   tau <- psi_tau[2]
 
-  # initialize gamma
-  gamma <- rnorm(1, mean = 0, sd = .1)
-
-  # initialize beta
-  beta <- rnorm(1, mean = 0, sd = .1)
+  # initialize gamma and beta
+  gamma_beta <- rnorm(2, mean = 0, sd = .5)
+  gamma <- gamma_beta[1]
+  beta <- gamma_beta[2]
   
   list(gamma = gamma, beta = beta, psi = psi, tau = tau)
 }

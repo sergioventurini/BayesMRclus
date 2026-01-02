@@ -18,7 +18,7 @@ void bayesmr_mcmc_noclus(
   const double rhyper_gamma_var,
   const double rhyper_beta_mean,
   const double rhyper_beta_var,
-  const double sigma2_beta,                   // beta proposal variance (note sqrt used)
+  const double C_beta,                        // beta proposal sd
   int totiter,
   int n,
   int p,
@@ -61,7 +61,6 @@ void bayesmr_mcmc_noclus(
   const double hyper_gamma_var_inv = 1.0 / rhyper_gamma_var;
   const double sqrt_rhyper_gamma_var = std::sqrt(rhyper_gamma_var);
   const double sqrt_rhyper_beta_var = std::sqrt(rhyper_beta_var);
-  const double sqrt_sigma2_beta = std::sqrt(sigma2_beta);
 
   // main MCMC loop
   for (int iter = 1; iter <= totiter; ++iter) {
@@ -100,7 +99,7 @@ void bayesmr_mcmc_noclus(
     // 2) Metropolis-Hastings update for beta
     // --------------------------------------
     // Propose new beta (random-walk Normal)
-    double beta_prop = R::rnorm(beta_old, sqrt_sigma2_beta);
+    double beta_prop = R::rnorm(beta_old, C_beta);
 
     // compute log-posterior for proposed and current betas
     double lpost_prop = 0.0;

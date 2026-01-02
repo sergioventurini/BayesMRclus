@@ -19,7 +19,7 @@ zhaodata <- new("bayesmr_data", data = data_tmp, n = n)
 # plot(zhaodata)
 
 # simulation setup
-prm.prop <- list(beta = .1)
+prm.prop <- list(beta = .4)
 burnin <- 100000
 nsim <- 200000
 

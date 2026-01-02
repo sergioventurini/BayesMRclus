@@ -19,7 +19,8 @@ zhaodata <- new("bayesmr_data", data = data_tmp, n = n)
 # plot(zhaodata)
 
 # simulation setup
-prm.prop <- list(beta = .2, psi = .04, tau = .04)
+# note: psi and tau proposal standard deviations are on log scale (see paper)
+prm.prop <- list(beta = .4, psi = .15, tau = .15)
 burnin <- 100000
 nsim <- 200000
 

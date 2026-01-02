@@ -24,9 +24,9 @@ void bayesmr_mcmc_noclus_het(
   const double rhyper_gamma_var,
   const double rhyper_beta_mean,
   const double rhyper_beta_var,
-  const double sigma2_beta,                   // beta proposal variance (note sqrt used)
-  const double C_psi,                         // psi proposal parameter
-  const double C_tau,                         // tau proposal parameter
+  const double C_beta,                        // beta proposal sd
+  const double C_psi,                         // psi proposal sd (log scale)
+  const double C_tau,                         // tau proposal sd (log scale)
   int totiter,
   int n,
   int p,
@@ -69,11 +69,6 @@ void bayesmr_mcmc_noclus_het(
   const double rhyper_gamma_var_inv = 1.0 / rhyper_gamma_var;
   const double sqrt_rhyper_gamma_var = std::sqrt(rhyper_gamma_var);
   const double sqrt_rhyper_beta_var = std::sqrt(rhyper_beta_var);
-  const double sqrt_sigma2_beta = std::sqrt(sigma2_beta);
-
-  // Fixed proposal standard deviations (log scale)
-  const double SD_LOG_ETA   = 0.15;   // ~15% multiplicative moves
-  const double SD_LOG_OMEGA = 0.15;
 
   // main MCMC loop
   for (int iter = 1; iter <= totiter; ++iter) {
@@ -112,7 +107,7 @@ void bayesmr_mcmc_noclus_het(
     // 2) Metropolis-Hastings update for beta
     // --------------------------------------
     // Propose new beta (random-walk Normal)
-    double beta_prop = R::rnorm(beta_old, sqrt_sigma2_beta);
+    double beta_prop = R::rnorm(beta_old, C_beta);
 
     // compute log-posterior for proposed and current betas
     double lpost_prop = 0.0, lpost_curr = 0.0;
@@ -164,8 +159,8 @@ void bayesmr_mcmc_noclus_het(
     double zow_old  = std::log(omega_old);
 
     // fixed independent RW proposals
-    double zeta_prop = R::rnorm(zeta_old, SD_LOG_ETA);
-    double zow_prop  = R::rnorm(zow_old,  SD_LOG_OMEGA);
+    double zeta_prop = R::rnorm(zeta_old, C_psi);
+    double zow_prop  = R::rnorm(zow_old,  C_tau);
 
     // back-transform
     double eta_prop   = std::exp(zeta_prop);

@@ -27,13 +27,13 @@ static const double neg_inf = -INFINITY;
 
 // MAIN FUNCTIONS -----------------------------------------------------------------------------------------------------
 RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
-  SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter, SEXP rsigma2_beta,
+  SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter, SEXP rC_beta,
   SEXP rhyper_gammaj_psi2, SEXP rhyper_Gammaj_tau2,
   SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var, SEXP rhyper_beta_mean,
   SEXP rhyper_beta_var, SEXP rverbose);
 RcppExport SEXP bayesmr_mcmc_het(SEXP radData, SEXP radgamma, SEXP radbeta,
   SEXP radpsi, SEXP radtau, SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter,
-  SEXP rsigma2_beta, SEXP rC_psi, SEXP rC_tau, SEXP rhyper_gamma_mean,
+  SEXP rC_beta, SEXP rC_psi, SEXP rC_tau, SEXP rhyper_gamma_mean,
   SEXP rhyper_gamma_var, SEXP rhyper_beta_mean, SEXP rhyper_beta_var,
   SEXP rhyper_psi_alpha, SEXP rhyper_psi_nu, SEXP rhyper_tau_alpha,
   SEXP rhyper_tau_nu, SEXP rverbose);
@@ -121,14 +121,14 @@ void bayesmr_mcmc_noclus(double* gamma_chain, double* beta_chain, double* accept
   double beta, const double hyper_gammaj_psi2, const double rhyper_Gammaj_tau2,
   const double rhyper_gamma_mean, const double rhyper_gamma_var,
   const double rhyper_beta_mean, const double rhyper_beta_var,
-  const double sigma2_beta, int totiter, int n, int p, int G, int verbose);
+  const double C_beta, int totiter, int n, int p, int G, int verbose);
 void bayesmr_mcmc_noclus_het(double* gamma_chain, double* beta_chain,
   double* psi2_chain, double* tau2_chain, double* accept, double* loglik,
   double* logprior, double* logpost, double* data, double gamma_p, double beta_p,
   double psi2_p, double tau2_p,  const double rhyper_alpha_psi2, const double rhyper_nu_psi2,
   const double rhyper_alpha_tau2, const double rhyper_nu_tau2, const double rhyper_gamma_mean,
   const double rhyper_gamma_var, const double rhyper_beta_mean, const double rhyper_beta_var,
-  const double sigma2_beta, const double C_psi2, const double C_tau2, int totiter,
+  const double C_beta, const double C_psi2, const double C_tau2, int totiter,
   int n, int p, int G, int verbose);
 
 // UTILITIES ----------------------------------------------------------------------------------------------------------

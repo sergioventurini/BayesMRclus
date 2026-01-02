@@ -46,7 +46,7 @@ RcppExport SEXP bayesmr_mcmc(
   SEXP rp,
   SEXP rG,
   SEXP rtotiter,
-  SEXP rsigma2_beta,
+  SEXP rC_beta,
   SEXP rhyper_gammaj_psi2,
   SEXP rhyper_Gammaj_tau2,
   SEXP rhyper_gamma_mean,
@@ -61,7 +61,7 @@ RcppExport SEXP bayesmr_mcmc(
   int p = Rf_asInteger(rp);
   int G = Rf_asInteger(rG);
   int totiter = Rf_asInteger(rtotiter);
-  double sigma2_beta = Rf_asReal(rsigma2_beta);
+  double C_beta = Rf_asReal(rC_beta);
   double gamma_val = Rf_asReal(radgamma);
   double beta_val = Rf_asReal(radbeta);
   double hyper_gammaj_psi2 = Rf_asReal(rhyper_gammaj_psi2);
@@ -82,7 +82,7 @@ RcppExport SEXP bayesmr_mcmc(
   bayesmr_mcmc_noclus(REAL(rgamma_chain), REAL(rbeta_chain), REAL(raccept),
     REAL(rloglik), REAL(rlogprior), REAL(rlogpost), REAL(radData), gamma_val,
     beta_val, hyper_gammaj_psi2, hyper_Gammaj_tau2, hyper_gamma_mean, hyper_gamma_var,
-    hyper_beta_mean, hyper_beta_var, sigma2_beta, totiter, n, p, G, verbose);
+    hyper_beta_mean, hyper_beta_var, C_beta, totiter, n, p, G, verbose);
 
   // packing results
   PROTECT(rAns = Rf_allocVector(VECSXP, rAnsItems));
@@ -141,7 +141,7 @@ RcppExport SEXP bayesmr_mcmc_het(
   SEXP rp,
   SEXP rG,
   SEXP rtotiter,
-  SEXP rsigma2_beta,
+  SEXP rC_beta,
   SEXP rC_psi,
   SEXP rC_tau,
   SEXP rhyper_gamma_mean,
@@ -160,7 +160,7 @@ RcppExport SEXP bayesmr_mcmc_het(
   int p = Rf_asInteger(rp);
   int G = Rf_asInteger(rG);
   int totiter = Rf_asInteger(rtotiter);
-  double sigma2_beta = Rf_asReal(rsigma2_beta);
+  double C_beta = Rf_asReal(rC_beta);
   double C_psi = Rf_asReal(rC_psi);
   double C_tau = Rf_asReal(rC_tau);
   double gamma_val = Rf_asReal(radgamma);
@@ -191,7 +191,7 @@ RcppExport SEXP bayesmr_mcmc_het(
     REAL(rloglik), REAL(rlogprior), REAL(rlogpost), REAL(radData), gamma_val,
     beta_val, psi_val, tau_val, hyper_psi_alpha, hyper_psi_nu, hyper_tau_alpha,
     hyper_tau_nu, hyper_gamma_mean, hyper_gamma_var, hyper_beta_mean, hyper_beta_var,
-    sigma2_beta, C_psi, C_tau, totiter, n, p, G, verbose);
+    C_beta, C_psi, C_tau, totiter, n, p, G, verbose);
 
   // packing results
   PROTECT(rAns = Rf_allocVector(VECSXP, rAnsItems));
