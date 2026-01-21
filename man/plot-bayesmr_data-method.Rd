@@ -5,10 +5,12 @@
 \alias{bayesmr_data-plot}
 \title{Provide a graphical summary of a \code{bayesmr_data} class instance.}
 \usage{
-\S4method{plot}{bayesmr_data}(x, colors = c("white", "black"), font = NA, cex.font = NA, ...)
+\S4method{plot}{bayesmr_data}(x, se = TRUE, colors = c("white", "black"), font = NA, cex.font = NA, ...)
 }
 \arguments{
 \item{x}{An object of class \code{\link{bayesmr_data}}.}
+
+\item{se}{A length-one logical vector indicating whether to plot the error bars or not.}
 
 \item{colors}{A character vector providing the colors to use in the plot.}
 

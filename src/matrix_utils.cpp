@@ -78,3 +78,13 @@ arma::vec mahalanobis(const arma::mat& x, const arma::vec& center, const arma::m
   
   return m;
 }
+
+// 2x2 matrix inverse (optimized)
+void inverse_2x2(double a11, double a12, double a21, double a22,
+  double& inv11, double& inv12, double& inv21, double& inv22) {
+  double det = a11 * a22 - a12 * a21;
+  inv11 = a22 / det;
+  inv12 = -a12 / det;
+  inv21 = -a21 / det;
+  inv22 = a11 / det;
+}

@@ -8,13 +8,8 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
 
-data_tmp <- data
-flip <- data_tmp$beta_exposure < 0
-data_tmp$beta_exposure[flip] <- -data_tmp$beta_exposure[flip]
-data_tmp$beta_outcome[flip]  <- -data_tmp$beta_outcome[flip]
-
 n <- nrow(data)
-zhaodata <- new("bayesmr_data", data = data_tmp, n = n)
+zhaodata <- new("bayesmr_data", data = data, n = n, harmonization = TRUE)
 
 library(ggplot2)
 

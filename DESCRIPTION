@@ -1,8 +1,8 @@
 Package: BayesMRclus
 Type: Package
 Title: Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian Randomization under Heterogeneity
-Version: 0.0.6-6
-Date: 2026-01-02
+Version: 0.0.7-1
+Date: 2026-02-01
 Authors@R: c(
   person("Sergio", "Venturini", role=c("aut", "cre"), email = "sergio.venturini@unicatt.it"),
   person("Guido", "Consonni", role=c("ctb"), email = "guido.consonni@unicatt.it"),
@@ -22,6 +22,7 @@ Imports:
     graphics,
     grDevices,
     parallel (>= 4.4.1),
+    Rdpack,
     tools,
 Suggests:
     knitr,
@@ -40,5 +41,6 @@ SystemRequirements: C++14
 BugReports: https://github.com/sergioventurini/BayesMRclus/issues
 Encoding: UTF-8
 VignetteBuilder: knitr
+RdMacros: Rdpack
 RoxygenNote: 7.3.3
 Roxygen: list(markdown = TRUE)

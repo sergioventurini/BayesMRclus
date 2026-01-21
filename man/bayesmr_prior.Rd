@@ -12,7 +12,8 @@ bayesmr_prior(
   psi = list(alpha = 0.1, nu = 3),
   tau = list(alpha = 0.1, nu = 3),
   gamma = list(mean = 0, var = 1),
-  beta = list(mean = 0, var = 1)
+  beta = list(mean = 0, var = 1),
+  alpha = list(a = 2, b = 2)
 )
 
 prior_bayesmr(
@@ -21,7 +22,8 @@ prior_bayesmr(
   psi = list(alpha = 0.1, nu = 3),
   tau = list(alpha = 0.1, nu = 3),
   gamma = list(mean = 0, var = 1),
-  beta = list(mean = 0, var = 1)
+  beta = list(mean = 0, var = 1),
+  alpha = list(a = 2, b = 2)
 )
 
 check_prior(prior)

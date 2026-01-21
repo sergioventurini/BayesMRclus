@@ -8,15 +8,10 @@ data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
 
-data_tmp <- data
-flip <- data_tmp$beta_exposure < 0
-data_tmp$beta_exposure[flip] <- -data_tmp$beta_exposure[flip]
-data_tmp$beta_outcome[flip]  <- -data_tmp$beta_outcome[flip]
-
 n <- nrow(data)
-zhaodata <- new("bayesmr_data", data = data_tmp, n = n)
+zhaodata <- new("bayesmr_data", data = data, n = n, harmonization = TRUE)
 # summary(zhaodata)
-# plot(zhaodata)
+# plot(zhaodata, se = TRUE)
 
 # simulation setup
 prm.prop <- list(beta = .4)
@@ -85,7 +80,8 @@ gamma_vals <- seq(gamma_min, gamma_max, length.out = res)
 beta_vals  <- seq(beta_min, beta_max, length.out = res)
 
 post_vals <- gamma_beta_post(gamma_vals, beta_vals,
-                             data_tmp, prior, log = TRUE)
+                             data_tmp, prior,
+                             log = TRUE, relative = TRUE)
 
 df_plot <- expand.grid(gamma = gamma_vals, beta = beta_vals)
 df_plot$posterior <- as.vector(post_vals)

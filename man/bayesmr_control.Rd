@@ -15,6 +15,7 @@ bayesmr_control(
   seed = NULL,
   parallel = "no",
   beta.prop = 0.5,
+  beta.m = 2,
   psi.prop = 0.1,
   tau.prop = 0.1,
   random.start = TRUE,
@@ -34,6 +35,7 @@ control_bayesmr(
   seed = NULL,
   parallel = "no",
   beta.prop = 0.5,
+  beta.m = 2,
   psi.prop = 0.1,
   tau.prop = 0.1,
   random.start = TRUE,
@@ -72,6 +74,8 @@ instead of parallel computing).}
 \item{beta.prop}{A length-one numeric vector providing the standard deviation of the
 proposal distribution for the jump in the individual latent space
 position.}
+
+\item{beta.m}{A length-one integer vector providing the number of beta values to draw.}
 
 \item{random.start}{A length-one logical vector. If \code{TRUE} the starting
 values are drawn randomly, otherwise a user-defined starting partition must

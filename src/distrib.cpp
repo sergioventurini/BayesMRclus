@@ -143,7 +143,7 @@ void rmultinorm(double* dev, int n, const double* mean, const double* sigma, int
 void dinvgamma(double* log_dens, const double* x, const double alpha, const double beta, int n,
                bool logscale = true){
   if((alpha <= 0) || (beta <= 0)){
-    error("alpha (shape) and beta (scale) parameters in dinvgamma() need to be both strictly positive.\n");
+    Rf_error("alpha (shape) and beta (scale) parameters in dinvgamma() need to be both strictly positive.\n");
   }
 
   double lbeta = log(beta);
@@ -162,7 +162,7 @@ void dinvgamma(double* log_dens, const double* x, const double alpha, const doub
 // Inverse gamma random deviates
 void rinvgamma(double* dev, int n, const double alpha, const double beta){
   if((alpha <= 0) || (beta <= 0)){
-    error("alpha (shape) and beta (scale) parameters in rinvgamma() need to be both strictly positive.\n");
+    Rf_error("alpha (shape) and beta (scale) parameters in rinvgamma() need to be both strictly positive.\n");
   }
 
   for(int i = 0; i < n; i++){
@@ -186,11 +186,11 @@ void ddirichlet(double* log_dens, const double* x, const double* par, int n, int
     for(int j = 0; j < p; j++){
       tmp += x_arma(i, j);
       if(x_arma(i, j) < 0 || x_arma(i, j) > 1){
-        error("some elements of x outside the [0, 1] range.\n");
+        Rf_error("some elements of x outside the [0, 1] range.\n");
       }
     }
     if(std::fabs(tmp - 1.0) >= sqrt(std::numeric_limits<double>::epsilon())){
-      error("some rows of x sum to a value different from 1.\n");
+      Rf_error("some rows of x sum to a value different from 1.\n");
     }
   }
 
@@ -271,6 +271,24 @@ std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::ve
   }
 
   return out;
+}
+
+ // Multivariate normal log density for 2D
+double dmvnorm_log(double x1, double x2, double mu1, double mu2,
+                   double sig11, double sig12, double sig21, double sig22) {
+  double inv11, inv12, inv21, inv22;
+  inverse_2x2(sig11, sig12, sig21, sig22, inv11, inv12, inv21, inv22);
+
+  double diff1 = x1 - mu1;
+  double diff2 = x2 - mu2;
+
+  double quad_form = diff1 * (inv11 * diff1 + inv12 * diff2) + 
+                    diff2 * (inv21 * diff1 + inv22 * diff2);
+
+  double det = sig11 * sig22 - sig12 * sig21;
+  double log_det = std::log(det);
+
+  return -0.5 * (2.0 * std::log(2.0 * M_PI) + log_det + quad_form);
 }
 
 std::vector<double> dhalft(const std::vector<double>& x, const std::vector<double>& alpha,
@@ -440,4 +458,19 @@ std::vector<double> rhalft(std::size_t n, const std::vector<double>& alpha, cons
   std::vector<double> mu(1, 0.0);
 
   return rtrunc(n, 0.0, R_PosInf, mu, alpha, nu);
+}
+
+int sample_discrete(const std::vector<double>& probs) {
+  double total = 0.0;
+  for (double p : probs) total += p;
+
+  double u = unif_rand() * total;
+
+  double c = 0.0;
+  for (int i = 0; i < (int)probs.size(); i++) {
+    c += probs[i];
+    if (u <= c) return i;     // uses 0-based indexing
+  }
+
+  return probs.size() - 1;    // uses 0-based indexing
 }

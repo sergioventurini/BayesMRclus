@@ -207,31 +207,31 @@ bayesmr_het <- function(data, p = 1, G = 1, control = bayesmr_control(), prior =
 
   # final post-processing of all chains
   if (nchains > 1 && post_all) {
-    gamma.chain <- res[[1]]@gamma.chain
-    beta.chain <- res[[1]]@beta.chain
-    psi.chain <- res[[1]]@psi.chain
-    tau.chain <- res[[1]]@tau.chain
-    niter <- length(gamma.chain)
-    for (ch in 2:nchains) {
-      gamma.chain <- abind::abind(gamma.chain, res[[ch]]@gamma.chain, along = 1)
-      beta.chain <- abind::abind(beta.chain, res[[ch]]@beta.chain, along = 1)
-      psi.chain <- abind::abind(psi.chain, res[[ch]]@psi.chain, along = 1)
-      tau.chain <- abind::abind(tau.chain, res[[ch]]@tau.chain, along = 1)
-    }
+    # gamma.chain <- res[[1]]@gamma.chain
+    # beta.chain <- res[[1]]@beta.chain
+    # psi.chain <- res[[1]]@psi.chain
+    # tau.chain <- res[[1]]@tau.chain
+    # niter <- length(gamma.chain)
+    # for (ch in 2:nchains) {
+    #   gamma.chain <- abind::abind(gamma.chain, res[[ch]]@gamma.chain, along = 1)
+    #   beta.chain <- abind::abind(beta.chain, res[[ch]]@beta.chain, along = 1)
+    #   psi.chain <- abind::abind(psi.chain, res[[ch]]@psi.chain, along = 1)
+    #   tau.chain <- abind::abind(tau.chain, res[[ch]]@tau.chain, along = 1)
+    # }
 
-    if (control[["verbose"]]) message("Final post-processing of all chains:")
+    # if (control[["verbose"]]) message("Final post-processing of all chains:")
 
-    if (control[["verbose"]]) {
-      # message("done!")
-      close(pb)
-    }
+    # if (control[["verbose"]]) {
+    #   # message("done!")
+    #   close(pb)
+    # }
 
-    for (ch in 1:nchains) {
-      res[[ch]]@gamma.chain <- gamma.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      res[[ch]]@beta.chain <- beta.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      res[[ch]]@psi.chain <- psi.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-      res[[ch]]@tau.chain <- tau.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-    }
+    # for (ch in 1:nchains) {
+    #   res[[ch]]@gamma.chain <- gamma.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
+    #   res[[ch]]@beta.chain <- beta.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
+    #   res[[ch]]@psi.chain <- psi.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
+    #   res[[ch]]@tau.chain <- tau.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
+    # }
   }
 
   # restore previous random number generator kind

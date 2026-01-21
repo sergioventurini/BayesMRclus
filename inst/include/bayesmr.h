@@ -7,10 +7,15 @@
                          // the final release (see
                          // http://arma.sourceforge.net/docs.html)
 
-#include <R.h>
-#include <Rmath.h>
 #include <RcppArmadillo.h>
 #include <Rcpp.h>
+
+extern "C" {
+#include <R_ext/Error.h>
+#include <R.h>
+#include <Rmath.h>
+}
+
 #include <vector>
 #include <numeric>
 #include <cmath>
@@ -25,6 +30,21 @@ static const double log_2pi = std::log(2.0 * M_PI);
 static const double log_two = std::log(2.0);
 static const double neg_inf = -INFINITY;
 
+// STRUCTS AND CLASSES ------------------------------------------------------------------------------------------------
+// struct MRData {
+//   std::vector<double> gamma_hat;
+//   std::vector<double> Gamma_hat;
+//   std::vector<double> sigma2X;
+//   std::vector<double> sigma2Y;
+// };
+
+// struct MCMCOutput {
+//   std::vector<double> gamma_post;
+//   std::vector<std::vector<double>> beta_post;
+//   std::vector<std::vector<int>> xi_post;
+//   std::vector<double> alpha_post;
+// };
+
 // MAIN FUNCTIONS -----------------------------------------------------------------------------------------------------
 RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
   SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter, SEXP rC_beta,
@@ -37,6 +57,12 @@ RcppExport SEXP bayesmr_mcmc_het(SEXP radData, SEXP radgamma, SEXP radbeta,
   SEXP rhyper_gamma_var, SEXP rhyper_beta_mean, SEXP rhyper_beta_var,
   SEXP rhyper_psi_alpha, SEXP rhyper_psi_nu, SEXP rhyper_tau_alpha,
   SEXP rhyper_tau_nu, SEXP rverbose);
+RcppExport SEXP bayesmr_mix_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
+  SEXP radxi, SEXP radalpha, SEXP radK, SEXP rn, SEXP rp, SEXP rG,
+  SEXP rtotiter, SEXP rC_beta, SEXP rm_beta, SEXP rhyper_gammaj_psi2,
+  SEXP rhyper_Gammaj_tau2, SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var,
+  SEXP rhyper_beta_mean, SEXP rhyper_beta_var, SEXP rhyper_gamma_a,
+  SEXP rhyper_gamma_b, SEXP rverbose);
 // RcppExport SEXP bayesmr_relabel(SEXP radtheta, SEXP radz, SEXP radalpha,
 //   SEXP radeta, SEXP radsigma2, SEXP radlambda, SEXP radprob, SEXP raix_ind,
 //   SEXP rinit, SEXP rn, SEXP rp, SEXP rS, SEXP rM, SEXP rR, SEXP rG,
@@ -63,6 +89,8 @@ std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::ve
   const std::vector<double>& mu_x, const std::vector<double>& mu_y,
   const std::vector<double>& sigma_xx, const std::vector<double>& sigma_yy,
   const std::vector<double>& sigma_xy, bool logscale);
+double dmvnorm_log(double x1, double x2, double mu1, double mu2,
+                   double sig11, double sig12, double sig21, double sig22);
 std::vector<double> dhalft(const std::vector<double>& x, const std::vector<double>& alpha,
   const std::vector<double>& nu, bool log);
 double dhalft_scalar(const double& x, const double& alpha,
@@ -78,6 +106,7 @@ std::vector<double> qtrunc(const std::vector<double>& p, double a, double b,
 std::vector<double> rtrunc(std::size_t n, double a, double b,
   const std::vector<double>& mu, const std::vector<double>& sigma, const std::vector<double>& nu);
 std::vector<double> rhalft(std::size_t n, const std::vector<double>& alpha, const std::vector<double>& nu);
+int sample_discrete(const std::vector<double>& probs);
 
 // MODEL DISTRIBUTIONS ------------------------------------------------------------------------------------------------
 void logpost_beta(double* lpost, const double beta, const double gamma,
@@ -114,11 +143,13 @@ arma::vec mat2vec(const arma::mat& A, const int& j);
 arma::mat vec2mat(const arma::mat& A, const int& j, const arma::vec& v);
 arma::vec mahalanobis(const arma::mat& x, const arma::vec& center,
   const arma::mat& cov);
+void inverse_2x2(double a11, double a12, double a21, double a22,
+                 double& inv11, double& inv12, double& inv21, double& inv22);
 
 // MCMC SIMULATION ----------------------------------------------------------------------------------------------------
 void bayesmr_mcmc_noclus(double* gamma_chain, double* beta_chain, double* accept,
   double* loglik, double* logprior, double* logpost, double* data, double gamma,
-  double beta, const double hyper_gammaj_psi2, const double rhyper_Gammaj_tau2,
+  double beta, const double rhyper_gammaj_psi2, const double rhyper_Gammaj_tau2,
   const double rhyper_gamma_mean, const double rhyper_gamma_var,
   const double rhyper_beta_mean, const double rhyper_beta_var,
   const double C_beta, int totiter, int n, int p, int G, int verbose);
@@ -130,6 +161,15 @@ void bayesmr_mcmc_noclus_het(double* gamma_chain, double* beta_chain,
   const double rhyper_gamma_var, const double rhyper_beta_mean, const double rhyper_beta_var,
   const double C_beta, const double C_psi2, const double C_tau2, int totiter,
   int n, int p, int G, int verbose);
+void bayesmr_mcmc_mix(double* gamma_chain, double* beta_chain,
+  int* xi_chain, double* alpha_chain, double* accept,
+  double* loglik, double* logprior, double* logpost, double* data, double gamma_p,
+  double* beta_p, int* xi_p, double alpha_p, double K_p, const double rhyper_gammaj_psi2,
+  const double rhyper_Gammaj_tau2, const double rhyper_gamma_mean,
+  const double rhyper_gamma_var, const double rhyper_beta_mean,
+  const double rhyper_beta_var, const double rhyper_alpha_a,
+  const double rhyper_alpha_b, const double C_beta,
+  int m_beta, int totiter, int n, int p, int G, int verbose);
 
 // UTILITIES ----------------------------------------------------------------------------------------------------------
 void logit(double* res, const double* p, int n);
@@ -143,6 +183,38 @@ void tableC(int* counts, const int* x, int nelem, int ndistelem);
 int factorial(const int& x);
 void permutations(int* perm, int n, int nperm, int byrow);
 void which_min(int* ans, const double* r, int n);
+
+// DIRICHLET PROCESS MIXTURE ------------------------------------------------------------------------------------------
+double full_cond_gamma(
+    const double mu_gamma,
+    const double var_gamma,
+    const std::vector<double>& gamma_hat,
+    const std::vector<double>& Gamma_hat,
+    const std::vector<double>& psi2_j,    // sigma2_X + rhyper_gammaj_psi2
+    const std::vector<double>& tau2_j,    // sigma2_Y + rhyper_Gammaj_tau2
+    const std::vector<double>& beta,
+    const std::vector<int>& xi);
+double full_cond_beta(double beta, double mu_beta, double var_beta,
+ const std::vector<double>& gamma_hat,
+ const std::vector<double>& Gamma_hat,
+ const std::vector<double>& sigma2X,
+ const std::vector<double>& sigma2Y,
+ double gamma, double psi2);
+std::vector<double> normalize_weights(const std::vector<double>& prob);
+int count_excluding(const std::vector<int>& xi, int k, size_t exclude_idx);
+void relabel_xi(std::vector<int>& xi);
+
+// Get subset of vector based on condition
+template<typename T>
+std::vector<T> subset(const std::vector<T>& vec, const std::vector<int>& xi, int k) {
+  std::vector<T> result;
+  for (size_t i = 0; i < vec.size(); ++i) {
+    if (xi[i] == k) {
+      result.push_back(vec[i]);
+    }
+  }
+  return result;
+}
 
 // For registration
 void R_init_bayesmrclus(DllInfo *dll);

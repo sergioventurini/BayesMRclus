@@ -31,6 +31,7 @@
 #' @param beta.prop A length-one numeric vector providing the standard deviation of the
 #'   proposal distribution for the jump in the individual latent space
 #'   position.
+#' @param beta.m A length-one integer vector providing the number of beta values to draw.
 #' @param random.start A length-one logical vector. If \code{TRUE} the starting
 #'   values are drawn randomly, otherwise a user-defined starting partition must
 #'   be provided through the \code{partition} argument.
@@ -66,6 +67,7 @@ bayesmr_control <- function(nsim = 5000,
                             seed = NULL,
                             parallel = "no",
                             beta.prop = .5,
+                            beta.m = 2,
                             psi.prop = .1,
                             tau.prop = .1,
                             random.start = TRUE,
@@ -124,6 +126,10 @@ check_control <- function(control) {
     return(control_ok)
   }
   if (control[["beta.prop"]] < 0) {
+    control_ok <- FALSE
+    return(control_ok)
+  }
+  if (control[["beta.m"]] < 1) {
     control_ok <- FALSE
     return(control_ok)
   }

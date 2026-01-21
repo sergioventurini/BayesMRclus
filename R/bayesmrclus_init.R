@@ -92,10 +92,30 @@ bayesmr_init <- function(data, p, G, random.start, partition) {
   psi <- psi_tau[1]
   tau <- psi_tau[2]
 
-  # initialize gamma and beta
-  gamma_beta <- rnorm(2, mean = 0, sd = .5)
-  gamma <- gamma_beta[1]
-  beta <- gamma_beta[2]
-  
-  list(gamma = gamma, beta = beta, psi = psi, tau = tau)
+  if (G == 1) {
+    # initialize gamma and beta
+    gamma_beta <- rnorm(2, mean = 0, sd = .5)
+    gamma <- gamma_beta[1]
+    beta <- gamma_beta[2]
+
+    return(list(gamma = gamma, beta = beta, psi = psi, tau = tau))
+  }
+  else if (G > 1) {
+    # initialize gamma
+    gamma <- rnorm(1, mean = 0, sd = .5)
+
+    # initialize xi (cluster indicators)
+    xi <- sample(x = 1:G, size = data@n, replace = TRUE)
+    while (length(table(xi)) != G) {  # make sure the G clusters are all non empty
+      xi <- sample(x = 1:G, size = data@n, replace = TRUE)
+    }
+
+    # initialize beta unique values
+    beta <- rnorm(G, 0, sd = .5)      # beta_star
+    
+    # initialize alpha (concentration)
+    alpha <- 1
+
+    return(list(gamma = gamma, beta = beta, psi = psi, tau = tau, K = G, xi = xi, alpha = alpha))
+  }
 }

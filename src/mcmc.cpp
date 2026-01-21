@@ -12,7 +12,7 @@ void bayesmr_mcmc_noclus(
   double* data,
   double gamma_p,                             // gamma starting value
   double beta_p,                              // beta starting value
-  const double hyper_gammaj_psi2,
+  const double rhyper_gammaj_psi2,
   const double rhyper_Gammaj_tau2,
   const double rhyper_gamma_mean,
   const double rhyper_gamma_var,
@@ -45,7 +45,7 @@ void bayesmr_mcmc_noclus(
     double sy = data[3 * n + i];
     sigma2_X[i] = sx * sx;
     sigma2_Y[i] = sy * sy;
-    psi2_j[i] = sigma2_X[i] + hyper_gammaj_psi2;
+    psi2_j[i] = sigma2_X[i] + rhyper_gammaj_psi2;
     tau2_j[i] = sigma2_Y[i] + rhyper_Gammaj_tau2;
   }
 
@@ -73,8 +73,8 @@ void bayesmr_mcmc_noclus(
     double sum_B_beta_2 = 0.0;
 
     for (int i = 0; i < n; ++i) {
-      a_j[i] = beta2_old * hyper_gammaj_psi2 + tau2_j[i];
-      const double c = beta_old * hyper_gammaj_psi2;
+      a_j[i] = beta2_old * rhyper_gammaj_psi2 + tau2_j[i];
+      const double c = beta_old * rhyper_gammaj_psi2;
       const double c2 = c * c;
       v_j[i] = a_j[i] * psi2_j[i] - c2;
 
@@ -106,11 +106,11 @@ void bayesmr_mcmc_noclus(
     double lpost_old = 0.0;
 
     logpost_beta(&lpost_prop, beta_prop, gamma_old,
-      rhyper_beta_mean, rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
+      rhyper_beta_mean, rhyper_beta_var, rhyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
       gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
 
     logpost_beta(&lpost_old, beta_old, gamma_old,
-      rhyper_beta_mean, rhyper_beta_var, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
+      rhyper_beta_mean, rhyper_beta_var, rhyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
       gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
 
     // compute acceptance probability (handle -inf or NaN)
@@ -145,7 +145,7 @@ void bayesmr_mcmc_noclus(
     const double logprior_beta  = R::dnorm(beta_old, rhyper_beta_mean, sqrt_rhyper_beta_var, 1);
     logprior[iter - 1] = logprior_gamma + logprior_beta;
 
-    loglik[iter - 1] = bayesmr_logLik(beta_old, gamma_old, hyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
+    loglik[iter - 1] = bayesmr_logLik(beta_old, gamma_old, rhyper_gammaj_psi2, rhyper_Gammaj_tau2, n,
       gammahat_j.data(), Gammahat_j.data(), sigma2_X.data(), sigma2_Y.data());
 
     // logpost

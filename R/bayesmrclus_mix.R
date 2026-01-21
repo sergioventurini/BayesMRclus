@@ -1,6 +1,6 @@
 #' Estimation of a BayesMR model.
 #'
-#' \code{bayesmr()}, the main function of the package, estimates a BayesMR model
+#' \code{bayesmr_mix()}, the main function of the package, estimates a BayesMR model
 #'   for a given set of \emph{S} dissimilarity matrices.
 #'
 #' @param data An object of class \code{bayesmr_data} containing the data
@@ -16,7 +16,7 @@
 #'   \code{\link{bayesmr_prior}()} for more details.
 #' @param cl An optional \pkg{parallel} or \pkg{snow} cluster for use if
 #'   \code{parallel = "snow"}. If not supplied, a cluster on the local machine
-#'   is created for the duration of the \code{bayesmr()} call.
+#'   is created for the duration of the \code{bayesmr_mix()} call.
 #' @param post_all A length-one logical vector, which if TRUE applies a further
 #'   post-processing to the simulated chains (in case these are more than one).
 #' @return A \code{bayesmr_fit_list} object.
@@ -45,7 +45,7 @@
 #'   alpha.prop = prm.prop[["alpha"]], random.start = TRUE, verbose = TRUE,
 #'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
 #'   parallel = "snow")
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr_mix(simdiss, p, G, control)
 #'
 #' summary(sim.bayesmr, include.burnin = FALSE)
 #'
@@ -64,7 +64,8 @@
 #'
 #' @importFrom abind abind
 #' @export
-bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NULL, cl = NULL, post_all = FALSE) {
+bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
+  prior = NULL, cl = NULL, post_all = FALSE) {
   if (p < 1)
     stop("the number of data dimensions p must be at least one.")
   if (G < 1)
@@ -114,16 +115,16 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
   
   # perform MCMC simulation
   if (nchains > 1L && (have_mc || have_snow)) {
-    bayesmr_fit_parallel <- function(c, data.c, p.c, G.c, control.c, prior.c, lib) {
+    bayesmr_mix_fit_parallel <- function(c, data.c, p.c, G.c, control.c, prior.c, lib) {
       suppressMessages(require(BayesMRclus, lib.loc = lib))
       control.c[["verbose"]] <- FALSE
       # message("Starting cluster node ", c, " on local machine")
       start.c <- bayesmr_init(data = data.c, p = p.c, G = G.c, random.start = control.c[["random.start"]],
         partition = control.c[["partition"]])
-      bayesmr_fit(data = data.c, p = p.c, G = G.c, control = control.c, prior = prior.c, start = start.c)
+      bayesmr_mix_fit(data = data.c, p = p.c, G = G.c, control = control.c, prior = prior.c, start = start.c)
     }
-    # environment(bayesmr_fit_parallel) <- .GlobalEnv # this prevents passing objects other than those needed for
-    #                                                 # evaluating the bayesmr_fit_parallel function
+    # environment(bayesmr_mix_fit_parallel) <- .GlobalEnv # this prevents passing objects other than those needed for
+    #                                                 # evaluating the bayesmr_mix_fit_parallel function
 
     if (is.null(prior)) {
       prior <- bayesmr_prior()
@@ -154,19 +155,21 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
                set.seed(seed)
                parallel::mc.reset.stream()
              }
-             parallel::mclapply(seq_len(nchains), bayesmr_fit_parallel, mc.cores = threads, mc.set.seed = TRUE,
-               data.c = data, p.c = p, G.c = G, control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
+             parallel::mclapply(seq_len(nchains), bayesmr_mix_fit_parallel, mc.cores = threads, mc.set.seed = TRUE,
+               data.c = data, p.c = p, G.c = 2, control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
            } else if (have_snow) {
              if (is.null(cl)) {
-               cl <- parallel::makePSOCKcluster(rep("localhost", threads), outfile = devout) # outfile doesn't work on 
-                                                                                             # Windows
+               cl <- parallel::makePSOCKcluster(rep("localhost", threads),
+                 outfile = devout) # outfile doesn't work on Windows
                parallel::clusterSetRNGStream(cl, seed)
-               res <- parallel::parLapply(cl, seq_len(nchains), bayesmr_fit_parallel, data.c = data, p.c = p, G.c = G, 
-                 control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
+               res <- parallel::parLapply(cl, seq_len(nchains), bayesmr_mix_fit_parallel,
+                 data.c = data, p.c = p, G.c = 2, control.c = control, prior.c = prior,
+                 lib = .bayesmrEnv$path.to.me)
                parallel::stopCluster(cl)
                res
-             } else parallel::parLapply(cl, seq_len(nchains), bayesmr_fit_parallel, data.c = data, p.c = p, G.c = G,
-               control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
+             } else parallel::parLapply(cl, seq_len(nchains), bayesmr_mix_fit_parallel,
+                data.c = data, p.c = p, G.c = 2, control.c = control, prior.c = prior,
+                lib = .bayesmrEnv$path.to.me)
            }
 
     if (verbose) {
@@ -186,7 +189,7 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
 
       if (verbose) message("Initialization of the algorithm...")
   
-      bayesmr_start <- bayesmr_init(data, p, G, random.start, partition = partition)
+      bayesmr_start <- bayesmr_init(data, p, 2, random.start, partition = partition)
       if (is.null(prior)) {
         prior <- bayesmr_prior()
       } else {
@@ -199,7 +202,7 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
         # message("done!")
       }
 
-      res[[ch]] <- bayesmr_fit(data = data, p = p, G = G, control = control, prior = prior, start = bayesmr_start)
+      res[[ch]] <- bayesmr_mix_fit(data = data, p = p, G = G, control = control, prior = prior, start = bayesmr_start)
 
       if (verbose && nchains > 1L) message("--- END OF CHAIN ", ch, " OF ", nchains, " ---\n")
     }
@@ -209,10 +212,14 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
   if (nchains > 1 && post_all) {
     # gamma.chain <- res[[1]]@gamma.chain
     # beta.chain <- res[[1]]@beta.chain
+    # xi.chain <- res[[1]]@xi.chain
+    # alpha.chain <- res[[1]]@alpha.chain
     # niter <- length(gamma.chain)
     # for (ch in 2:nchains) {
     #   gamma.chain <- abind::abind(gamma.chain, res[[ch]]@gamma.chain, along = 1)
-    #   beta.chain <- abind::abind(beta.chain, res[[ch]]@beta.chain, along = 1)
+    #   beta.chain <- c(beta.chain, res[[ch]]@beta.chain)
+    #   xi.chain <- abind::abind(xi.chain, res[[ch]]@xi.chain, along = 1)
+    #   alpha.chain <- abind::abind(alpha.chain, res[[ch]]@alpha.chain, along = 1)
     # }
 
     # if (control[["verbose"]]) message("Final post-processing of all chains:")
@@ -225,13 +232,15 @@ bayesmr <- function(data, p = 1, G = 1, control = bayesmr_control(), prior = NUL
     # for (ch in 1:nchains) {
     #   res[[ch]]@gamma.chain <- gamma.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
     #   res[[ch]]@beta.chain <- beta.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
+    #   res[[ch]]@xi.chain <- xi.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
+    #   res[[ch]]@alpha.chain <- alpha.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
     # }
   }
 
   # restore previous random number generator kind
   RNGkind(kind = old.rng)
 
-  res <- new("bayesmr_fit_list", results = res)
+  res <- new("bayesmr_mix_fit_list", results = res)
 
   return(res)
 }

@@ -47,7 +47,8 @@ bayesmr_prior <- function(gammaj = list(psi2 = 1), Gammaj = list(tau2 = 1),
                           psi = list(alpha = 0.1, nu = 3),
                           tau = list(alpha = 0.1, nu = 3),
                           gamma = list(mean = 0, var = 1),
-                          beta = list(mean = 0, var = 1)){
+                          beta = list(mean = 0, var = 1),
+                          alpha = list(a = 2, b = 2)){
   prior <- list()
   for (arg in names(formals(sys.function())))
     prior[[arg]] <- get(arg)
@@ -158,6 +159,20 @@ check_prior <- function(prior) {
     return(prior_ok)
   }
   if (any(prior[["beta"]]["var"] <= 0)) {
+    prior_ok <- FALSE
+    return(prior_ok)
+  }
+
+  # check alpha prior
+  if (!is.list(prior[["alpha"]])) {
+    prior_ok <- FALSE
+    return(prior_ok)
+  }
+  if (length(prior[["alpha"]]) != 2) {
+    prior_ok <- FALSE
+    return(prior_ok)
+  }
+  if (any(prior[["alpha"]] <= 0)) {
     prior_ok <- FALSE
     return(prior_ok)
   }
