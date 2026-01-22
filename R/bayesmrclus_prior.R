@@ -80,7 +80,7 @@ check_prior <- function(prior) {
     prior_ok <- FALSE
     return(prior_ok)
   }
-  if (any(prior[["gammaj"]][["psi2"]] <= 0)) {
+  if (any(prior[["gammaj"]][["psi2"]] < 0)) {
     prior_ok <- FALSE
     return(prior_ok)
   }
@@ -94,7 +94,7 @@ check_prior <- function(prior) {
     prior_ok <- FALSE
     return(prior_ok)
   }
-  if (any(prior[["Gammaj"]][["tau2"]] <= 0)) {
+  if (any(prior[["Gammaj"]][["tau2"]] < 0)) {
     prior_ok <- FALSE
     return(prior_ok)
   }

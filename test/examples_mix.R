@@ -32,7 +32,7 @@ control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
 
 # tau2_est <- tau2_dl(data_tmp, secondorder = TRUE)
 prior <- bayesmr_prior(gammaj = list(psi2 = .0001),
-                       Gammaj = list(tau2 = .0001),
+                       Gammaj = list(tau2 = 0),  # no pleiotropy
                        gamma = list(mean = 0, var = 1e1),
                        beta = list(mean = 0, var = 1e1),
                        alpha = list(a = 2, b = 2))
