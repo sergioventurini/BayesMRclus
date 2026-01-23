@@ -65,3 +65,29 @@
 #' @keywords datasets
 #'
 "hdl_chd"
+
+#' Effect of Body Mass Index (BMI) on Type-2 Diabetes (T2D)
+#'
+#' This dataset is created from three genome-wide association studies using the three-sample summary-data MR design
+#' \insertCite{zhao2019powerful}{BayesMRclus}:
+#' \enumerate{
+#' \item \strong{Selection}: \insertCite{akiyama2017genome;textual}{BayesMRclus}
+#' \item \strong{Exposure}: \insertCite{locke2015genetic;textual}{BayesMRclus}
+#' \item \strong{Outcome}: \insertCite{mahajan2018fine;textual}{BayesMRclus}
+#' }
+#'
+#' The 60 SNPs selected are independent (distance \eqn{\ge 10} mega base pairs, \eqn{R^2 \le 0.001} in a
+#' reference panel) and are associated with T2D (p-value less than \eqn{5*10^{-8}}).
+#'
+#' @references
+#' \insertAllCited{}
+#'
+#' @docType data
+#'
+#' @usage data(bmi_t2d)
+#'
+#' @format A \code{data.frame} with 60 rows and 6 variables.
+#'
+#' @keywords datasets
+#'
+"bmi_t2d"
