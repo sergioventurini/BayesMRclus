@@ -7,9 +7,10 @@
 #define CALLDEF(name, n)  {#name, (DL_FUNC) &name, n}
 
 static const R_CallMethodDef R_CallDef[] = {
-  CALLDEF(bayesmr_mcmc, 16),
-  CALLDEF(bayesmr_mcmc_het, 22),
-  CALLDEF(bayesmr_mix_mcmc, 22),
+  CALLDEF(bayesmr_mcmc_noclus_wrap, 14),
+  CALLDEF(bayesmr_mcmc_noclus_het_wrap, 20),
+  CALLDEF(bayesmr_mcmc_mix_wrap, 20),
+  CALLDEF(bayesmr_mcmc_mix_het_wrap, 25),
   {NULL, NULL, 0}
 };
 

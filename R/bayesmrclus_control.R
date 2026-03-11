@@ -32,15 +32,17 @@
 #'   proposal distribution for the jump in the individual latent space
 #'   position.
 #' @param beta.m A length-one integer vector providing the number of beta values to draw.
-#' @param random.start A length-one logical vector. If \code{TRUE} the starting
-#'   values are drawn randomly, otherwise a user-defined starting partition must
-#'   be provided through the \code{partition} argument.
-#' @param partition A length-one numeric vector providing the user-defined
-#'   starting partition.
-#' @param procrustes A length-one logical vector. If \code{TRUE} the simulated
-#'   MCMC chains are post-processed through a Procrustes transformation.
-#' @param relabel A length-one logical vector. If \code{TRUE} the simulated
-#'   MCMC chains are relabelled to address the label-switching problem.
+#' @param psi.prop A length-one numeric vector providing the standard deviation of the
+#'   proposal distribution for the jump in the individual latent space
+#'   position.
+#' @param tau.prop A length-one numeric vector providing the standard deviation of the
+#'   proposal distribution for the jump in the individual latent space
+#'   position.
+#' @param random_start A length-one logical vector. If \code{TRUE} the starting
+#'   values are drawn randomly, otherwise a user-defined starting K_start must
+#'   be provided through the \code{K_start} argument.
+#' @param K_start A length-one numeric vector providing the user-defined
+#'   starting value for the number of clusters.
 #' @param store.burnin A logical scalar. If \code{TRUE}, the samples from the
 #'   burnin are also stored and returned.
 #' @param verbose A logical scalar. If \code{TRUE}, causes information to be
@@ -70,10 +72,8 @@ bayesmr_control <- function(nsim = 5000,
                             beta.m = 2,
                             psi.prop = .1,
                             tau.prop = .1,
-                            random.start = TRUE,
-                            partition = NULL,
-                            procrustes = TRUE,
-                            relabel = TRUE,
+                            random_start = TRUE,
+                            K_start = 1,
                             store.burnin = TRUE,
                             verbose = FALSE){
   control <- list()
@@ -141,29 +141,23 @@ check_control <- function(control) {
     control_ok <- FALSE
     return(control_ok)
   }
-  if (!is.logical(control[["random.start"]])) {
+  if (!is.logical(control[["random_start"]])) {
     control_ok <- FALSE
     return(control_ok)
   }
-  if (!control[["random.start"]]) {
-    if (!is.numeric(control[["partition"]])) {
-      control_ok <- FALSE
-      return(control_ok)
-    }
+  if (!is.numeric(control[["K_start"]])) {
+    control_ok <- FALSE
+    return(control_ok)
+  }
+  if (control[["K_start"]] < 1) {
+    control_ok <- FALSE
+    return(control_ok)
   }
   if (!is.logical(control[["store.burnin"]])) {
     control_ok <- FALSE
     return(control_ok)
   }
   if (!is.logical(control[["verbose"]])) {
-    control_ok <- FALSE
-    return(control_ok)
-  }
-  if (!is.logical(control[["procrustes"]])) {
-    control_ok <- FALSE
-    return(control_ok)
-  }
-  if (!is.logical(control[["relabel"]])) {
     control_ok <- FALSE
     return(control_ok)
   }

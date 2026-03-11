@@ -21,8 +21,6 @@ void bayesmr_mcmc_noclus(
   const double C_beta,                        // beta proposal sd
   int totiter,
   int n,
-  int p,
-  int G,
   int verbose){
   if (n <= 0 || totiter <= 0) return;
 

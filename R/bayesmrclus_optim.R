@@ -74,10 +74,6 @@ gamma_beta_psi_tau_logpost_optim <- function(par, data, prior) {
 #' \code{bayesmr_fit()} is the main function that estimates a BayesMR model.
 #'
 #' @param data An object of class \code{\link{bayesmr_data}})..
-#' @param p A length-one numeric vector indicating the number of dimensions of the
-#'   latent space.
-#' @param G A length-one numeric vector indicating the number of cluster to
-#'   partition the \emph{S} subjects.
 #' @param control A list of control parameters that affect the sampling
 #'   but do not affect the posterior distribution See
 #'   \code{\link{bayesmr_control}()} for more details.
@@ -107,10 +103,10 @@ gamma_beta_psi_tau_logpost_optim <- function(par, data, prior) {
 #' set.seed(seed)
 #'
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random.start = TRUE, verbose = TRUE,
+#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
 #'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
 #'   parallel = "snow")
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #'
 #' summary(sim.bayesmr, include.burnin = FALSE)
 #'
@@ -200,10 +196,6 @@ bayesmr_noclus_het_mle <- function(
 #' \code{bayesmr_fit()} is the main function that estimates a BayesMR model.
 #'
 #' @param data An object of class \code{\link{bayesmr_data}})..
-#' @param p A length-one numeric vector indicating the number of dimensions of the
-#'   latent space.
-#' @param G A length-one numeric vector indicating the number of cluster to
-#'   partition the \emph{S} subjects.
 #' @param control A list of control parameters that affect the sampling
 #'   but do not affect the posterior distribution See
 #'   \code{\link{bayesmr_control}()} for more details.
@@ -233,10 +225,10 @@ bayesmr_noclus_het_mle <- function(
 #' set.seed(seed)
 #'
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random.start = TRUE, verbose = TRUE,
+#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
 #'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
 #'   parallel = "snow")
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #'
 #' summary(sim.bayesmr, include.burnin = FALSE)
 #'

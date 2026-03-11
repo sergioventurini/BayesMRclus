@@ -1,0 +1,72 @@
+load("/Users/Sergio/dev/BayesMRclus/data/amd_hdl.RData")
+str(amd_hdl)
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_sbp.rda")
+str(bmi_sbp)
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_t2d.rda")
+str(bmi_t2d)
+ieugwasr::get_opengwas_jwt()
+load("/Users/Sergio/dev/BayesMRclus/data/hdl_chd.rda")
+str(hdl_chd)
+str(subset(hdl_chd, pval.selection <= 1e-04))
+str(subset(hdl_chd, pval.selection <= 1e-05))
+str(subset(hdl_chd, pval.selection <= 1e-08))
+load("/Users/Sergio/dev/BayesMRclus/data/tg_cad.rda")
+ls()
+tg_cad
+plot(tg_cad)
+BayesMRclus::plot(tg_cad)
+load("/Users/Sergio/dev/BayesMRclus/data/ldl2_cad.rda")
+ls()
+load("/Users/Sergio/dev/BayesMRclus/data/tg_cad.rda")
+ls()
+tg_cad
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_sbp.rda")
+ls()
+str(bmi_sbp)
+load("/Users/Sergio/dev/BayesMRclus/data/tg_cad.rda")
+ls()
+str(tg_cad)
+load("/Users/Sergio/dev/BayesMRclus/data/educ_alzheimer.rda")
+ls
+ls(educ_alzheimer)
+load("/Users/Sergio/dev/BayesMRclus/data/ldl_sbp.rda")
+ls()
+str(dat_orig)
+names(dat_orig)
+dim(dat_orig)
+ls()
+ls()[2]
+str(ls()[2])
+load("/Users/Sergio/dev/BayesMRclus/data/hdl_chd.rda")
+ls()
+hdl_chd
+colnames(hdl_chd) <- c("SNP", "pval_selection", "beta_exposure", "se_exposure","beta_outcome","se_outcome")
+hdl_chd
+save(hdl_chd, file = "/Users/Sergio/dev/BayesMRclus/data/hdl_chd.rda")
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_sbp.rda")
+bmi_sbp
+dat_orig <- bmi_sbp
+bmi_sbp <- bmi_sbp[, c("SNP", "pval.selection", "beta.exposure", "se.exposure","beta.outcome","se.outcome")]
+bmi_sbp
+colnames(bmi_sbp) <- c("SNP", "pval_selection", "beta_exposure", "se_exposure","beta_outcome","se_outcome")
+bmi_sbp
+save(dat_orig, bmi_sbp, file = "/Users/Sergio/dev/BayesMRclus/data/bmi_sbp.rda")
+load("/Users/Sergio/dev/BayesMRclus/data/hdl_chd.rda")
+ls()
+hdl_chd
+load("/Users/Sergio/dev/BayesMRclus/data/amd_hdl.rda")
+ls()
+load("/Users/Sergio/dev/BayesMRclus/data/apob_cad.rda")
+ls()
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_cad.rda")
+ls()
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_depression.rda")
+ls()
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_sbp.rda")
+ls()
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_t2d.rda")
+ls()
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_sbp.rda")
+ls()
+dat_orig
+bmi_sbp

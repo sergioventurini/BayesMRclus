@@ -5,14 +5,10 @@
 #' @param data A list whose elements are the dissimilarity matrices corresponding
 #'   to the judgments expressed by the \emph{S} subjects/raters. These matrices
 #'   must be defined as a \code{dist} object.
-#' @param p A length-one numeric vector indicating the number of dimensions of the
-#'   latent space.
-#' @param G A length-one numeric vector indicating the number of cluster to
-#'   partition the \emph{S} subjects.
-#' @param random.start A length-one logical vector. If \code{TRUE} the starting
+#' @param random_start A length-one logical vector. If \code{TRUE} the starting
 #'   values are drawn randomly, otherwise.
-#' @param partition A length-one numeric vector providing the user-defined
-#'   starting partition.
+#' @param K_start A length-one numeric vector providing the initial
+#'   value for the number of clusters.
 #' @return A named \code{list} with the following items:
 #'   \describe{
 #'     \item{\code{z}: }{array of latent coordinates starting values}
@@ -30,92 +26,218 @@
 #'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
 #' @examples
 #' data(simdiss, package = "bayesmr")
-#' bayesmr_init(simdiss@diss, p = 2, G = 3, random.start = TRUE)
+#' bayesmr_init(simdiss@diss, random_start = TRUE)
 #' @export
-bayesmr_init <- function(data, p, G, random.start, partition) {
+bayesmr_init <- function(data, random_start = TRUE, K_start = 1, start_values) {
   n <- nrow(data)
-
-  # # initialize x (cluster labels)
-  # if (random.start) {
-  #   x <- sample(1:G, S, replace = TRUE)
-  #   while (length(unique(x)) < G) {
-  #     x <- sample(1:G, S, replace = TRUE)
-  #   }
-  # } else {
-  #   if (is.null(partition)) {
-  #     dmat <- list2matrix(data)
-  #     d.clust <- hclust(dist(dmat, method = method), method = "ward.D")
-  #     x <- cutree(d.clust, k = G)
-  #   } else {
-  #     if (length(partition) != S) {
-  #       stop(paste0("the initial partition must include S = ", S, " values."))
-  #     }
-  #     if (length(unique(partition)) != G) {
-  #       stop(paste0("the initial partition must include G = ", G, " unique values."))
-  #     }
-  #     x <- partition
-  #   }
-  # }
-  # ng <- table(factor(x, levels = 1:G))
   
-  # Dm <- list2array(D)
-  # z <- array(NA, dim = c(n, p, G))
-  # alpha <- eta <- sigma2 <- dsigma2 <- numeric(G)
+  if (random_start) {
+    # initialize psi and tau
+    psi_tau <- rhalft(2, alpha = .01, nu = 3)
+    psi <- psi_tau[1]
+    tau <- psi_tau[2]
 
-  # for (g in 1:G) {
-  #   # initialize Z_g
-  #   Dg <- Dm[, , x == g]
-  #   Dm_bar <- apply(Dg, c(1, 2), mean)
-  #   D_bar <- as.dist(Dm_bar)
-  #   d_ov.mean <- mean(D_bar)
-  #   Dm_above <- as.matrix(as.dist(Dm_bar > d_ov.mean))
-    
-  #   Dg <- Dm[, , x == g]
-  #   Dm_sum <- apply(Dg, c(1, 2), sum)
-  #   z_mds <- stats::cmdscale(d = Dm_sum, k = p)
-  #   if (ncol(z_mds) != p) {
-  #     stop(paste0("the initialization of the MDS configuration for cluster g = ", g, " of ", G,
-  #       " using p = ", p, " dimensions failed."))
-  #   }
-  #   z[, , g] <- scale(z_mds)
-    
-  #   # initialize alpha_g
-  #   alpha.glm <- glm(as.numeric(as.dist(Dm_above)) ~ 1, family = family, offset = as.numeric(dist(z[, , g])))
-  #   alpha[g] <- coef(alpha.glm)
-    
-  #   # initialize sigma2_g
-  #   sigma2[g] <- vcov(alpha.glm)[1, 1]
-  # }
-  
-  # initialize psi and tau
-  psi_tau <- rhalft(2, alpha = .1, nu = 3)
-  psi <- psi_tau[1]
-  tau <- psi_tau[2]
+    if (K_start == 1) {
+      # initialize gamma and beta
+      gamma_beta <- rnorm(2, mean = 0, sd = .5)
+      gamma <- gamma_beta[1]
+      beta <- gamma_beta[2]
 
-  if (G == 1) {
-    # initialize gamma and beta
-    gamma_beta <- rnorm(2, mean = 0, sd = .5)
-    gamma <- gamma_beta[1]
-    beta <- gamma_beta[2]
-
-    return(list(gamma = gamma, beta = beta, psi = psi, tau = tau))
-  }
-  else if (G > 1) {
-    # initialize gamma
-    gamma <- rnorm(1, mean = 0, sd = .5)
-
-    # initialize xi (cluster indicators)
-    xi <- sample(x = 1:G, size = data@n, replace = TRUE)
-    while (length(table(xi)) != G) {  # make sure the G clusters are all non empty
-      xi <- sample(x = 1:G, size = data@n, replace = TRUE)
+      return(list(gamma = gamma, beta = beta, psi = psi, tau = tau))
     }
+    else if (K_start > 1) {
+      # initialize gamma
+      gamma <- rnorm(1, mean = 0, sd = .5)
 
-    # initialize beta unique values
-    beta <- rnorm(G, 0, sd = .5)      # beta_star
-    
+      # initialize xi (cluster indicators)
+      xi <- sample(x = 1:K_start, size = data@n, replace = TRUE)
+      while (length(table(xi)) != K_start) {  # make sure the K_start clusters are all non empty
+        xi <- sample(x = 1:K_start, size = data@n, replace = TRUE)
+      }
+
+      # initialize beta unique values
+      beta <- rnorm(K_start, 0, sd = .5)      # beta_star
+    }
+      
     # initialize alpha (concentration)
     alpha <- 1
 
-    return(list(gamma = gamma, beta = beta, psi = psi, tau = tau, K = G, xi = xi, alpha = alpha))
+    return(list(gamma = gamma, beta = beta, psi = psi, tau = tau, K = K_start, xi = xi, alpha = alpha))
   }
+  else {
+    if (check_startvalues(start_values)) {
+      return(start_values)
+    }
+    else {
+      stop("the starting values list is not correct; see the documentation for more details.")
+    }
+  }
+}
+
+#' Auxiliary Function for Setting BayesMR Model Starting Values
+#' 
+#' @description{
+#' \code{bayesmr_startvalues()} is an auxiliary function as user interface for
+#'   \code{bayesmr()} fitting. Typically only used when calling the \code{bayesmr()}
+#'   function. It is used to set prior hyperparameters.
+#' 
+#' \code{prior_bayesmr()} is an alias for \code{bayesmr_startvalues()}.
+#' 
+#' \code{check_prior()} is an auxiliary function that verifies the
+#'   correctness of the prior hyperparameters provided before a BayesMR is fitted
+#'   with \code{\link{bayesmr}()}.
+#' 
+#' \code{update_prior()} is an auxiliary function to modify a set of prior
+#'   choices using a new value of \emph{p} and \emph{G}. It is intended for
+#'   internal use mainly in the \code{\link{bayesmr_ic}()} function.
+#' }
+#'
+#' @param gammaj A named list containing the hyperparameters for the prior
+#'   distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
+#'   contain two numeric vectors, namely \code{a} and \code{b}.
+#' @param Gammaj A named list containing the hyperparameters for the prior
+#'   distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
+#'   contain two numeric vectors, namely \code{a} and \code{b}.
+#' @param gamma A named list containing the hyperparameters for the prior
+#'   distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
+#'   contain two numeric vectors, namely \code{a} and \code{b}.
+#' @param beta A named list containing the hyperparameters for the prior
+#'   distributions of the \eqn{\sigma^2_1,\ldots,\sigma^2_G} parameters. It
+#'   should contain two numeric scalars, namely \code{a} and \code{b}.
+#' @param prior A named list of prior hyperparameters.
+#' @return A list with the prior hyperparameters as components.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#' @seealso \code{\link{bayesmr}()}
+#' @keywords model based clustering
+#' @examples
+#' \dontrun{
+#' data(simdiss, package = "bayesmr")
+#' # Shorter run than default.
+#' sim.fit <- bayesmr(simdiss,
+#'   control = bayesmr_control(burnin = 1000, nsim = 2000, thin = 1, verbose = TRUE),
+#'   prior = bayesmr_startvalues(gamma = list(mean = 0, var = 1)))
+#' }
+#'
+#' @export
+bayesmr_startvalues <- function(gamma, beta, ...) {
+  c(list(gamma = gamma, beta = beta), list(...))
+}
+
+#' @rdname bayesmr_startvalues
+#' @export
+startvalues_bayesmr <- bayesmr_startvalues
+
+#' @rdname bayesmr_startvalues
+#' @export
+check_startvalues <- function(startvalues) {
+  startvalues_ok <- TRUE
+
+  # check startvalues list
+  if (!is.list(startvalues)) {
+    startvalues_ok <- FALSE
+    return(startvalues_ok)
+  }
+
+  sv_names <- names(startvalues)
+
+  # check gamma startvalues
+  if (length(startvalues[["gamma"]]) != 1) {
+    startvalues_ok <- FALSE
+    return(startvalues_ok)
+  }
+  if (startvalues[["gamma"]] < 0) {
+    startvalues_ok <- FALSE
+    return(startvalues_ok)
+  }
+
+  # check beta startvalues
+  if (is.null(startvalues[["beta"]])) {
+    startvalues_ok <- FALSE
+    return(startvalues_ok)
+  }
+
+  # check K startvalues
+  if (!is.null(startvalues[["K"]])) {
+    if (length(startvalues[["K"]]) != 1) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+    if (startvalues[["K"]] < 1) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+    if (startvalues[["K"]] != trunc(startvalues[["K"]])) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+
+    if (length(startvalues[["beta"]]) != startvalues[["K"]]) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+
+    if (startvalues[["K"]] > 1) {
+      # check xi startvalues
+      if (is.null(startvalues[["xi"]])) {
+        startvalues_ok <- FALSE
+        return(startvalues_ok)
+      }
+      if (length(startvalues[["xi"]]) != startvalues[["K"]]) {
+        startvalues_ok <- FALSE
+        return(startvalues_ok)
+      }
+      if (any(startvalues[["xi"]] != trunc(startvalues[["xi"]]))) {
+        startvalues_ok <- FALSE
+        return(startvalues_ok)
+      }
+      if (any(startvalues[["xi"]] < 1)) {
+        startvalues_ok <- FALSE
+        return(startvalues_ok)
+      }
+
+      # check alpha startvalues
+      if (is.null(startvalues[["alpha"]])) {
+        startvalues_ok <- FALSE
+        return(startvalues_ok)
+      }
+      if (length(startvalues[["alpha"]]) != 1) {
+        startvalues_ok <- FALSE
+        return(startvalues_ok)
+      }
+      if (startvalues[["alpha"]] <= 0) {
+        startvalues_ok <- FALSE
+        return(startvalues_ok)
+      }
+    }
+  }
+  else {
+    startvalues_ok <- FALSE
+    return(startvalues_ok)
+  }
+
+  # check psi startvalues
+  if (!is.null(startvalues[["psi"]])) {
+    if (length(startvalues[["psi"]]) != 1) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+    if (startvalues[["psi"]] < 0) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+  }
+
+  # check tau startvalues
+  if (!is.null(startvalues[["tau"]])) {
+    if (length(startvalues[["tau"]]) != 1) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+    if (startvalues[["tau"]] < 0) {
+      startvalues_ok <- FALSE
+      return(startvalues_ok)
+    }
+  }
+
+  return(startvalues_ok)
 }

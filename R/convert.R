@@ -29,7 +29,7 @@
 #' 
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], verbose = TRUE)
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #' sim.mcmc <- bayesmr_fit_to_mcmc(sim.bayesmr@results[[1]], TRUE)
 #' plot(sim.mcmc)
 #' }
@@ -43,8 +43,6 @@ bayesmr_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE) {
   totiter <- burnin + nsim
 
   n <- res@dim[["n"]]
-  p <- res@dim[["p"]]
-  G <- res@dim[["G"]]
 
   if (store.burnin) {
     if (include.burnin) {
@@ -120,7 +118,7 @@ bayesmr_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE) {
 #' 
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #' sim.list <- bayesmr_fit_list_to_list(sim.bayesmr, TRUE)
 #' 
 #' library(bayesplot)
@@ -137,8 +135,6 @@ bayesmr_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = TRUE
   totiter <- burnin + nsim
 
   n <- res@results[[1]]@dim[["n"]]
-  p <- res@results[[1]]@dim[["p"]]
-  G <- res@results[[1]]@dim[["G"]]
 
   if (store.burnin) {
     if (include.burnin) {
@@ -210,7 +206,7 @@ bayesmr_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = TRUE
 #' 
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #' sim.mcmc <- bayesmr_fit_list_to_mcmc.list(sim.bayesmr, TRUE)
 #' plot(sim.mcmc)
 #' }
@@ -270,7 +266,7 @@ bayesmr_fit_list_to_mcmc.list <- function(res, include.burnin = FALSE, verbose =
 #' 
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], verbose = TRUE)
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #' sim.mcmc <- bayesmr_het_fit_to_mcmc(sim.bayesmr@results[[1]], TRUE)
 #' plot(sim.mcmc)
 #' }
@@ -284,8 +280,6 @@ bayesmr_het_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE)
   totiter <- burnin + nsim
 
   n <- res@dim[["n"]]
-  p <- res@dim[["p"]]
-  G <- res@dim[["G"]]
 
   if (store.burnin) {
     if (include.burnin) {
@@ -365,7 +359,7 @@ bayesmr_het_fit_to_mcmc <- function(res, include.burnin = FALSE, verbose = TRUE)
 #' 
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #' sim.list <- bayesmr_het_fit_list_to_list(sim.bayesmr, TRUE)
 #' 
 #' library(bayesplot)
@@ -382,8 +376,6 @@ bayesmr_het_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = 
   totiter <- burnin + nsim
 
   n <- res@results[[1]]@dim[["n"]]
-  p <- res@results[[1]]@dim[["p"]]
-  G <- res@results[[1]]@dim[["G"]]
 
   if (store.burnin) {
     if (include.burnin) {
@@ -459,7 +451,7 @@ bayesmr_het_fit_list_to_list <- function(res, include.burnin = FALSE, verbose = 
 #' 
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
 #'   alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
-#' sim.bayesmr <- bayesmr(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr(simdiss, control)
 #' sim.mcmc <- bayesmr_het_fit_list_to_mcmc.list(sim.bayesmr, TRUE)
 #' plot(sim.mcmc)
 #' }

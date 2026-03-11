@@ -14,8 +14,7 @@
   dens = list(),
   control = list(),
   prior = list(),
-  dim = list(),
-  model = NA
+  dim = list()
 )
 }
 \arguments{
@@ -41,8 +40,6 @@ hyperparameters. See \code{\link{bayesmr_prior}()} for more information.}
 the estimated model, i.e. number of objects (\emph{n}), number of latent
 dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 subjects (\emph{S}).}
-
-\item{model}{An object of class \code{\link{bayesmr_model}}.}
 
 \item{z.chain}{An object of class \code{array}; posterior draws from
 the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.}

@@ -261,34 +261,16 @@ std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::ve
     const double dx = x_vec[i] - mu_x[i];
     const double dy = y_vec[i] - mu_y[i];
 
-    const double q =
+    const double quad_form =
       inv_det * (syy * dx * dx - 2.0 * sxy * dx * dy + sxx * dy * dy);
 
     const double logdens =
-      -0.5 * (log_2pi + std::log(det) + q);
+      -log_2pi - 0.5 * (std::log(det) + quad_form);
 
     out[i] = logscale ? logdens : std::exp(logdens);
   }
 
   return out;
-}
-
- // Multivariate normal log density for 2D
-double dmvnorm_log(double x1, double x2, double mu1, double mu2,
-                   double sig11, double sig12, double sig21, double sig22) {
-  double inv11, inv12, inv21, inv22;
-  inverse_2x2(sig11, sig12, sig21, sig22, inv11, inv12, inv21, inv22);
-
-  double diff1 = x1 - mu1;
-  double diff2 = x2 - mu2;
-
-  double quad_form = diff1 * (inv11 * diff1 + inv12 * diff2) + 
-                    diff2 * (inv21 * diff1 + inv22 * diff2);
-
-  double det = sig11 * sig22 - sig12 * sig21;
-  double log_det = std::log(det);
-
-  return -0.5 * (2.0 * std::log(2.0 * M_PI) + log_det + quad_form);
 }
 
 std::vector<double> dhalft(const std::vector<double>& x, const std::vector<double>& alpha,

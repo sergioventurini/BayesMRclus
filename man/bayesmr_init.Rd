@@ -4,24 +4,18 @@
 \alias{bayesmr_init}
 \title{Function to compute the starting values before fitting a BayesMR models.}
 \usage{
-bayesmr_init(data, p, G, random.start, partition)
+bayesmr_init(data, random_start = TRUE, K_start = 1, start_values)
 }
 \arguments{
 \item{data}{A list whose elements are the dissimilarity matrices corresponding
 to the judgments expressed by the \emph{S} subjects/raters. These matrices
 must be defined as a \code{dist} object.}
 
-\item{p}{A length-one numeric vector indicating the number of dimensions of the
-latent space.}
-
-\item{G}{A length-one numeric vector indicating the number of cluster to
-partition the \emph{S} subjects.}
-
-\item{random.start}{A length-one logical vector. If \code{TRUE} the starting
+\item{random_start}{A length-one logical vector. If \code{TRUE} the starting
 values are drawn randomly, otherwise.}
 
-\item{partition}{A length-one numeric vector providing the user-defined
-starting partition.}
+\item{K_start}{A length-one numeric vector providing the initial
+value for the number of clusters.}
 }
 \value{
 A named \code{list} with the following items:
@@ -40,7 +34,7 @@ A named \code{list} with the following items:
 }
 \examples{
 data(simdiss, package = "bayesmr")
-bayesmr_init(simdiss@diss, p = 2, G = 3, random.start = TRUE)
+bayesmr_init(simdiss@diss, random_start = TRUE)
 }
 \references{
 Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for

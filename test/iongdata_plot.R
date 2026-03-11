@@ -1,7 +1,7 @@
 library(ggplot2)
 library(mr.raps)
 library(MRPATH)
-data(hdl_chd)
+data(hdl_chd, package = "MRPATH")
 
 plot_data <- subset(hdl_chd, pval.selection <= 5e-8)
 sel <- plot_data$beta.exposure < 0

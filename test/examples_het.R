@@ -2,14 +2,11 @@ library(BayesMRclus)
 
 # prepare data
 data("bmi_sbp", package = "BayesMRclus")
-bmi_sbp <- subset(bmi_sbp, pval.selection < 5e-4)
-data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
-                   beta_outcome = bmi_sbp[, "beta.outcome"],
-                   se_exposure = bmi_sbp[, "se.exposure"],
-                   se_outcome = bmi_sbp[, "se.outcome"])
+bmi_sbp <- subset(bmi_sbp, pval_selection < 5e-4)
 
-n <- nrow(data)
-zhaodata <- new("bayesmr_data", data = data, n = n, harmonization = TRUE)
+n <- nrow(bmi_sbp)
+zhaodata <- new("bayesmr_data", data = bmi_sbp, n = n, harmonization = TRUE)
+data_tmp <- shaodata@data
 # summary(zhaodata)
 # plot(zhaodata, se = TRUE)
 
@@ -25,9 +22,9 @@ nsim <- 200000
 nchains <- 3
 control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
                 psi.prop = prm.prop[["psi"]], tau.prop = prm.prop[["tau"]],
-                random.start = TRUE, verbose = TRUE, nchains = nchains, thin = 50,
+                random_start = TRUE, verbose = TRUE, nchains = nchains, thin = 50,
                 store.burnin = TRUE, threads = ifelse(
-                  nchains <= parallel::detectCores(),
+                  nchains <= parallel::detectCores() - 1,
                   nchains, parallel::detectCores() - 1),
                 parallel = "snow")
 
@@ -39,7 +36,7 @@ prior <- bayesmr_prior(psi = list(alpha = alpha_psi, nu = 3),
                        beta = list(mean = 0, var = 1e2))
 
 # MCMC simulation
-res_BMR <- bayesmr_het(zhaodata, control = control, prior = prior)
+system.time(res_BMR <- bayesmr_het(zhaodata, control = control, prior = prior))
 
 # MCMC summaries/graphs
 summary(res_BMR)
@@ -66,3 +63,13 @@ heidel.diag(res_BMR_sub)
 densplot(res_BMR_sub)
 autocorr.diag(res_BMR_sub)
 effectiveSize(res_BMR_sub)
+
+###
+
+# inverse-variance weighted method
+library(MendelianRandomization)
+
+mr_ivw(mr_input(data$beta_exposure, data$se_exposure,
+                data$beta_outcome, data$se_outcome))
+mr_allmethods(mr_input(data$beta_exposure, data$se_exposure,
+                       data$beta_outcome, data$se_outcome))

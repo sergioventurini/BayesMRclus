@@ -1,17 +1,17 @@
-library(BayesMRclus)
+library(ggplot2)
+library(mr.raps)
+data(bmi.sbp, package = "mr.raps")
 
 # prepare data
-data("bmi_sbp", package = "BayesMRclus")
-bmi_sbp <- subset(bmi_sbp, pval.selection < 5e-8)
-data <- data.frame(beta_exposure = bmi_sbp[, "beta.exposure"],
+bmi_sbp <- subset(bmi.sbp, pval.selection < 5e-8)
+data <- data.frame(SNP = bmi_sbp[, "SNP"],
+                   beta_exposure = bmi_sbp[, "beta.exposure"],
                    beta_outcome = bmi_sbp[, "beta.outcome"],
                    se_exposure = bmi_sbp[, "se.exposure"],
                    se_outcome = bmi_sbp[, "se.outcome"])
 
 n <- nrow(data)
 zhaodata <- new("bayesmr_data", data = data, n = n, harmonization = TRUE)
-
-library(ggplot2)
 
 # Create 95% confidence intervals for error bars
 zhaodata@data$lower_x <- zhaodata@data$beta_exposure - zhaodata@data$se_exposure
@@ -20,8 +20,6 @@ zhaodata@data$lower_y <- zhaodata@data$beta_outcome - zhaodata@data$se_outcome
 zhaodata@data$upper_y <- zhaodata@data$beta_outcome + zhaodata@data$se_outcome
 
 # Two fitted models:
-library(mr.raps)
-
 zhaodata2 <- zhaodata
 colnames(zhaodata2@data) <- c("beta.exposure", "beta.outcome",
                               "se.exposure", "se.outcome")
@@ -53,12 +51,11 @@ newdat$robust_upr <- (fit_robust$beta.hat + 1.96*fit_robust$beta.se)*newdat$beta
 
 # Plot
 ggplot(zhaodata@data, aes(x = beta_exposure, y = beta_outcome)) +
-  
   # Error bars
   geom_errorbar(aes(ymin = lower_y, ymax = upper_y),
                 width = 0, colour = "grey50") +
   geom_errorbarh(aes(xmin = lower_x, xmax = upper_x),
-                 height = 0, colour = "grey50") +
+                 width = 0, colour = "grey50") +
   
   # Points
   geom_point(size = 2, shape = 21, fill = "black") +
@@ -97,4 +94,5 @@ ggplot(zhaodata@data, aes(x = beta_exposure, y = beta_outcome)) +
   
   theme(legend.position = "bottom") +
   
-  theme(panel.border = element_rect(colour = "black", fill = NA, size = .5))
+  theme(panel.border = element_rect(colour = "black", fill = NA,
+                                    linewidth = .5))

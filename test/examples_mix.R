@@ -2,31 +2,28 @@ library(BayesMRclus)
 
 # prepare data
 data("hdl_chd", package = "BayesMRclus")
-hdl_chd <- subset(hdl_chd, pval.selection < 5e-8)
-data <- data.frame(beta_exposure = hdl_chd[, "beta.exposure"],
-                   beta_outcome = hdl_chd[, "beta.outcome"],
-                   se_exposure = hdl_chd[, "se.exposure"],
-                   se_outcome = hdl_chd[, "se.outcome"])
+hdl_chd <- subset(hdl_chd, pval_selection < 5e-8)
 
-n <- nrow(data)
-iongdata <- new("bayesmr_data", data = data, n = n, harmonization = TRUE)
+n <- nrow(hdl_chd)
+iongdata <- new("bayesmr_data", data = hdl_chd, n = n, harmonization = TRUE)
+data_tmp <- iongdata@data
 # summary(iongdata)
 # plot(iongdata, se = TRUE)
 
 # simulation setup
 prm.prop <- list(beta = .2)
-burnin <- 10000
-nsim <- 20000
+burnin <- 100000
+nsim <- 200000
 
 # seed <- 2301
 # set.seed(seed)
 
 nchains <- 3
 control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
-                beta.m = 2, nchains = nchains, thin = 1,
-                random.start = TRUE, verbose = TRUE,
+                beta.m = 2, nchains = nchains, thin = 100,
+                random_start = TRUE, verbose = TRUE,
                 store.burnin = TRUE, threads = ifelse(
-                  nchains <= parallel::detectCores(),
+                  nchains <= parallel::detectCores() - 1,
                   nchains, parallel::detectCores() - 1),
                 parallel = "snow")
 
@@ -38,8 +35,9 @@ prior <- bayesmr_prior(gammaj = list(psi2 = .0001),
                        alpha = list(a = 2, b = 2))
 
 # MCMC simulation
-res_BMR <- bayesmr_mix(iongdata, control = control, prior = prior)
+system.time(res_BMR <- bayesmr_mix(iongdata, control = control, prior = prior))
 
+res_BMR@results[[1]]@accept
 plot(res_BMR@results[[1]]@gamma.chain, type = "l")
 lines(res_BMR@results[[2]]@gamma.chain, type = "l", col = gray(.6))
 lines(res_BMR@results[[3]]@gamma.chain, type = "l", col = gray(.9))
@@ -96,9 +94,9 @@ post_sim <- function(xi_post, burnin) {
   return(simil_probs)
 }
 
-psm1 <- post_sim(res_BMR@results[[1]]@xi.chain, burnin = burnin)
-psm2 <- post_sim(res_BMR@results[[2]]@xi.chain, burnin = burnin)
-psm3 <- post_sim(res_BMR@results[[3]]@xi.chain, burnin = burnin)
+psm1 <- post_sim(res_BMR@results[[1]]@xi.chain, burnin = 1000)
+psm2 <- post_sim(res_BMR@results[[2]]@xi.chain, burnin = 1000)
+psm3 <- post_sim(res_BMR@results[[3]]@xi.chain, burnin = 1000)
 plot(psm1, psm2) ## good agreement
 plot(psm1, psm3) ## good agreement
 plot(psm2, psm3) ## good agreement
@@ -138,10 +136,11 @@ S <- nrow(res_BMR@results[[1]]@beta.chain)
 
 # Recover SNP-specific causal effects
 
+burnin <- 1000
 beta_snps <- sapply(1:S, function(s) res_BMR@results[[1]]@beta.chain[s, ][res_BMR@results[[1]]@xi.chain[s, ]])
 boxplot(t(beta_snps[, burnin:S]), outline = FALSE)
 
-# arranged according to the estimated partition
+# arranged according to the estimated K_start
 
 boxplot(t(beta_snps[ordered_ind_vi, burnin:S]), outline = FALSE,
         col = c(rep("lightblue", sum(vi == 1)), rep("pink", sum(vi == 2))))
@@ -187,3 +186,13 @@ title(xlab = "SNP (j)", line = 6)
 
 # abline(h = beta_no_mixture, col = "black", lty = 2)
 abline(h = 0, col = "black", lty = 2)
+
+###
+
+# inverse-variance weighted method
+library(MendelianRandomization)
+
+mr_ivw(mr_input(data$beta_exposure, data$se_exposure,
+                data$beta_outcome, data$se_outcome))
+mr_allmethods(mr_input(data$beta_exposure, data$se_exposure,
+                       data$beta_outcome, data$se_outcome))

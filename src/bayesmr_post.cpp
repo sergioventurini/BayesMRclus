@@ -100,7 +100,7 @@ void logpost_psi(double* lpost, const double psi,
   double logLik = std::accumulate(logdens.begin(), logdens.end(), 0.0);
 
   // Halt-t prior for psi
-  const double logprior = dhalft_scalar(psi, alpha_psi, nu_psi, true );
+  const double logprior = dhalft_scalar(psi, alpha_psi, nu_psi, true);
 
   // Final result: log posterior
   *lpost = logLik + logprior;
@@ -152,7 +152,7 @@ void logpost_tau(double* lpost, const double tau,
   double logLik = std::accumulate(logdens.begin(), logdens.end(), 0.0);
 
   // Halt-t prior for tau
-  const double logprior = dhalft_scalar(tau, alpha_tau, nu_tau, true );
+  const double logprior = dhalft_scalar(tau, alpha_tau, nu_tau, true);
 
   // Final result: log posterior
   *lpost = logLik + logprior;
@@ -206,16 +206,16 @@ void logpost_psi_tau(double* lpost,
   double logLik = std::accumulate(logdens.begin(), logdens.end(), 0.0);
 
   // Halt-t prior for psi
-  const double logprior_psi = dhalft_scalar(psi, alpha_psi, nu_psi, true );
+  const double logprior_psi = dhalft_scalar(psi, alpha_psi, nu_psi, true);
 
   // Halt-t prior for tau
-  const double logprior_tau = dhalft_scalar(tau, alpha_tau, nu_tau, true );
+  const double logprior_tau = dhalft_scalar(tau, alpha_tau, nu_tau, true);
 
   // Final result: log posterior
   *lpost = logLik + logprior_psi + logprior_tau;
 }
 
-// log-likelihood
+// log-likelihood (scalar)
 // [code optimized to avoid loop-based calculations]
 double bayesmr_logLik(const double beta, const double gamma,
   const double psi2, const double tau2, int n,
@@ -241,6 +241,42 @@ double bayesmr_logLik(const double beta, const double gamma,
   for (int j = 0; j < n; ++j) {
     sigma_xx[j] = sigma2_X[j] + psi2;
     sigma_yy[j] = beta2 * psi2 + sigma2_Y[j] + tau2;
+  }
+
+  // Compute all log densities at once
+  std::vector<double> logdens = dbivnorm_cpp(
+      X, Y,
+      mu_x, mu_y,
+      sigma_xx, sigma_yy, sigma_xy,
+      true  // log-scale
+  );
+
+  // Sum log-likelihood
+  return std::accumulate(logdens.begin(), logdens.end(), 0.0);
+}
+
+// log-likelihood (vector)
+// [code optimized to avoid loop-based calculations]
+double bayesmr_logLik_vec(std::vector<double> beta_vec, const double gamma,
+  const double psi2, const double tau2, int n,
+  const double* gammahat_j, const double* Gammahat_j,
+  const double* sigma2_X, const double* sigma2_Y){
+  // Convert inputs to vectors once
+  std::vector<double> X(gammahat_j, gammahat_j + n);
+  std::vector<double> Y(Gammahat_j, Gammahat_j + n);
+
+  // Allocate per-observation parameters
+  std::vector<double> mu_x(n, gamma);
+  std::vector<double> mu_y(n);
+  std::vector<double> sigma_xx(n);
+  std::vector<double> sigma_yy(n);
+  std::vector<double> sigma_xy(n);
+
+  for (int j = 0; j < n; ++j) {
+    mu_y[j] = beta_vec[j] * gamma;
+    sigma_xx[j] = sigma2_X[j] + psi2;
+    sigma_yy[j] = beta_vec[j] * beta_vec[j] * psi2 + sigma2_Y[j] + tau2;
+    sigma_xy[j] = beta_vec[j] * psi2;
   }
 
   // Compute all log densities at once

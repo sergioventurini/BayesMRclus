@@ -22,12 +22,6 @@ bayesmr_noclus_mle(
 but do not affect the posterior distribution See
 \code{\link{bayesmr_control}()} for more details.}
 
-\item{p}{A length-one numeric vector indicating the number of dimensions of the
-latent space.}
-
-\item{G}{A length-one numeric vector indicating the number of cluster to
-partition the \emph{S} subjects.}
-
 \item{start}{A named list of starting values for the MCMC algorithm (see
 \code{\link{bayesmr_init}}).}
 }
@@ -51,10 +45,10 @@ seed <- 2301
 set.seed(seed)
 
 control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-  alpha.prop = prm.prop[["alpha"]], random.start = TRUE, verbose = TRUE,
+  alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
   parallel = "snow")
-sim.bayesmr <- bayesmr(simdiss, p, G, control)
+sim.bayesmr <- bayesmr(simdiss, control)
 
 summary(sim.bayesmr, include.burnin = FALSE)
 

@@ -5,10 +5,6 @@
 #'
 #' @param data An object of class \code{bayesmr_data} containing the data
 #'   to analyze.
-#' @param p A length-one numeric vector indicating the number of dimensions of the
-#'   data space.
-#' @param G A length-one numeric vector indicating the number of cluster to
-#'   partition the \emph{S} subjects.
 #' @param control A list of control parameters that affect the sampling
 #'   but do not affect the posterior distribution. See
 #'   \code{\link{bayesmr_control}()} for more details.
@@ -42,10 +38,10 @@
 #' set.seed(seed)
 #'
 #' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random.start = TRUE, verbose = TRUE,
+#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
 #'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
 #'   parallel = "snow")
-#' sim.bayesmr <- bayesmr_mix(simdiss, p, G, control)
+#' sim.bayesmr <- bayesmr_mix(simdiss, control)
 #'
 #' summary(sim.bayesmr, include.burnin = FALSE)
 #'
@@ -64,16 +60,9 @@
 #'
 #' @importFrom abind abind
 #' @export
-bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
+bayesmr_mix <- function(data, control = bayesmr_control(),
   prior = NULL, cl = NULL, post_all = FALSE) {
-  if (p < 1)
-    stop("the number of data dimensions p must be at least one.")
-  if (G < 1)
-    stop("the number of clusters/groups G must be at least one.")
   
-  .bayesmrEnv$current_p <- p
-  .bayesmrEnv$current_G <- G
-
   control <- check_list_na(control, bayesmr_control())
   if (!check_control(control))
     stop("the control list is not correct; see the documentation for more details.")
@@ -85,8 +74,12 @@ bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
   threads <- control[["threads"]]
   seed <- control[["seed"]]
   parallel <- control[["parallel"]]
-  random.start <- control[["random.start"]]
-  partition <- control[["partition"]]
+  random_start <- control[["random_start"]]
+  if (is.null(control[["K_start"]]) | control[["K_start"]] < 2) {
+    control[["K_start"]] <- 2
+    message("initial number of clusters set to two.")
+  }
+  K_start <- control[["K_start"]]
   store.burnin <- control[["store.burnin"]]
   verbose <- control[["verbose"]]
 
@@ -106,8 +99,6 @@ bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
 
   n <- nrow(data)
   totiter <- burnin + nsim
-  p <- as.integer(p)
-  G <- as.integer(G)
   
   # save current random number generator kind
   old.rng <- RNGkind()[1L]
@@ -115,13 +106,13 @@ bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
   
   # perform MCMC simulation
   if (nchains > 1L && (have_mc || have_snow)) {
-    bayesmr_mix_fit_parallel <- function(c, data.c, p.c, G.c, control.c, prior.c, lib) {
+    bayesmr_mix_fit_parallel <- function(c, data.c, control.c, prior.c, lib) {
       suppressMessages(require(BayesMRclus, lib.loc = lib))
       control.c[["verbose"]] <- FALSE
       # message("Starting cluster node ", c, " on local machine")
-      start.c <- bayesmr_init(data = data.c, p = p.c, G = G.c, random.start = control.c[["random.start"]],
-        partition = control.c[["partition"]])
-      bayesmr_mix_fit(data = data.c, p = p.c, G = G.c, control = control.c, prior = prior.c, start = start.c)
+      start.c <- bayesmr_init(data = data.c, random_start = control.c[["random_start"]],
+        K_start = control.c[["K_start"]])
+      bayesmr_mix_fit(data = data.c, control = control.c, prior = prior.c, start = start.c)
     }
     # environment(bayesmr_mix_fit_parallel) <- .GlobalEnv # this prevents passing objects other than those needed for
     #                                                 # evaluating the bayesmr_mix_fit_parallel function
@@ -156,19 +147,19 @@ bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
                parallel::mc.reset.stream()
              }
              parallel::mclapply(seq_len(nchains), bayesmr_mix_fit_parallel, mc.cores = threads, mc.set.seed = TRUE,
-               data.c = data, p.c = p, G.c = 2, control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
+               data.c = data, control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
            } else if (have_snow) {
              if (is.null(cl)) {
                cl <- parallel::makePSOCKcluster(rep("localhost", threads),
                  outfile = devout) # outfile doesn't work on Windows
                parallel::clusterSetRNGStream(cl, seed)
                res <- parallel::parLapply(cl, seq_len(nchains), bayesmr_mix_fit_parallel,
-                 data.c = data, p.c = p, G.c = 2, control.c = control, prior.c = prior,
+                 data.c = data, control.c = control, prior.c = prior,
                  lib = .bayesmrEnv$path.to.me)
                parallel::stopCluster(cl)
                res
              } else parallel::parLapply(cl, seq_len(nchains), bayesmr_mix_fit_parallel,
-                data.c = data, p.c = p, G.c = 2, control.c = control, prior.c = prior,
+                data.c = data, control.c = control, prior.c = prior,
                 lib = .bayesmrEnv$path.to.me)
            }
 
@@ -189,7 +180,7 @@ bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
 
       if (verbose) message("Initialization of the algorithm...")
   
-      bayesmr_start <- bayesmr_init(data, p, 2, random.start, partition = partition)
+      bayesmr_start <- bayesmr_init(data, random_start, K_start = K_start)
       if (is.null(prior)) {
         prior <- bayesmr_prior()
       } else {
@@ -202,7 +193,7 @@ bayesmr_mix <- function(data, p = 1, G = 1, control = bayesmr_control(),
         # message("done!")
       }
 
-      res[[ch]] <- bayesmr_mix_fit(data = data, p = p, G = G, control = control, prior = prior, start = bayesmr_start)
+      res[[ch]] <- bayesmr_mix_fit(data = data, control = control, prior = prior, start = bayesmr_start)
 
       if (verbose && nchains > 1L) message("--- END OF CHAIN ", ch, " OF ", nchains, " ---\n")
     }

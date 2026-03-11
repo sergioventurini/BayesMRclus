@@ -6,8 +6,6 @@
 \usage{
 bayesmr_het(
   data,
-  p = 1,
-  G = 1,
   control = bayesmr_control(),
   prior = NULL,
   cl = NULL,
@@ -17,12 +15,6 @@ bayesmr_het(
 \arguments{
 \item{data}{An object of class \code{bayesmr_data} containing the data
 to analyze.}
-
-\item{p}{A length-one numeric vector indicating the number of dimensions of the
-data space.}
-
-\item{G}{A length-one numeric vector indicating the number of cluster to
-partition the \emph{S} subjects.}
 
 \item{control}{A list of control parameters that affect the sampling
 but do not affect the posterior distribution. See
@@ -59,10 +51,10 @@ seed <- 2301
 set.seed(seed)
 
 control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-  alpha.prop = prm.prop[["alpha"]], random.start = TRUE, verbose = TRUE,
+  alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
   parallel = "snow")
-sim.bayesmr <- bayesmr(simdiss, p, G, control)
+sim.bayesmr <- bayesmr(simdiss, control)
 
 summary(sim.bayesmr, include.burnin = FALSE)
 

@@ -54,7 +54,12 @@ setMethod("initialize", "bayesmr_data",
     harmonization = TRUE
   )
   {
-    data_tmp <- data
+    if (any(duplicated(data[, "SNP"])))
+      stop("the data set contains duplicated SNPs.")
+    cols <- c("beta_exposure", "beta_outcome", "se_exposure", "se_outcome")
+    data_tmp <- data[, cols]
+    if (any(match(colnames(data), "SNP"), na.rm = TRUE))
+      rownames(data_tmp) <- data[, "SNP"]
     if (harmonization) {
       flip <- data_tmp$beta_exposure < 0
       data_tmp$beta_exposure[flip] <- -data_tmp$beta_exposure[flip]
@@ -157,83 +162,7 @@ setMethod("plot",
   }
 )
 
-### bayesmr_model ###
-
-#' An S4 class to represent a BayesMR model.
-#'
-#' @slot p A length-one character vector representing the number of dimensions
-#'   of the latent space to use in the MDS analysis.
-#' @slot G A length-one numeric vector representing the number of clusters to
-#'   partition the subjects into.
-#'
-#' @name bayesmr_model-class
-#' @rdname bayesmr_model-class
-#' @aliases bayesmr_model
-#'
-#' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
-#'
-#' @examples
-#' showClass("bayesmr_model")
-#'
-#' @exportClass bayesmr_model
-setClass(Class = "bayesmr_model",
-  slots = c(
-    p = "numeric",
-    G = "numeric"
-  )
-)
-
-#' Create an instance of the \code{bayesmr_model} class using new/initialize.
-#'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_model}}.
-#' @param p A length-one character vector representing the number of dimensions
-#'   of the latent space to use in the MDS analysis.
-#' @param G A length-one numeric vector representing the number of clusters to
-#'   partition the subjects into.
-#'
-#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#'
-#' @aliases initialize,bayesmr_model-method
-#' @aliases bayesmr_model-initialize
-#' 
-#' @importFrom methods initialize
-#' @exportMethod initialize
-setMethod("initialize", "bayesmr_model",
-  function(
-    .Object,
-    p = numeric(),
-    G = numeric()
-  )
-  {
-    .Object@p <- p
-    .Object@G <- G
-    .Object
-  }
-)
-
-#' Show an instance of the \code{bayesmr_model} class.
-#'
-#' @param object An object of class \code{\link{bayesmr_model}}.
-#'
-#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#'
-#' @aliases show,bayesmr_model-method
-#' @aliases bayesmr_model-show
-#' 
-#' @importFrom methods show
-#' @exportMethod show
-setMethod("show",
-  "bayesmr_model",
-  function(object) {
-    cat("Bayesian Two-Sample Summary Data Analysis\n")
-    # cat("Number of latent dimensions (p):", object@p, "\n")
-    cat("Number of clusters (G):", object@G, "\n")
-  }
-)
-
-### bayesmr_fit ###
+# ### bayesmr_fit ###
 
 #' An S4 class to represent the results of fitting BayesMR model.
 #'
@@ -275,7 +204,6 @@ setMethod("show",
 #'   the estimated model, i.e. number of objects (\emph{n}), number of latent
 #'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 #'   subjects (\emph{S}).
-#' @slot model An object of class \code{\link{bayesmr_model}}.
 #'
 #' @name bayesmr_fit-class
 #' @rdname bayesmr_fit-class
@@ -297,8 +225,7 @@ setClass(Class = "bayesmr_fit",
 		dens = "list",
 		control = "list",
     prior = "list",
-		dim = "list",
-    model = "bayesmr_model"
+		dim = "list"
 	)
 )
 
@@ -339,7 +266,6 @@ setClass(Class = "bayesmr_fit",
 #'   the estimated model, i.e. number of objects (\emph{n}), number of latent
 #'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 #'   subjects (\emph{S}).
-#' @param model An object of class \code{\link{bayesmr_model}}.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
@@ -359,8 +285,7 @@ setMethod("initialize",
 			dens = list(),
 			control = list(),
       prior = list(),
-			dim = list(),
-      model = NA
+			dim = list()
 		)
 		{
 			.Object@gamma.chain <- gamma.chain
@@ -371,7 +296,6 @@ setMethod("initialize",
       .Object@control <- control
       .Object@prior <- prior
 			.Object@dim <- dim
-      .Object@model <- model
 			.Object
 		}
 )
@@ -391,8 +315,6 @@ setMethod("show",
   "bayesmr_fit",
   function(object) {
     cat("Bayesian Two-Sample Summary Data simulated chain\n")
-    # cat("Number of latent dimensions (p):", object@model@p, "\n")
-    cat("Number of clusters (G):", object@model@G, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
   }
@@ -419,8 +341,6 @@ setMethod("summary",
       control <- object@control
 
       n <- object@dim[["n"]]
-      p <- object@dim[["p"]]
-      G <- object@dim[["G"]]
 
       res.coda <- bayesmr_fit_to_mcmc(object, include.burnin = include.burnin, verbose = FALSE)
 
@@ -702,8 +622,6 @@ setMethod("show",
   function(object) {
     cat("List of Bayesian Two-Sample Summary Data simulated chains\n")
     cat("Number of simulated chains:", length(object@results), "\n")
-    # cat("Number of latent dimensions (p):", object@results[[1]]@model@p, "\n")
-    cat("Number of clusters (G):", object@results[[1]]@model@G, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
   }
@@ -731,8 +649,6 @@ setMethod("summary",
       nchains <- control[["nchains"]]
 
       n <- object@results[[1]]@dim[["n"]]
-      p <- object@results[[1]]@dim[["p"]]
-      G <- object@results[[1]]@dim[["G"]]
 
       res.coda <- bayesmr_fit_list_to_mcmc.list(object, include.burnin = include.burnin, verbose = FALSE)
 
@@ -981,7 +897,6 @@ setMethod("plot",
 #'   the estimated model, i.e. number of objects (\emph{n}), number of latent
 #'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 #'   subjects (\emph{S}).
-#' @slot model An object of class \code{\link{bayesmr_model}}.
 #'
 #' @name bayesmr_het_fit-class
 #' @rdname bayesmr_het_fit-class
@@ -1005,8 +920,7 @@ setClass(Class = "bayesmr_het_fit",
     dens = "list",
     control = "list",
     prior = "list",
-    dim = "list",
-    model = "bayesmr_model"
+    dim = "list"
   )
 )
 
@@ -1047,7 +961,6 @@ setClass(Class = "bayesmr_het_fit",
 #'   the estimated model, i.e. number of objects (\emph{n}), number of latent
 #'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 #'   subjects (\emph{S}).
-#' @param model An object of class \code{\link{bayesmr_model}}.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
@@ -1069,8 +982,7 @@ setMethod("initialize",
       dens = list(),
       control = list(),
       prior = list(),
-      dim = list(),
-      model = NA
+      dim = list()
     )
     {
       .Object@gamma.chain <- gamma.chain
@@ -1083,7 +995,6 @@ setMethod("initialize",
       .Object@control <- control
       .Object@prior <- prior
       .Object@dim <- dim
-      .Object@model <- model
       .Object
     }
 )
@@ -1103,8 +1014,6 @@ setMethod("show",
   "bayesmr_het_fit",
   function(object) {
     cat("Bayesian Two-Sample Summary Data simulated chain\n")
-    # cat("Number of latent dimensions (p):", object@model@p, "\n")
-    cat("Number of clusters (G):", object@model@G, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
   }
@@ -1131,8 +1040,6 @@ setMethod("summary",
       control <- object@control
 
       n <- object@dim[["n"]]
-      p <- object@dim[["p"]]
-      G <- object@dim[["G"]]
 
       res.coda <- bayesmr_het_fit_to_mcmc(object, include.burnin = include.burnin, verbose = FALSE)
 
@@ -1414,8 +1321,6 @@ setMethod("show",
   function(object) {
     cat("List of Bayesian Two-Sample Summary Data simulated chains\n")
     cat("Number of simulated chains:", length(object@results), "\n")
-    # cat("Number of latent dimensions (p):", object@results[[1]]@model@p, "\n")
-    cat("Number of clusters (G):", object@results[[1]]@model@G, "\n")
     cat("\n")
     cat("To get a summary of the object, use the 'summary()' function.")
   }
@@ -1443,8 +1348,6 @@ setMethod("summary",
       nchains <- control[["nchains"]]
 
       n <- object@results[[1]]@dim[["n"]]
-      p <- object@results[[1]]@dim[["p"]]
-      G <- object@results[[1]]@dim[["G"]]
 
       res.coda <- bayesmr_het_fit_list_to_mcmc.list(object, include.burnin = include.burnin, verbose = FALSE)
 
@@ -1718,7 +1621,6 @@ setMethod("plot",
 #'   the estimated model, i.e. number of objects (\emph{n}), number of latent
 #'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 #'   subjects (\emph{S}).
-#' @slot model An object of class \code{\link{bayesmr_model}}.
 #'
 #' @name bayesmr_mix_fit-class
 #' @rdname bayesmr_mix_fit-class
@@ -1742,8 +1644,7 @@ setClass(Class = "bayesmr_mix_fit",
     dens = "list",
     control = "list",
     prior = "list",
-    dim = "list",
-    model = "bayesmr_model"
+    dim = "list"
   )
 )
 
@@ -1784,7 +1685,6 @@ setClass(Class = "bayesmr_mix_fit",
 #'   the estimated model, i.e. number of objects (\emph{n}), number of latent
 #'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 #'   subjects (\emph{S}).
-#' @param model An object of class \code{\link{bayesmr_model}}.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
@@ -1806,8 +1706,7 @@ setMethod("initialize",
       dens = list(),
       control = list(),
       prior = list(),
-      dim = list(),
-      model = NA
+      dim = list()
     )
     {
       .Object@gamma.chain <- gamma.chain
@@ -1820,7 +1719,6 @@ setMethod("initialize",
       .Object@control <- control
       .Object@prior <- prior
       .Object@dim <- dim
-      .Object@model <- model
       .Object
     }
 )
@@ -1871,6 +1769,212 @@ setClass(Class = "bayesmr_mix_fit_list",
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize", "bayesmr_mix_fit_list",
+  function(
+    .Object,
+    results = list()
+  )
+  {
+    .Object@results <- results
+    .Object
+  }
+)
+
+### bayesmr_mix_het_fit ###
+
+#' An S4 class to represent the results of fitting BayesMR model.
+#'
+#' @description
+#'   An S4 class to represent the results of fitting BayesMR model using a single
+#'   Markov Chain Monte Carlo chain.
+#'
+#' @slot z.chain An object of class \code{array}; posterior draws from
+#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
+#' @slot z.chain.p An object of class \code{array}; posterior draws from
+#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
+#'   \eqn{Z}.
+#' @slot alpha.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
+#' @slot eta.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\eta} parameters.
+#' @slot sigma2.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
+#' @slot lambda.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
+#' @slot prob.chain An object of class \code{array}; posterior draws
+#'   from the MCMC algorithm for the cluster membership probabilities.
+#' @slot x.ind.chain An object of class \code{array}; posterior draws
+#'   from the MCMC algorithm for the cluster membership indicators.
+#' @slot x.chain An object of class \code{matrix}; posterior draws from
+#'   the MCMC algorithm for the cluster membership labels.
+#' @slot accept An object of class \code{matrix}; final acceptance rates
+#'   for the MCMC algorithm.
+#' @slot data An object of class \code{list}; list of observed
+#'   dissimilarity matrices.
+#' @slot dens An object of class \code{list}; list of log-likelihood,
+#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
+#' @slot control An object of class \code{list}; list of the control
+#'   parameters (number of burnin and sample iterations, number of MCMC chains,
+#'   etc.). See \code{\link{bayesmr_control}()} for more information.
+#' @slot prior An object of class \code{list}; list of the prior
+#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
+#' @slot dim An object of class \code{list}; list of dimensions for
+#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
+#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
+#'   subjects (\emph{S}).
+#'
+#' @name bayesmr_mix_het_fit-class
+#' @rdname bayesmr_mix_het_fit-class
+#'
+#' @references
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#'
+#' @examples
+#' showClass("bayesmr_mix_het_fit")
+#'
+#' @exportClass bayesmr_mix_het_fit
+setClass(Class = "bayesmr_mix_het_fit",
+  slots = c(
+    gamma.chain = "array",
+    beta.chain = "array",
+    xi.chain = "array",
+    alpha.chain = "array",
+    psi.chain = "array",
+    tau.chain = "array",
+    accept = "numeric",
+    data = "list",
+    dens = "list",
+    control = "list",
+    prior = "list",
+    dim = "list"
+  )
+)
+
+#' Create an instance of the \code{bayesmr_mix_het_fit} class using new/initialize.
+#'
+#' @param .Object Prototype object from the class \code{\link{bayesmr_mix_het_fit}}.
+#' @param z.chain An object of class \code{array}; posterior draws from
+#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
+#' @param z.chain.p An object of class \code{array}; posterior draws from
+#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
+#'   \eqn{Z}.
+#' @param alpha.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
+#' @param eta.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\eta} parameters.
+#' @param sigma2.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
+#' @param lambda.chain An object of class \code{matrix}; posterior draws
+#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
+#' @param prob.chain An object of class \code{array}; posterior draws
+#'   from the MCMC algorithm for the cluster membership probabilities.
+#' @param x.ind.chain An object of class \code{array}; posterior draws
+#'   from the MCMC algorithm for the cluster membership indicators.
+#' @param x.chain An object of class \code{matrix}; posterior draws from
+#'   the MCMC algorithm for the cluster membership labels.
+#' @param accept An object of class \code{matrix}; final acceptance rates
+#'   for the MCMC algorithm.
+#' @param data An object of class \code{list}; list of observed
+#'   dissimilarity matrices.
+#' @param dens An object of class \code{list}; list of log-likelihood,
+#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
+#' @param control An object of class \code{list}; list of the control
+#'   parameters (number of burnin and sample iterations, number of MCMC chains,
+#'   etc.). See \code{\link{bayesmr_control}()} for more information.
+#' @param prior An object of class \code{list}; list of the prior
+#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
+#' @param dim An object of class \code{list}; list of dimensions for
+#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
+#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
+#'   subjects (\emph{S}).
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases initialize,bayesmr_mix_het_fit-method
+#' @aliases bayesmr_mix_het_fit-initialize
+#' 
+#' @importFrom methods initialize
+#' @exportMethod initialize
+setMethod("initialize",
+  "bayesmr_mix_het_fit",
+    function(
+      .Object,
+      gamma.chain = array(),
+      beta.chain = array(),
+      xi.chain = array(),
+      alpha.chain = array(),
+      psi.chain = array(),
+      tau.chain = array(),
+      accept = numeric(),
+      data = list(),
+      dens = list(),
+      control = list(),
+      prior = list(),
+      dim = list()
+    )
+    {
+      .Object@gamma.chain <- gamma.chain
+      .Object@beta.chain <- beta.chain
+      .Object@xi.chain <- xi.chain
+      .Object@alpha.chain <- alpha.chain
+      .Object@psi.chain <- psi.chain
+      .Object@tau.chain <- tau.chain
+      .Object@accept <- accept
+      .Object@data <- data
+      .Object@dens <- dens
+      .Object@control <- control
+      .Object@prior <- prior
+      .Object@dim <- dim
+      .Object
+    }
+)
+
+#' An S4 class to represent the results of fitting BayesMR model.
+#'
+#' @description
+#'   An S4 class to represent the results of fitting BayesMR model using multiple
+#'   Markov Chain Monte Carlo chains.
+#'
+#' @slot results An object of class \code{list}; list of \code{bayesmr_fit}
+#'   objects corresponding to the parallel MCMC chains simulated during the
+#'   estimation.
+#'
+#' @name bayesmr_mix_het_fit_list-class
+#' @rdname bayesmr_mix_het_fit_list-class
+#' @aliases bayesmr_mix_het_fit_list
+#'
+#' @seealso
+#' \code{\link{bayesmr_fit}} for more details on the components of each element of
+#'   the list.
+#'
+#' @references
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
+#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#'
+#' @examples
+#' showClass("bayesmr_mix_het_fit_list")
+#'
+#' @exportClass bayesmr_mix_het_fit_list
+setClass(Class = "bayesmr_mix_het_fit_list",
+  slots = c(
+    results = "list"
+  )
+)
+
+#' Create an instance of the \code{bayesmr_mix_het_fit_list} class using new/initialize.
+#'
+#' @param .Object Prototype object from the class \code{\link{bayesmr_mix_het_fit_list}}.
+#' @param results A list whose elements are the \code{bayesmr_fit} objects for
+#'   each simulated chain.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases initialize,bayesmr_mix_het_fit_list-method
+#' @aliases bayesmr_mix_het_fit_list-initialize
+#' 
+#' @importFrom methods initialize
+#' @exportMethod initialize
+setMethod("initialize", "bayesmr_mix_het_fit_list",
   function(
     .Object,
     results = list()

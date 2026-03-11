@@ -29,8 +29,6 @@ void bayesmr_mcmc_mix(
   int m_beta,                                 // # of proposed beta values
   int totiter,
   int n,
-  int p,
-  int G,
   int verbose){
   if (n <= 0 || totiter <= 0) return;
 
@@ -40,12 +38,6 @@ void bayesmr_mcmc_mix(
   std::vector<double> sigma2_X(n);
   std::vector<double> sigma2_Y(n);
 
-  // Pre-allocate arrays reused every iteration
-  std::vector<double> psi2_j(n);
-  std::vector<double> tau2_j(n);
-  std::vector<double> a_j(n);
-  std::vector<double> v_j(n);
-
   for (int i = 0; i < n; ++i) {
     gammahat_j[i] = data[i];
     Gammahat_j[i] = data[n + i];
@@ -53,8 +45,6 @@ void bayesmr_mcmc_mix(
     double sy = data[3 * n + i];
     sigma2_X[i] = sx * sx;
     sigma2_Y[i] = sy * sy;
-    psi2_j[i] = sigma2_X[i] + rhyper_gammaj_psi2;
-    tau2_j[i] = sigma2_Y[i] + rhyper_Gammaj_tau2;
   }
 
   // RNG
@@ -84,7 +74,9 @@ void bayesmr_mcmc_mix(
     // 1) Update of gamma
     // ------------------
     gamma_old = full_cond_gamma(rhyper_gamma_mean, rhyper_gamma_var,
-      gammahat_j, Gammahat_j, psi2_j, tau2_j, beta_star_old, xi_old);
+      gammahat_j, Gammahat_j, sigma2_X, sigma2_Y, 
+      std::sqrt(rhyper_gammaj_psi2), std::sqrt(rhyper_Gammaj_tau2),
+      beta_star_old, xi_old);
 
     gamma_chain[iter - 1] = gamma_old;
 
@@ -169,9 +161,11 @@ void bayesmr_mcmc_mix(
       auto sigma2_Y_k = subset(sigma2_Y, xi_old, k);
 
       double r_beta_k = full_cond_beta(beta_k_prop, rhyper_beta_mean, rhyper_beta_var,
-        gamma_hat_k, Gamma_hat_k, sigma2_X_k, sigma2_Y_k, gamma_old, rhyper_gammaj_psi2) -
+                          gamma_hat_k, Gamma_hat_k, sigma2_X_k, sigma2_Y_k, gamma_old,
+                          std::sqrt(rhyper_gammaj_psi2), std::sqrt(rhyper_Gammaj_tau2)) -
                         full_cond_beta(beta_k, rhyper_beta_mean, rhyper_beta_var,
-        gamma_hat_k, Gamma_hat_k, sigma2_X_k, sigma2_Y_k, gamma_old, rhyper_gammaj_psi2);
+                          gamma_hat_k, Gamma_hat_k, sigma2_X_k, sigma2_Y_k, gamma_old,
+                          std::sqrt(rhyper_gammaj_psi2), std::sqrt(rhyper_Gammaj_tau2));
 
       double log_u = std::log(unif_rand());
       if (log_u < r_beta_k) {

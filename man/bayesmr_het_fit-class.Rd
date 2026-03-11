@@ -59,8 +59,6 @@ hyperparameters. See \code{\link{bayesmr_prior}()} for more information.}
 the estimated model, i.e. number of objects (\emph{n}), number of latent
 dimensions (\emph{p}), number of clusters (\emph{G}), and number of
 subjects (\emph{S}).}
-
-\item{\code{model}}{An object of class \code{\link{bayesmr_model}}.}
 }}
 
 \examples{

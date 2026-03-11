@@ -29,8 +29,6 @@ void bayesmr_mcmc_noclus_het(
   const double C_tau,                         // tau proposal sd (log scale)
   int totiter,
   int n,
-  int p,
-  int G,
   int verbose){
   if (n <= 0 || totiter <= 0) return;
 
@@ -144,10 +142,9 @@ void bayesmr_mcmc_noclus_het(
     // store beta
     beta_chain[iter - 1] = beta_old;
 
-    // -------------------------------------
-    // 3+4) Fixed MH update in (eta, omega)
-    //      (no adaptation)
-    // -------------------------------------
+    // ----------------------------------------------------
+    // 3+4) Fixed MH update in (eta, omega) (no adaptation)
+    // ----------------------------------------------------
     const double beta_abs = std::fabs(beta_old);
 
     // current transformed parameters

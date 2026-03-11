@@ -11,9 +11,9 @@
 #include <Rcpp.h>
 
 extern "C" {
-#include <R_ext/Error.h>
-#include <R.h>
-#include <Rmath.h>
+  #include <R_ext/Error.h>
+  #include <R.h>
+  #include <Rmath.h>
 }
 
 #include <vector>
@@ -46,29 +46,37 @@ static const double neg_inf = -INFINITY;
 // };
 
 // MAIN FUNCTIONS -----------------------------------------------------------------------------------------------------
-RcppExport SEXP bayesmr_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
-  SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter, SEXP rC_beta,
+RcppExport SEXP bayesmr_mcmc_noclus_wrap(
+  SEXP radData, SEXP radgamma, SEXP radbeta,
+  SEXP rn, SEXP rtotiter, SEXP rC_beta,
   SEXP rhyper_gammaj_psi2, SEXP rhyper_Gammaj_tau2,
   SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var, SEXP rhyper_beta_mean,
   SEXP rhyper_beta_var, SEXP rverbose);
-RcppExport SEXP bayesmr_mcmc_het(SEXP radData, SEXP radgamma, SEXP radbeta,
-  SEXP radpsi, SEXP radtau, SEXP rn, SEXP rp, SEXP rG, SEXP rtotiter,
+RcppExport SEXP bayesmr_mcmc_noclus_het_wrap(
+  SEXP radData, SEXP radgamma, SEXP radbeta,
+  SEXP radpsi, SEXP radtau, SEXP rn, SEXP rtotiter,
   SEXP rC_beta, SEXP rC_psi, SEXP rC_tau, SEXP rhyper_gamma_mean,
   SEXP rhyper_gamma_var, SEXP rhyper_beta_mean, SEXP rhyper_beta_var,
   SEXP rhyper_psi_alpha, SEXP rhyper_psi_nu, SEXP rhyper_tau_alpha,
   SEXP rhyper_tau_nu, SEXP rverbose);
-RcppExport SEXP bayesmr_mix_mcmc(SEXP radData, SEXP radgamma, SEXP radbeta,
-  SEXP radxi, SEXP radalpha, SEXP radK, SEXP rn, SEXP rp, SEXP rG,
+RcppExport SEXP bayesmr_mcmc_mix_wrap(
+  SEXP radData, SEXP radgamma, SEXP radbeta,
+  SEXP radxi, SEXP radalpha, SEXP radK, SEXP rn,
   SEXP rtotiter, SEXP rC_beta, SEXP rm_beta, SEXP rhyper_gammaj_psi2,
   SEXP rhyper_Gammaj_tau2, SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var,
   SEXP rhyper_beta_mean, SEXP rhyper_beta_var, SEXP rhyper_gamma_a,
   SEXP rhyper_gamma_b, SEXP rverbose);
-// RcppExport SEXP bayesmr_relabel(SEXP radtheta, SEXP radz, SEXP radalpha,
-//   SEXP radeta, SEXP radsigma2, SEXP radlambda, SEXP radprob, SEXP raix_ind,
-//   SEXP rinit, SEXP rn, SEXP rp, SEXP rS, SEXP rM, SEXP rR, SEXP rG,
-//   SEXP rverbose);
-// RcppExport SEXP bayesmr_pack_par(SEXP radz, SEXP radalpha, SEXP radlambda,
-//   SEXP rn, SEXP rp, SEXP rM, SEXP rG);
+RcppExport SEXP bayesmr_mcmc_mix_het_wrap(
+  SEXP radData, SEXP radgamma, SEXP radbeta,
+  SEXP radxi, SEXP radalpha, SEXP radpsi, SEXP radtau, SEXP radK,
+  SEXP rn, SEXP rtotiter, SEXP rC_beta,
+  SEXP rC_logpsi, SEXP rC_logtau, SEXP rm_beta,
+  SEXP rhyper_gamma_mean, SEXP rhyper_gamma_var,
+  SEXP rhyper_beta_mean, SEXP rhyper_beta_var,
+  SEXP rhyper_psi_alpha, SEXP rhyper_psi_nu,
+  SEXP rhyper_tau_alpha, SEXP rhyper_tau_nu,
+  SEXP rhyper_alpha_a, SEXP rhyper_alpha_b,
+  SEXP rverbose);
 
 // DISTRIBUTION FUNCTIONS ---------------------------------------------------------------------------------------------
 void dprodber(double* prob, const int* d, const double* pi, int m,
@@ -89,8 +97,6 @@ std::vector<double> dbivnorm_cpp(const std::vector<double>& x_vec, const std::ve
   const std::vector<double>& mu_x, const std::vector<double>& mu_y,
   const std::vector<double>& sigma_xx, const std::vector<double>& sigma_yy,
   const std::vector<double>& sigma_xy, bool logscale);
-double dmvnorm_log(double x1, double x2, double mu1, double mu2,
-                   double sig11, double sig12, double sig21, double sig22);
 std::vector<double> dhalft(const std::vector<double>& x, const std::vector<double>& alpha,
   const std::vector<double>& nu, bool log);
 double dhalft_scalar(const double& x, const double& alpha,
@@ -134,6 +140,10 @@ double bayesmr_logLik(const double beta, const double gamma,
   const double psi2, const double tau2, int n,
   const double* gammahat_j, const double* Gammahat_j,
   const double* sigma2_X, const double* sigma2_Y);
+double bayesmr_logLik_vec(std::vector<double> beta_vec, const double gamma,
+  const double psi2, const double tau2, int n,
+  const double* gammahat_j, const double* Gammahat_j,
+  const double* sigma2_X, const double* sigma2_Y);
 
 // MATRIX UTILITIES ---------------------------------------------------------------------------------------------------
 void colsums(double* colsums, const double* A, int nrows, int ncols);
@@ -152,7 +162,7 @@ void bayesmr_mcmc_noclus(double* gamma_chain, double* beta_chain, double* accept
   double beta, const double rhyper_gammaj_psi2, const double rhyper_Gammaj_tau2,
   const double rhyper_gamma_mean, const double rhyper_gamma_var,
   const double rhyper_beta_mean, const double rhyper_beta_var,
-  const double C_beta, int totiter, int n, int p, int G, int verbose);
+  const double C_beta, int totiter, int n, int verbose);
 void bayesmr_mcmc_noclus_het(double* gamma_chain, double* beta_chain,
   double* psi2_chain, double* tau2_chain, double* accept, double* loglik,
   double* logprior, double* logpost, double* data, double gamma_p, double beta_p,
@@ -160,7 +170,7 @@ void bayesmr_mcmc_noclus_het(double* gamma_chain, double* beta_chain,
   const double rhyper_alpha_tau2, const double rhyper_nu_tau2, const double rhyper_gamma_mean,
   const double rhyper_gamma_var, const double rhyper_beta_mean, const double rhyper_beta_var,
   const double C_beta, const double C_psi2, const double C_tau2, int totiter,
-  int n, int p, int G, int verbose);
+  int n, int verbose);
 void bayesmr_mcmc_mix(double* gamma_chain, double* beta_chain,
   int* xi_chain, double* alpha_chain, double* accept,
   double* loglik, double* logprior, double* logpost, double* data, double gamma_p,
@@ -169,7 +179,20 @@ void bayesmr_mcmc_mix(double* gamma_chain, double* beta_chain,
   const double rhyper_gamma_var, const double rhyper_beta_mean,
   const double rhyper_beta_var, const double rhyper_alpha_a,
   const double rhyper_alpha_b, const double C_beta,
-  int m_beta, int totiter, int n, int p, int G, int verbose);
+  int m_beta, int totiter, int n, int verbose);
+void bayesmr_mcmc_mix_het(double* gamma_chain, double* beta_chain,
+  int* xi_chain, double* alpha_chain, double* psi_chain, double* tau_chain,
+  double* accept, double* loglik, double* logprior, double* logpost,
+  double* data, double gamma_p, double* beta_p, int* xi_p,
+  double alpha_p, double psi_p, double tau_p, double K_p,
+  const double rhyper_gamma_mean, const double rhyper_gamma_var,
+  const double rhyper_beta_mean, const double rhyper_beta_var,
+  const double rhyper_psi_alpha, const double rhyper_psi_nu,
+  const double rhyper_tau_alpha, const double rhyper_tau_nu,
+  const double rhyper_alpha_a, const double rhyper_alpha_b,
+  const double C_beta, const double C_logpsi,
+  const double C_logtau, int m_beta, int totiter,
+  int n, int verbose);
 
 // UTILITIES ----------------------------------------------------------------------------------------------------------
 void logit(double* res, const double* p, int n);
@@ -183,6 +206,8 @@ void tableC(int* counts, const int* x, int nelem, int ndistelem);
 int factorial(const int& x);
 void permutations(int* perm, int n, int nperm, int byrow);
 void which_min(int* ans, const double* r, int n);
+std::vector<double> remap_vec(const std::vector<double>& betas,
+                              const std::vector<int>& xi);
 
 // DIRICHLET PROCESS MIXTURE ------------------------------------------------------------------------------------------
 double full_cond_gamma(
@@ -190,16 +215,58 @@ double full_cond_gamma(
     const double var_gamma,
     const std::vector<double>& gamma_hat,
     const std::vector<double>& Gamma_hat,
-    const std::vector<double>& psi2_j,    // sigma2_X + rhyper_gammaj_psi2
-    const std::vector<double>& tau2_j,    // sigma2_Y + rhyper_Gammaj_tau2
+    const std::vector<double>& sigma2_X,
+    const std::vector<double>& sigma2_Y,
+    const double psi,
+    const double tau,
     const std::vector<double>& beta,
     const std::vector<int>& xi);
-double full_cond_beta(double beta, double mu_beta, double var_beta,
- const std::vector<double>& gamma_hat,
- const std::vector<double>& Gamma_hat,
- const std::vector<double>& sigma2X,
- const std::vector<double>& sigma2Y,
- double gamma, double psi2);
+double full_cond_beta(
+  double beta,
+  double mu_beta,
+  double var_beta,
+  const std::vector<double>& gamma_hat,
+  const std::vector<double>& Gamma_hat,
+  const std::vector<double>& sigma2X,
+  const std::vector<double>& sigma2Y,
+  double gamma,
+  double psi,
+  double tau);
+double full_cond_psitau(
+  const std::vector<double>& beta,
+  double alpha_psi,
+  double nu_psi,
+  double alpha_tau,
+  double nu_tau,
+  const std::vector<double>& gamma_hat,
+  const std::vector<double>& Gamma_hat,
+  const std::vector<double>& sigma2X,
+  const std::vector<double>& sigma2Y,
+  double gamma,
+  double psi,
+  double tau);
+double full_cond_psi(
+  std::vector<double> beta,
+  double alpha_psi,
+  double nu_psi,
+  const std::vector<double>& gamma_hat,
+  const std::vector<double>& Gamma_hat,
+  const std::vector<double>& sigma2X,
+  const std::vector<double>& sigma2Y,
+  double gamma,
+  double psi,
+  double tau);
+double full_cond_tau(
+  std::vector<double> beta,
+  double alpha_tau,
+  double nu_tau,
+  const std::vector<double>& gamma_hat,
+  const std::vector<double>& Gamma_hat,
+  const std::vector<double>& sigma2X,
+  const std::vector<double>& sigma2Y,
+  double gamma,
+  double psi,
+  double tau);
 std::vector<double> normalize_weights(const std::vector<double>& prob);
 int count_excluding(const std::vector<int>& xi, int k, size_t exclude_idx);
 void relabel_xi(std::vector<int>& xi);

@@ -18,10 +18,8 @@ bayesmr_control(
   beta.m = 2,
   psi.prop = 0.1,
   tau.prop = 0.1,
-  random.start = TRUE,
-  partition = NULL,
-  procrustes = TRUE,
-  relabel = TRUE,
+  random_start = TRUE,
+  K_start = 1,
   store.burnin = TRUE,
   verbose = FALSE
 )
@@ -38,10 +36,8 @@ control_bayesmr(
   beta.m = 2,
   psi.prop = 0.1,
   tau.prop = 0.1,
-  random.start = TRUE,
-  partition = NULL,
-  procrustes = TRUE,
-  relabel = TRUE,
+  random_start = TRUE,
+  K_start = 1,
   store.burnin = TRUE,
   verbose = FALSE
 )
@@ -77,18 +73,20 @@ position.}
 
 \item{beta.m}{A length-one integer vector providing the number of beta values to draw.}
 
-\item{random.start}{A length-one logical vector. If \code{TRUE} the starting
-values are drawn randomly, otherwise a user-defined starting partition must
-be provided through the \code{partition} argument.}
+\item{psi.prop}{A length-one numeric vector providing the standard deviation of the
+proposal distribution for the jump in the individual latent space
+position.}
 
-\item{partition}{A length-one numeric vector providing the user-defined
-starting partition.}
+\item{tau.prop}{A length-one numeric vector providing the standard deviation of the
+proposal distribution for the jump in the individual latent space
+position.}
 
-\item{procrustes}{A length-one logical vector. If \code{TRUE} the simulated
-MCMC chains are post-processed through a Procrustes transformation.}
+\item{random_start}{A length-one logical vector. If \code{TRUE} the starting
+values are drawn randomly, otherwise a user-defined starting K_start must
+be provided through the \code{K_start} argument.}
 
-\item{relabel}{A length-one logical vector. If \code{TRUE} the simulated
-MCMC chains are relabelled to address the label-switching problem.}
+\item{K_start}{A length-one numeric vector providing the user-defined
+starting value for the number of clusters.}
 
 \item{store.burnin}{A logical scalar. If \code{TRUE}, the samples from the
 burnin are also stored and returned.}

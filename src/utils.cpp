@@ -166,3 +166,23 @@ void which_min(int* ans, const double* r, int n){
 		*ans = 0;	
 	}
 }
+
+std::vector<double> remap_vec(const std::vector<double>& betas,
+                              const std::vector<int>& xi){
+  const std::size_t K = betas.size();
+  const std::size_t n = xi.size();
+
+  if (K > n)
+    throw std::invalid_argument("betas vector must smaller than xi vector.");
+  if (K == 0)
+    throw std::invalid_argument("betas vector must not be empty.");
+  if (n == 0)
+    throw std::invalid_argument("xi vector must not be empty.");
+
+  std::vector<double> result(n);
+  for (std::size_t i = 0; i < n; ++i){
+    result[i] = betas[xi[i]];
+  }
+
+  return result;
+}

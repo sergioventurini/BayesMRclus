@@ -11,8 +11,6 @@
   }
   .bayesmrEnv$path.to.me <- tools::file_path_as_absolute(lib)
   .bayesmrEnv$nlog.double.eps <- -log(.Machine[["double.eps"]])
-  .bayesmrEnv$current_p <- 2
-  .bayesmrEnv$current_G <- 3
 }
 
 .onAttach <- function(libname, pkgname) {

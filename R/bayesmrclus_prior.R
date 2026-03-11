@@ -59,7 +59,6 @@ bayesmr_prior <- function(gammaj = list(psi2 = 1), Gammaj = list(tau2 = 1),
 #' @export
 prior_bayesmr <- bayesmr_prior
 
-
 #' @rdname bayesmr_prior
 #' @export
 check_prior <- function(prior) {

@@ -1,0 +1,168 @@
+library(BayesMRclus)#
+#
+# prepare data#
+data("hdl_cad", package = "BayesMRclus")#
+#
+n <- nrow(hdl_cad)#
+hdlcad_data <- new("bayesmr_data", data = hdl_cad, n = n, harmonization = TRUE)#
+data_tmp <- hdlcad_data@data#
+# summary(hdlcad_data)#
+# plot(hdlcad_data, se = TRUE)
+summary(hdlcad_data)
+plot(hdlcad_data, se = TRUE)
+prm.prop <- list(beta = 3, psi = .075, tau = .075)#
+burnin <- 10000#
+nsim <- 20000#
+#
+# seed <- 2301#
+# set.seed(seed)#
+#
+nchains <- 3#
+control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],#
+                psi.prop = prm.prop[["psi"]], tau.prop = prm.prop[["tau"]],#
+                beta.m = 2, nchains = nchains, thin = 5,#
+                random_start = TRUE, verbose = TRUE,#
+                store.burnin = FALSE, threads = ifelse(#
+                  nchains <= parallel::detectCores() - 1,#
+                  nchains, parallel::detectCores() - 1),#
+                parallel = "snow")#
+#
+alpha_psi <- 0.01 #0.05 #alpha_eb(se = data_tmp[, "se_exposure"])#
+alpha_tau <- 2*median(data_tmp[, "se_outcome"]) #2*alpha_psi #alpha_eb(se = data_tmp[, "se_outcome"])#
+prior <- bayesmr_prior(psi = list(alpha = alpha_psi, nu = 2),#
+                       tau = list(alpha = alpha_tau, nu = 3),#
+                       gamma = list(mean = 0, var = 1e1),#
+                       beta = list(mean = 0, var = 1e1),#
+                       alpha = list(a = 3, b = 1))#
+#
+# MCMC simulation#
+system.time(res_BMR <- bayesmr_mix_het(hdlcad_data, control = control, prior = prior))#
+#
+res_BMR@results[[1]]@accept
+prm.prop <- list(beta = 2, psi = .015, tau = .015)#
+burnin <- 10000#
+nsim <- 20000#
+#
+# seed <- 2301#
+# set.seed(seed)#
+#
+nchains <- 3#
+control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],#
+                psi.prop = prm.prop[["psi"]], tau.prop = prm.prop[["tau"]],#
+                beta.m = 2, nchains = nchains, thin = 5,#
+                random_start = TRUE, verbose = TRUE,#
+                store.burnin = FALSE, threads = ifelse(#
+                  nchains <= parallel::detectCores() - 1,#
+                  nchains, parallel::detectCores() - 1),#
+                parallel = "snow")#
+#
+alpha_psi <- 0.01 #0.05 #alpha_eb(se = data_tmp[, "se_exposure"])#
+alpha_tau <- 2*median(data_tmp[, "se_outcome"]) #2*alpha_psi #alpha_eb(se = data_tmp[, "se_outcome"])#
+prior <- bayesmr_prior(psi = list(alpha = alpha_psi, nu = 2),#
+                       tau = list(alpha = alpha_tau, nu = 3),#
+                       gamma = list(mean = 0, var = 1e1),#
+                       beta = list(mean = 0, var = 1e1),#
+                       alpha = list(a = 3, b = 1))#
+#
+# MCMC simulation#
+system.time(res_BMR <- bayesmr_mix_het(hdlcad_data, control = control, prior = prior))#
+#
+res_BMR@results[[1]]@accept
+prm.prop <- list(beta = 1.75, psi = .05, tau = .05)#
+burnin <- 10000#
+nsim <- 20000#
+#
+# seed <- 2301#
+# set.seed(seed)#
+#
+nchains <- 3#
+control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],#
+                psi.prop = prm.prop[["psi"]], tau.prop = prm.prop[["tau"]],#
+                beta.m = 2, nchains = nchains, thin = 5,#
+                random_start = TRUE, verbose = TRUE,#
+                store.burnin = FALSE, threads = ifelse(#
+                  nchains <= parallel::detectCores() - 1,#
+                  nchains, parallel::detectCores() - 1),#
+                parallel = "snow")#
+#
+alpha_psi <- 0.01 #0.05 #alpha_eb(se = data_tmp[, "se_exposure"])#
+alpha_tau <- 2*median(data_tmp[, "se_outcome"]) #2*alpha_psi #alpha_eb(se = data_tmp[, "se_outcome"])#
+prior <- bayesmr_prior(psi = list(alpha = alpha_psi, nu = 2),#
+                       tau = list(alpha = alpha_tau, nu = 3),#
+                       gamma = list(mean = 0, var = 1e1),#
+                       beta = list(mean = 0, var = 1e1),#
+                       alpha = list(a = 3, b = 1))#
+#
+# MCMC simulation#
+system.time(res_BMR <- bayesmr_mix_het(hdlcad_data, control = control, prior = prior))#
+#
+res_BMR@results[[1]]@accept
+plot(res_BMR@results[[1]]@gamma.chain, type = "l")#
+lines(res_BMR@results[[2]]@gamma.chain, type = "l", col = gray(.6))#
+lines(res_BMR@results[[3]]@gamma.chain, type = "l", col = gray(.9))
+plot(res_BMR@results[[1]]@tau.chain, type = "l")#
+lines(res_BMR@results[[2]]@tau.chain, type = "l", col = gray(.6))#
+lines(res_BMR@results[[3]]@tau.chain, type = "l", col = gray(.9))
+acf(res_BMR@results[[1]]@tau.chain)
+psm1 <- post_sim(res_BMR@results[[1]]@xi.chain, burnin = 0)#
+psm2 <- post_sim(res_BMR@results[[2]]@xi.chain, burnin = 0)#
+psm3 <- post_sim(res_BMR@results[[3]]@xi.chain, burnin = 0)#
+plot(psm1, psm2); abline(0, 1, lty = 2, col = "gray") ## good agreement
+post_sim <- function(xi_post, burnin) {#
+  p <- ncol(xi_post)#
+  simil_mat <- matrix(0, nrow = p, ncol = p)#
+  S <- nrow(xi_post)#
+#
+  for(s in (burnin + 1):S){#
+    simil_mat <- simil_mat + (matrix(xi_post[s, ], nrow = p, ncol = p) == t(matrix(xi_post[s, ], nrow = p, ncol = p)))*1#
+  }#
+  simil_probs <- simil_mat/(S - burnin)#
+  return(simil_probs)#
+}#
+#
+psm1 <- post_sim(res_BMR@results[[1]]@xi.chain, burnin = 0)#
+psm2 <- post_sim(res_BMR@results[[2]]@xi.chain, burnin = 0)#
+psm3 <- post_sim(res_BMR@results[[3]]@xi.chain, burnin = 0)#
+plot(psm1, psm2); abline(0, 1, lty = 2, col = "gray") ## good agreement
+vi <- salso(x = res_BMR@results[[1]]@xi.chain, loss = "VI")#
+table(vi)
+library(mcclust.ext)#
+library(mclust)#
+library(fields)#
+#
+## Point estimate of the partition#
+## Dahl (2022) JCGS#
+#
+library(salso)#
+#
+## Variation of Information and Binder Loss#
+#
+vi <- salso(x = res_BMR@results[[1]]@xi.chain, loss = "VI")#
+table(vi)
+bl <- salso(x = res_BMR@results[[1]]@xi.chain, loss = "binder")#
+table(bl)
+touse <- bl
+ordered_ind <- unlist(sapply(length(table(touse)):1,#
+                                function(k) c(which(touse == k))))#
+#
+simil_ordered <- psm1[ordered_ind, ordered_ind]#
+#
+colori <- colorRampPalette(c('white','black'))#
+#
+p <- ncol(simil_ordered)#
+#
+par(mar = c(5,5,2,2), mgp = c(3, 1, 0))#
+image.plot(simil_ordered, col = colori(100),#
+           zlim = c(0,1), cex.sub = 3, axes = FALSE,#
+           horizontal = FALSE, legend.shrink = 1,#
+           xlab = "SNP (j)", ylab = "SNP (j')",#
+           cex.axis = 4 )#
+axis(1, at = seq(0, 1, length = p), lab = 1:p, las = 2)#
+axis(2, at = seq(0, 1, length = p), lab = 1:p, las = 2)
+plot(sapply(1:nrow(res_BMR@results[[1]]@xi.chain),#
+            function(s) length(unique(res_BMR@results[[1]]@xi.chain[s, ]))),#
+     ylab = "Number of clusters", type = "p", xlab = "MCMC iteration")#
+#
+S <- nrow(res_BMR@results[[1]]@beta.chain)
+beta_snps <- sapply(1:S, function(s) res_BMR@results[[1]]@beta.chain[s, ][res_BMR@results[[1]]@xi.chain[s, ]])#
+boxplot(t(beta_snps[, 1:S]), outline = FALSE)

@@ -37,7 +37,7 @@ set.seed(seed)
 
 control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
   alpha.prop = prm.prop[["alpha"]], verbose = TRUE)
-sim.bayesmr <- bayesmr(simdiss, p, G, control)
+sim.bayesmr <- bayesmr(simdiss, control)
 sim.mcmc <- bayesmr_het_fit_to_mcmc(sim.bayesmr@results[[1]], TRUE)
 plot(sim.mcmc)
 }
