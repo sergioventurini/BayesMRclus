@@ -57,6 +57,10 @@ setMethod("initialize", "bayesmr_data",
     if (any(duplicated(data[, "SNP"])))
       stop("the data set contains duplicated SNPs.")
     cols <- c("beta_exposure", "beta_outcome", "se_exposure", "se_outcome")
+    cols2 <- c("beta.exposure", "beta.outcome", "se.exposure", "se.outcome")
+    if (!all(cols %in% colnames(data))) {
+      colnames(data)[match(cols2, colnames(data))] <- cols
+    }
     data_tmp <- data[, cols]
     if (any(match(colnames(data), "SNP"), na.rm = TRUE))
       rownames(data_tmp) <- data[, "SNP"]
