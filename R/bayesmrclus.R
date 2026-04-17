@@ -73,7 +73,7 @@ bayesmr <- function(data, control = bayesmr_control(), prior = NULL, cl = NULL, 
   seed <- control[["seed"]]
   parallel <- control[["parallel"]]
   random_start <- control[["random_start"]]
-  if (is.null(control[["K_start"]]) | control[["K_start"]] > 1) {
+  if (is.null(control[["K_start"]]) || control[["K_start"]] > 1) {
     control[["K_start"]] <- 1
     message("initial number of clusters set to one.")
   }
@@ -81,10 +81,22 @@ bayesmr <- function(data, control = bayesmr_control(), prior = NULL, cl = NULL, 
   store.burnin <- control[["store.burnin"]]
   verbose <- control[["verbose"]]
 
+  n <- nrow(data)
+  totiter <- burnin + nsim
+  
+  if (is.null(prior)) {
+    prior <- bayesmr_prior()
+  } else {
+    prior <- check_list_na(prior, bayesmr_prior())
+  }
+  if (!check_prior(prior)) {
+    stop("the prior hyperparameter list is not correct; see the documentation for more details.")
+  }
+
   have_mc <- have_snow <- FALSE
   if (parallel != "no" && threads > 1L) {
     if (parallel == "multicore") {
-      have_mc <- .Platform$OS.type != "windows"
+      have_mc <- (.Platform$OS.type != "windows")
     } else if (parallel == "snow") {
       have_snow <- TRUE
     }
@@ -95,34 +107,85 @@ bayesmr <- function(data, control = bayesmr_control(), prior = NULL, cl = NULL, 
     loadNamespace("parallel") # get this out of the way before recording seed
   }
 
-  n <- nrow(data)
-  totiter <- burnin + nsim
-  
-  # save current random number generator kind
-  old.rng <- RNGkind()[1L]
-  RNGkind(kind = "L'Ecuyer-CMRG")
+  use_parallel <- (nchains > 1L) && (have_mc || have_snow)
+
+  ## Preserve caller RNG state completely and restore it on exit
+  had_random_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  if (had_random_seed) {
+    old_random_seed <- get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  }
+  old_rng_kinds <- RNGkind()
+
+  on.exit({
+    do.call(RNGkind, as.list(old_rng_kinds))
+    if (had_random_seed) {
+      assign(".Random.seed", old_random_seed, envir = .GlobalEnv)
+    } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+      rm(".Random.seed", envir = .GlobalEnv)
+    }
+  }, add = TRUE)
+
+  ## Derive an internal seed.
+  ## - if user supplied one, use it
+  ## - otherwise, derive one from the current session RNG so behavior depends on
+  ##   the current session state without permanently mutating it outside the function
+  internal_seed <- seed
+  if (is.null(internal_seed)) {
+    internal_seed <- sample.int(.Machine$integer.max - 1L, size = 1L)
+  }
+
+  bayesmr_fit_parallel <- function(c, data.c, control.c, prior.c, lib) {
+    suppressMessages(require(BayesMRclus, lib.loc = lib))
+    control.c[["verbose"]] <- FALSE
+
+    start.c <- bayesmr_init(
+      data = data.c,
+      random_start = control.c[["random_start"]],
+      K_start = control.c[["K_start"]]
+    )
+    
+    bayesmr_fit(
+      data = data.c,
+      control = control.c,
+      prior = prior.c,
+      start = start.c
+    )
+  }
+
+  bayesmr_fit_serial <- function(ch, data.c, control.c, prior.c) {
+    if (control.c[["verbose"]] && control.c[["nchains"]] > 1L) {
+      message("--- STARTING SIMULATION OF CHAIN ", ch, " OF ", control.c[["nchains"]], " ---")
+    }
+    
+    if (control.c[["verbose"]]) {
+      message("Initialization of the algorithm...")
+    }
+    
+    start.c <- bayesmr_init(
+      data = data.c,
+      random_start = control.c[["random_start"]],
+      K_start = control.c[["K_start"]]
+    )
+    
+    fit <- bayesmr_fit(
+      data = data.c,
+      control = control.c,
+      prior = prior.c,
+      start = start.c
+    )
+    
+    if (control.c[["verbose"]] && control.c[["nchains"]] > 1L) {
+      message("--- END OF CHAIN ", ch, " OF ", control.c[["nchains"]], " ---\n")
+    }
+    
+    fit
+  }
   
   # perform MCMC simulation
-  if (nchains > 1L && (have_mc || have_snow)) {
-    bayesmr_fit_parallel <- function(c, data.c, control.c, prior.c, lib) {
-      suppressMessages(require(BayesMRclus, lib.loc = lib))
-      control.c[["verbose"]] <- FALSE
-      # message("Starting cluster node ", c, " on local machine")
-      start.c <- bayesmr_init(data = data.c, random_start = control.c[["random_start"]],
-        K_start = control.c[["K_start"]])
-      bayesmr_fit(data = data.c, control = control.c, prior = prior.c, start = start.c)
-    }
-    # environment(bayesmr_fit_parallel) <- .GlobalEnv # this prevents passing objects other than those needed for
-    #                                                 # evaluating the bayesmr_fit_parallel function
-
-    if (is.null(prior)) {
-      prior <- bayesmr_prior()
-    } else {
-      prior <- check_list_na(prior, bayesmr_prior())
-    }
-    if (!check_prior(prior)) {
-      stop("the prior hyperparameter list is not correct; see the documentation for more details.")
-    }
+  if (use_parallel) {
+    ## Parallel-safe RNG streams
+    RNGkind("L'Ecuyer-CMRG")
+    set.seed(internal_seed)
 
     if (verbose) {
       devout <- ""
@@ -132,66 +195,66 @@ bayesmr <- function(data, control = bayesmr_control(), prior = NULL, cl = NULL, 
         message("Performing parallel simulation of ", nchains, " chains...")
       }
     } else {
-      if (.Platform$OS.type != "windows") {
-        devout <- '/dev/null'
-      } else {
-        devout <- 'nul:'
-      }
+      if (.Platform$OS.type != "windows") devout <- '/dev/null' else devout <- 'nul:'
     }
 
-    res <- if (have_mc) {
-             if (!is.null(seed)) {
-               set.seed(seed)
-               parallel::mc.reset.stream()
-             }
-             parallel::mclapply(seq_len(nchains), bayesmr_fit_parallel, mc.cores = threads, mc.set.seed = TRUE,
-               data.c = data, control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
-           } else if (have_snow) {
-             if (is.null(cl)) {
-               cl <- parallel::makePSOCKcluster(rep("localhost", threads), outfile = devout) # outfile doesn't work on 
-                                                                                             # Windows
-               parallel::clusterSetRNGStream(cl, seed)
-               res <- parallel::parLapply(cl, seq_len(nchains), bayesmr_fit_parallel, data.c = data, 
-                 control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
-               parallel::stopCluster(cl)
-               res
-             } else parallel::parLapply(cl, seq_len(nchains), bayesmr_fit_parallel, data.c = data,
-               control.c = control, prior.c = prior, lib = .bayesmrEnv$path.to.me)
-           }
+    if (have_mc) {
+      res <- parallel::mclapply(
+        X = seq_len(nchains),
+        FUN = bayesmr_fit_parallel,
+        mc.cores = threads,
+        mc.set.seed = TRUE,
+        data.c = data,
+        control.c = control,
+        prior.c = prior,
+        lib = .bayesmrEnv$path.to.me
+      )
+    } else {
+      if (is.null(cl)) {
+        cl_local <- parallel::makePSOCKcluster(
+          rep("localhost", threads),
+          outfile = if (verbose) "" else devout
+        )
+        on.exit(parallel::stopCluster(cl_local), add = TRUE)
+        cl_to_use <- cl_local
 
-    if (verbose) {
-      if (.Platform$OS.type != "windows" && !have_mc){
-        message("--- END OF PARALLEL SIMULATION OF ", nchains, " CHAINS ---\n")
+        ## Seed the cluster explicitly for reproducible independent streams
+        parallel::clusterSetRNGStream(cl_to_use, iseed = internal_seed)
       } else {
-        # message("done!")
+        warning("for user-supplied clusters, the RNG seed must be set externally.")
+        cl_to_use <- cl
+      }
+
+      res <- parallel::parLapply(
+        cl = cl_to_use,
+        X = seq_len(nchains),
+        fun = bayesmr_fit_parallel,
+        data.c = data,
+        control.c = control,
+        prior.c = prior,
+        lib = .bayesmrEnv$path.to.me
+      )
+    }
+  
+    if (verbose) {
+      if (.Platform$OS.type != "windows" && !have_mc) {
+        message("--- END OF PARALLEL SIMULATION OF ", nchains, " CHAINS ---\n")
       }
     }
   } else {
+    ## Serial execution: ordinary RNG is enough
     if (!is.null(seed)) {
-     set.seed(seed)
+      set.seed(internal_seed)
     }
-    res <- list()
-    for (ch in 1:nchains) {
-      if (verbose && nchains > 1L) message("--- STARTING SIMULATION OF CHAIN ", ch, " OF ", nchains, " ---")
 
-      if (verbose) message("Initialization of the algorithm...")
-  
-      bayesmr_start <- bayesmr_init(data, random_start, K_start = K_start)
-      if (is.null(prior)) {
-        prior <- bayesmr_prior()
-      } else {
-        prior <- check_list_na(prior, bayesmr_prior())
-      }
-      if (!check_prior(prior))
-        stop("the prior hyperparameter list is not correct; see the documentation for more details.")
-    
-      if (verbose) {
-        # message("done!")
-      }
-
-      res[[ch]] <- bayesmr_fit(data = data, control = control, prior = prior, start = bayesmr_start)
-
-      if (verbose && nchains > 1L) message("--- END OF CHAIN ", ch, " OF ", nchains, " ---\n")
+    res <- vector("list", nchains)
+    for (ch in seq_len(nchains)) {
+      res[[ch]] <- bayesmr_fit_serial(
+        ch = ch,
+        data.c = data,
+        control.c = control,
+        prior.c = prior
+      )
     }
   }
 
@@ -217,9 +280,6 @@ bayesmr <- function(data, control = bayesmr_control(), prior = NULL, cl = NULL, 
     #   res[[ch]]@beta.chain <- beta.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
     # }
   }
-
-  # restore previous random number generator kind
-  RNGkind(kind = old.rng)
 
   res <- new("bayesmr_fit_list", results = res)
 

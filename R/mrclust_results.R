@@ -56,11 +56,13 @@ mrclust_results <- function(data, title = "X → Y") {
   # ── Cluster summary table ─────────────────────────────────────────────────────
   tab <- best %>%
     group_by(cluster_class, cluster_mean) %>%
-    summarise(n_snps      = n(),
+    summarise(n_snps      = dplyr::n(),
               mean_prob   = round(mean(probability), 3),
               n_high_conf = sum(probability > 0.8),
               .groups     = "drop") %>%
     arrange(cluster_mean)
   
-  list(p1 = p1, p2 = p2, tab = tab)
+  list(p1 = p1, p2 = p2, tab = tab, cluster = data.frame(SNP = rownames(data),
+                                                         cluster = best$cluster,
+                                                         cluster_class = best$cluster_class))
 }

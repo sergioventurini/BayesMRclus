@@ -10,7 +10,7 @@ dat <- data.frame(SNP = tg_insulin[, "SNP"],
                   se_outcome = tg_insulin[, "se.outcome"])
 
 n <- nrow(tg_insulin)
-tginsulin_data <- new("bayesmr_data", data = dat, n = n, harmonization = TRUE)
+tginsulin_data <- new("bayesmr_data", data = dat, n = n, reorientation = TRUE)
 data_tmp <- tginsulin_data@data
 # summary(tginsulin_data)
 # plot(tginsulin_data, se = TRUE)

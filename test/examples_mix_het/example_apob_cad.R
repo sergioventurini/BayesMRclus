@@ -10,7 +10,7 @@ dat <- data.frame(SNP = apob_cad[, "SNP"],
                   se_outcome = apob_cad[, "se.outcome"])
 
 n <- nrow(apob_cad)
-apob_data <- new("bayesmr_data", data = dat, n = n, harmonization = TRUE)
+apob_data <- new("bayesmr_data", data = dat, n = n, reorientation = TRUE)
 data_tmp <- apob_data@data
 # summary(apob_data)
 # plot(apob_data, se = TRUE)

@@ -1,0 +1,36 @@
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_insulin.rda")
+dat_orig <- bmi_insulin
+# remotes::install_github('MRCIEU/TwoSampleMR')#
+# remotes::install_github("mrcieu/ieugwasr")#
+# remotes::install_github("WSpiller/RadialMR", force = TRUE)#
+library(TwoSampleMR)#
+library(ieugwasr)#
+library(RadialMR)#
+library(BayesMRclus)
+# devtools::install_github("cnfoley/mrclust")#
+library(ggplot2)#
+library(dplyr)#
+library(mrclust)#
+#
+sel <- dat_orig$beta.exposure < 0#
+dat_orig$beta.exposure[sel] <- -dat_orig$beta.exposure[sel]#
+dat_orig$beta.outcome[sel] <- -dat_orig$beta.outcome[sel]#
+#
+mrclust_res <- mrclust_results(dat_orig)#
+mrclust_res$p1#
+mrclust_res$tab
+mrclust_results
+?mrclust::mr_clust_em
+mrclust_results
+mrclust_res
+help(p=MRPATH)
+beta_wald <- dat_orig$beta.outcome/dat_orig$beta.exposure#
+hist(beta_wald, breaks = 20)
+radial <- format_radial(dat_orig$beta.exposure,#
+                        dat_orig$beta.outcome,#
+                        dat_orig$se.exposure,#
+                        dat_orig$se.outcome,#
+                        dat_orig$SNP)#
+ivw.object <- ivw_radial(radial, 0.05, 1, 0.0001, FALSE)#
+egg.object <- egger_radial(radial, 0.05, 1, FALSE)#
+plot_radial(ivw.object)

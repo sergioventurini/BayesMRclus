@@ -1,0 +1,29 @@
+library(TwoSampleMR)#
+library(RadialMR)#
+library(BayesMRclus)#
+#
+data("SBP_CAD", package = "mrclust")#
+sbp_cad <- SBP_CAD[, 2:6]#
+colnames(sbp_cad) <- c("SNP", "beta.exposure", "se.exposure", "beta.outcome", "se.outcome")
+save(sbp_cad, file = "/Users/Sergio/dev/BayesMRclus/data/sbp_cad.rda")
+library(TwoSampleMR)#
+library(RadialMR)#
+library(BayesMRclus)#
+#
+data("SBP_CAD", package = "mrclust")#
+sbp_cad <- SBP_CAD[, 2:6]#
+colnames(sbp_cad) <- c("SNP", "beta.exposure", "se.exposure", "beta.outcome", "se.outcome")#
+save(sbp_cad, file = "/Users/Sergio/dev/BayesMRclus/data/sbp_cad.rda")
+dat_orig <- sbp_cad
+# devtools::install_github("cnfoley/mrclust")#
+library(ggplot2)#
+library(dplyr)#
+library(mrclust)#
+#
+sel <- dat_orig$beta.exposure < 0#
+dat_orig$beta.exposure[sel] <- -dat_orig$beta.exposure[sel]#
+dat_orig$beta.outcome[sel] <- -dat_orig$beta.outcome[sel]#
+#
+mrclust_res <- mrclust_results(dat_orig)#
+mrclust_res$p1#
+mrclust_res$tab

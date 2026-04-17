@@ -81,7 +81,10 @@ save(hdl_cad, file = "/Users/Sergio/dev/BayesMRclus/data/hdl_cad.rda")
 # library(dplyr)
 # library(mrclust)
 
-# data("hdl_cad", package = "BayesMRclus")
-# mrclust_res <- mrclust_results(hdl_cad)
+# sel <- dat_orig$beta.exposure < 0
+# dat_orig$beta.exposure[sel] <- -dat_orig$beta.exposure[sel]
+# dat_orig$beta.outcome[sel] <- -dat_orig$beta.outcome[sel]
+
+# mrclust_res <- mrclust_results(dat_orig)
 # mrclust_res$p1
 # mrclust_res$tab

@@ -10,7 +10,7 @@ dat <- data.frame(SNP = bmi_t2d[, "SNP"],
                   se_outcome = bmi_t2d[, "se.outcome"])
 
 n <- nrow(bmi_t2d)
-bmit2d_data <- new("bayesmr_data", data = dat, n = n, harmonization = TRUE)
+bmit2d_data <- new("bayesmr_data", data = dat, n = n, reorientation = TRUE)
 data_tmp <- bmit2d_data@data
 # summary(bmit2d_data)
 # plot(bmit2d_data, se = TRUE)

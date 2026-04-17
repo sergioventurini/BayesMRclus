@@ -10,7 +10,7 @@ dat <- data.frame(SNP = bmi_depression[, "SNP"],
                   se_outcome = bmi_depression[, "se.outcome"])
 
 n <- nrow(bmi_depression)
-bmidep_data <- new("bayesmr_data", data = dat, n = n, harmonization = TRUE)
+bmidep_data <- new("bayesmr_data", data = dat, n = n, reorientation = TRUE)
 data_tmp <- bmidep_data@data
 # summary(bmidep_data)
 # plot(bmidep_data, se = TRUE)

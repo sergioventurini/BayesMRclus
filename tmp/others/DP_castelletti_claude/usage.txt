@@ -1,0 +1,7 @@
+g++ -O2 -std=c++17 -o simulate_mr_mixture simulate_mr_mixture.cpp
+g++ -O3 -march=native -std=c++17 -o mr_mixture mr_mixture.cpp
+g++ -O2 -std=c++17 -o diagnose_mr_mixture diagnose_mr_mixture.cpp
+
+./simulate_mr_mixture -p 120 -K 3 -n 50000 -s 7 -o run
+./mr_mixture run_data.csv 5000 42
+./diagnose_mr_mixture run_truth.csv 0.5

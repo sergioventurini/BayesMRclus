@@ -33,7 +33,7 @@ data <- data.frame(beta_exposure = theta_hat_x,
                    beta_outcome = theta_hat_y,
                    se_exposure = sqrt(sigma2_x),
                    se_outcome = sqrt(sigma2_y))
-simdata <- new("bayesmr_data", data = data, n = nrow(data), harmonization = TRUE)
+simdata <- new("bayesmr_data", data = data, n = nrow(data), reorientation = TRUE)
 # summary(simdata)
 # plot(simdata, se = TRUE)
 hist(data$beta_outcome/data$beta_exposure, breaks = 20)
@@ -106,7 +106,7 @@ simulate_MRPath <- function(
 
 # set.seed(101)
 data <- simulate_MRPath(alpha_type = "normal")$data
-simdata <- new("bayesmr_data", data = data, n = nrow(data), harmonization = TRUE)
+simdata <- new("bayesmr_data", data = data, n = nrow(data), reorientation = TRUE)
 # summary(simdata)
 # plot(simdata, se = TRUE)
 hist(data$beta_outcome/data$beta_exposure, breaks = 20)

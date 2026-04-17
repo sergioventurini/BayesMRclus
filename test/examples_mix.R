@@ -5,7 +5,7 @@ data("hdl_chd", package = "BayesMRclus")
 hdl_chd <- subset(hdl_chd, pval_selection < 5e-8)
 
 n <- nrow(hdl_chd)
-iongdata <- new("bayesmr_data", data = hdl_chd, n = n, harmonization = TRUE)
+iongdata <- new("bayesmr_data", data = hdl_chd, n = n, reorientation = TRUE)
 data_tmp <- iongdata@data
 # summary(iongdata)
 # plot(iongdata, se = TRUE)
@@ -15,13 +15,11 @@ prm.prop <- list(beta = .2)
 burnin <- 100000
 nsim <- 200000
 
-# seed <- 2301
-# set.seed(seed)
-
 nchains <- 3
+seed <- 2301
 control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
                 beta.m = 2, nchains = nchains, thin = 100,
-                random_start = TRUE, verbose = TRUE,
+                seed = NULL, random_start = TRUE, verbose = TRUE,
                 store.burnin = TRUE, threads = ifelse(
                   nchains <= parallel::detectCores() - 1,
                   nchains, parallel::detectCores() - 1),

@@ -10,7 +10,7 @@ dat <- data.frame(SNP = ldl_sbp[, "SNP"],
                   se_outcome = ldl_sbp[, "se.outcome"])
 
 n <- nrow(ldl_sbp)
-ldlsbp_data <- new("bayesmr_data", data = dat, n = n, harmonization = TRUE)
+ldlsbp_data <- new("bayesmr_data", data = dat, n = n, reorientation = TRUE)
 data_tmp <- ldlsbp_data@data
 # summary(ldlsbp_data)
 # plot(ldlsbp_data, se = TRUE)

@@ -81,7 +81,10 @@ save(ldl_sbp, file = "/Users/Sergio/dev/BayesMRclus/data/ldl_sbp.rda")
 # library(dplyr)
 # library(mrclust)
 
-# data("ldl_sbp", package = "BayesMRclus")
-# mrclust_res <- mrclust_results(ldl_sbp)
+# sel <- dat_orig$beta.exposure < 0
+# dat_orig$beta.exposure[sel] <- -dat_orig$beta.exposure[sel]
+# dat_orig$beta.outcome[sel] <- -dat_orig$beta.outcome[sel]
+
+# mrclust_res <- mrclust_results(dat_orig)
 # mrclust_res$p1
 # mrclust_res$tab

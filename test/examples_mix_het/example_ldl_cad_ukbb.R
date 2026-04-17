@@ -10,7 +10,7 @@ dat <- data.frame(SNP = ldl2_cad[, "SNP"],
                   se_outcome = ldl2_cad[, "se.outcome"])
 
 n <- nrow(ldl2_cad)
-ldl2cad_data <- new("bayesmr_data", data = dat, n = n, harmonization = TRUE)
+ldl2cad_data <- new("bayesmr_data", data = dat, n = n, reorientation = TRUE)
 data_tmp <- ldl2cad_data@data
 # summary(ldl2cad_data)
 # plot(ldl2cad_data, se = TRUE)

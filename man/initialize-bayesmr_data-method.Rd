@@ -5,7 +5,7 @@
 \alias{bayesmr_data-initialize}
 \title{Create an instance of the \code{bayesmr_data} class using new/initialize.}
 \usage{
-\S4method{initialize}{bayesmr_data}(.Object, data = list(), n = numeric(), harmonization = TRUE)
+\S4method{initialize}{bayesmr_data}(.Object, data = list(), n = numeric(), reorientation = TRUE)
 }
 \arguments{
 \item{.Object}{Prototype object from the class \code{\link{bayesmr_data}}.}
@@ -17,8 +17,8 @@ must be defined as a \code{dist} object.}
 \item{n}{A length-one character vector representing the number of objects
 compared by each subject.}
 
-\item{harmonization}{A length-one logical vector indicating whether to apply
-allele harmonization.}
+\item{reorientation}{A length-one logical vector indicating whether to apply
+allele reorientation.}
 }
 \description{
 Create an instance of the \code{bayesmr_data} class using new/initialize.

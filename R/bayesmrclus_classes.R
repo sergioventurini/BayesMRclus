@@ -36,8 +36,8 @@ setClass(Class = "bayesmr_data",
 #'   must be defined as a \code{dist} object.
 #' @param n A length-one character vector representing the number of objects
 #'   compared by each subject.
-#' @param harmonization A length-one logical vector indicating whether to apply
-#'   allele harmonization.
+#' @param reorientation A length-one logical vector indicating whether to apply
+#'   allele reorientation.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
@@ -51,7 +51,7 @@ setMethod("initialize", "bayesmr_data",
     .Object,
     data = list(),
     n = numeric(),
-    harmonization = TRUE
+    reorientation = TRUE
   )
   {
     if (any(duplicated(data[, "SNP"])))
@@ -64,7 +64,7 @@ setMethod("initialize", "bayesmr_data",
     data_tmp <- data[, cols]
     if (any(match(colnames(data), "SNP"), na.rm = TRUE))
       rownames(data_tmp) <- data[, "SNP"]
-    if (harmonization) {
+    if (reorientation) {
       flip <- data_tmp$beta_exposure < 0
       data_tmp$beta_exposure[flip] <- -data_tmp$beta_exposure[flip]
       data_tmp$beta_outcome[flip]  <- -data_tmp$beta_outcome[flip]

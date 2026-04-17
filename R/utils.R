@@ -313,3 +313,32 @@ print_matrix <- function(mat, rownm = NULL, colnm = NULL, colwidth = 10, between
     }
   }
 }
+
+#' Auxiliary function to compute the I-squared heterogeneity index.
+#'
+#' \code{check_list_na()} compares two lists and fills in the missing
+#'   elements in the first with those included in the second. The
+#'   comparison is recursive in the sense that the process is repeated for
+#'   all lists included in those given.
+#'
+#' @param y A list whose content must be checked.
+#' @param s A list to use as a reference with which compare the first one.
+#'
+#' @return A length-one numeric vector.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @examples
+#' # [nothing for now]
+#'
+#' @export
+I2 <- function(y, s) {
+  k <- length(y)
+  w <- 1/s^2
+  sum.w <- sum(w)
+  mu.hat <- sum(y * w)/sum.w
+  Q <- sum(w * (y - mu.hat)^2)
+  Isq <- (Q - (k - 1))/Q
+  Isq <- max(0, Isq)
+  return(Isq)
+}

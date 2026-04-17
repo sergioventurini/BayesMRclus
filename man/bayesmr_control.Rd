@@ -19,7 +19,7 @@ bayesmr_control(
   psi.prop = 0.1,
   tau.prop = 0.1,
   random_start = TRUE,
-  K_start = 1,
+  K_start = 2,
   store.burnin = TRUE,
   verbose = FALSE
 )
@@ -37,7 +37,7 @@ control_bayesmr(
   psi.prop = 0.1,
   tau.prop = 0.1,
   random_start = TRUE,
-  K_start = 1,
+  K_start = 2,
   store.burnin = TRUE,
   verbose = FALSE
 )

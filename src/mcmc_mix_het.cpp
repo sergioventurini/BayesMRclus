@@ -72,13 +72,29 @@ void bayesmr_mcmc_mix_het(
   double accept_beta = 0.0;       // track total accept for beta chain
   double psi_old = psi_p;
   double accept_psi = 0.0;        // track total accept for psi chain
-  double tau_old = tau_p;
+  double tau_old = rhyper_tau_alpha > 0.0 ? tau_p : 0.0;
   double accept_tau = 0.0;        // track total accept for tau chain
   double total_proposals = 0.0;
+
+  // window-based acceptance tracking (window size = 500)
+  const int window_size = 500;
+  double window_accept_beta = 0.0;
+  double window_accept_psi  = 0.0;
+  double window_accept_tau  = 0.0;
+  double window_proposals   = 0.0;
 
   // local temporaries
   const double sqrt_rhyper_gamma_var = std::sqrt(rhyper_gamma_var);
   const double sqrt_rhyper_beta_var = std::sqrt(rhyper_beta_var);
+
+  // Adaptive proposal for log(tau)
+  double C_logtau_adapt = C_logtau;   // starts as fixed value, then adapts
+  int adapt_start = (int)std::round(0.10 * totiter) + 1;
+
+  // Welford's online mean/variance for eta = log(tau)
+  double eta_mean  = 0.0;
+  double eta_M2    = 0.0;   // sum of squared deviations
+  int    eta_count = 0;
 
   // main MCMC loop
   for (int iter = 1; iter <= totiter; ++iter) {
@@ -165,6 +181,7 @@ void bayesmr_mcmc_mix_het(
       double beta_k = beta_star_old[k];
       double beta_k_prop = R::rnorm(beta_k, C_beta);
       total_proposals++;
+      window_proposals++;
 
       auto gamma_hat_k = subset(gammahat_j, xi_old, k);
       auto Gamma_hat_k = subset(Gammahat_j, xi_old, k);
@@ -182,6 +199,7 @@ void bayesmr_mcmc_mix_het(
       if (log_u < r_beta_k) {
         beta_star_old[k] = beta_k_prop;
         accept_beta++;
+        window_accept_beta++;
       }
     }
 
@@ -195,10 +213,48 @@ void bayesmr_mcmc_mix_het(
     }
 
     // -----------------------------------------
-    // 4) Metropolis-Hastings update of log(psi)
+    // 4) Metropolis-Hastings update of log(tau)
     // -----------------------------------------
     auto beta_long_old = remap_vec(beta_star_old, xi_old);
 
+    if (rhyper_tau_alpha > 0.0) {  // pleiotropy assumed
+      double eta_old = std::log(tau_old);
+      double eta_prop = R::rnorm(eta_old, C_logtau_adapt);
+
+      double r_eta = full_cond_tau(beta_long_old, rhyper_tau_alpha, rhyper_tau_nu,
+                         gammahat_j, Gammahat_j, sigma2_X, sigma2_Y,
+                         gamma_old, psi_old, std::exp(eta_prop)) -
+                       full_cond_tau(beta_long_old, rhyper_tau_alpha, rhyper_tau_nu,
+                         gammahat_j, Gammahat_j, sigma2_X, sigma2_Y,
+                         gamma_old, psi_old, tau_old);
+
+      double log_u = std::log(unif_rand());
+      if (log_u < r_eta) {
+        tau_old = std::exp(eta_prop);
+        accept_tau++;
+        window_accept_tau++;
+      }
+
+      // store current eta and update running variance (Welford's algorithm)
+      double eta_current = std::log(tau_old);
+      eta_count++;
+      double delta_w  = eta_current - eta_mean;
+      eta_mean       += delta_w / eta_count;
+      double delta_w2 = eta_current - eta_mean;
+      eta_M2         += delta_w * delta_w2;
+
+      // after 10% of iterations, switch to empirical proposal SD
+      if (iter >= adapt_start && eta_count > 1) {
+        double s2_etaprop = eta_M2 / (eta_count - 1);
+        C_logtau_adapt = std::sqrt(s2_etaprop);
+      }
+    }
+
+    tau_chain[iter - 1] = tau_old;
+
+    // -----------------------------------------
+    // 5) Metropolis-Hastings update of log(psi)
+    // -----------------------------------------
     double delta_old = std::log(psi_old);
     double delta_prop = R::rnorm(delta_old, C_logpsi);
 
@@ -213,30 +269,10 @@ void bayesmr_mcmc_mix_het(
     if (log_u < r_delta) {
       psi_old = std::exp(delta_prop);
       accept_psi++;
+      window_accept_psi++;
     }
 
     psi_chain[iter - 1] = psi_old;
-
-    // -----------------------------------------
-    // 5) Metropolis-Hastings update of log(tau)
-    // -----------------------------------------
-    double eta_old = std::log(tau_old);
-    double eta_prop = R::rnorm(eta_old, C_logtau);
-
-    double r_eta = full_cond_tau(beta_long_old, rhyper_tau_alpha, rhyper_tau_nu,
-                       gammahat_j, Gammahat_j, sigma2_X, sigma2_Y,
-                       gamma_old, psi_old, std::exp(eta_prop)) -
-                     full_cond_tau(beta_long_old, rhyper_tau_alpha, rhyper_tau_nu,
-                       gammahat_j, Gammahat_j, sigma2_X, sigma2_Y,
-                       gamma_old, psi_old, tau_old);
-
-    log_u = std::log(unif_rand());
-    if (log_u < r_eta) {
-      tau_old = std::exp(eta_prop);
-      accept_tau++;
-    }
-
-    tau_chain[iter - 1] = tau_old;
 
     // ------------------
     // 6) Update of alpha
@@ -274,9 +310,21 @@ void bayesmr_mcmc_mix_het(
     logpost[iter - 1] = loglik[iter - 1] + logprior[iter - 1];
 
     // optional progress printing
-    if ((iter % 500) == 0 && verbose) {
-      REprintf("   iteration %d/%d ==> acc. beta: %1.4f - acc. psi: %1.4f - acc. tau: %1.4f\n",
-        iter, totiter, accept_beta / total_proposals, accept_psi / totiter, accept_tau / totiter);
+    if ((iter % window_size) == 0 && verbose) {
+      double w_beta = (window_proposals > 0) ? window_accept_beta / window_proposals : 0.0;
+      double w_psi  = window_accept_psi / window_size;
+      double w_tau  = window_accept_tau / window_size;
+
+      REprintf("   iter %d/%d [window] ==> acc. beta: %1.4f  acc. psi: %1.4f  acc. tau: %1.4f\n",
+        iter, totiter, w_beta, w_psi, w_tau);
+      // REprintf("   iteration %d/%d ==> acc. beta: %1.4f - acc. psi: %1.4f - acc. tau: %1.4f\n",
+      //   iter, totiter, accept_beta / total_proposals, accept_psi / totiter, accept_tau / totiter);
+
+      // reset window counters
+      window_accept_beta = 0.0;
+      window_accept_psi  = 0.0;
+      window_accept_tau  = 0.0;
+      window_proposals   = 0.0;
     }
 
     // interruption point (allow user to interrupt R)

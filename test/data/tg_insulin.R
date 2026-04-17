@@ -80,8 +80,11 @@ save(tg_insulin, file = "/Users/Sergio/dev/BayesMRclus/data/tg_insulin.rda")
 # library(ggplot2)
 # library(dplyr)
 # library(mrclust)
+ 
+# sel <- dat_orig$beta.exposure < 0
+# dat_orig$beta.exposure[sel] <- -dat_orig$beta.exposure[sel]
+# dat_orig$beta.outcome[sel] <- -dat_orig$beta.outcome[sel]
 
-# data("tg_insulin", package = "BayesMRclus")
-# mrclust_res <- mrclust_results(tg_insulin)
+# mrclust_res <- mrclust_results(dat_orig)
 # mrclust_res$p1
 # mrclust_res$tab

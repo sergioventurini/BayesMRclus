@@ -81,7 +81,10 @@ save(bmi_t2d, file = "/Users/Sergio/dev/BayesMRclus/data/bmi_t2d.rda")
 # library(dplyr)
 # library(mrclust)
 
-# data("bmi_t2d", package = "BayesMRclus")
-# mrclust_res <- mrclust_results(bmi_t2d)
+# sel <- dat_orig$beta.exposure < 0
+# dat_orig$beta.exposure[sel] <- -dat_orig$beta.exposure[sel]
+# dat_orig$beta.outcome[sel] <- -dat_orig$beta.outcome[sel]
+
+# mrclust_res <- mrclust_results(dat_orig)
 # mrclust_res$p1
 # mrclust_res$tab

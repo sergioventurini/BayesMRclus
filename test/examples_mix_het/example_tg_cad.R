@@ -10,7 +10,7 @@ dat <- data.frame(SNP = tg_cad[, "SNP"],
                   se_outcome = tg_cad[, "se.outcome"])
 
 n <- nrow(tg_cad)
-tgcad_data <- new("bayesmr_data", data = tg_cad, n = n, harmonization = TRUE)
+tgcad_data <- new("bayesmr_data", data = tg_cad, n = n, reorientation = TRUE)
 data_tmp <- tgcad_data@dat
 # summary(tgcad_data)
 # plot(tgcad_data, se = TRUE)

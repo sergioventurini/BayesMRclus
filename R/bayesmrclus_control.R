@@ -73,7 +73,7 @@ bayesmr_control <- function(nsim = 5000,
                             psi.prop = .1,
                             tau.prop = .1,
                             random_start = TRUE,
-                            K_start = 1,
+                            K_start = 2,
                             store.burnin = TRUE,
                             verbose = FALSE){
   control <- list()

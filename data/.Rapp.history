@@ -70,3 +70,14 @@ load("/Users/Sergio/dev/BayesMRclus/data/bmi_sbp.rda")
 ls()
 dat_orig
 bmi_sbp
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_insulin.rda")
+ls()
+bmi_insulin
+load("/Users/Sergio/dev/BayesMRclus/data/tg_insulin.rda")
+tg_insulin
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_insulin.rda")
+write.csv(bmi_insulin, file = "/Users/Sergio/dev/BayesMRclus/data/bmi_insulin.csv")
+load("/Users/Sergio/dev/BayesMRclus/data/bmi_insulin.rda")
+ls()
+str(bmi_insulin)
+dim(bmi_insulin)

@@ -11,7 +11,7 @@ data <- data.frame(SNP = bmi_sbp[, "SNP"],
                    se_outcome = bmi_sbp[, "se.outcome"])
 
 n <- nrow(data)
-zhaodata <- new("bayesmr_data", data = data, n = n, harmonization = TRUE)
+zhaodata <- new("bayesmr_data", data = data, n = n, reorientation = TRUE)
 
 # Create 95% confidence intervals for error bars
 zhaodata@data$lower_x <- zhaodata@data$beta_exposure - zhaodata@data$se_exposure

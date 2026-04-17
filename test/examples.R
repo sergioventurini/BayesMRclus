@@ -5,7 +5,7 @@ data("bmi_sbp", package = "BayesMRclus")
 bmi_sbp <- subset(bmi_sbp, pval_selection < 5e-4)
 
 n <- nrow(bmi_sbp)
-zhaodata <- new("bayesmr_data", data = bmi_sbp, n = n, harmonization = TRUE)
+zhaodata <- new("bayesmr_data", data = bmi_sbp, n = n, reorientation = TRUE)
 # summary(zhaodata)
 # plot(zhaodata, se = TRUE)
 data_tmp <- zhaodata@data
@@ -15,12 +15,11 @@ prm.prop <- list(beta = .4)
 burnin <- 100000
 nsim <- 200000
 
-# seed <- 2301
-# set.seed(seed)
-
 nchains <- 3
+seed <- 2301
 control <- list(burnin = burnin, nsim = nsim, beta.prop = prm.prop[["beta"]],
-                random_start = TRUE, verbose = TRUE, nchains = nchains, thin = 50,
+                seed = NULL, random_start = TRUE, verbose = TRUE,
+                nchains = nchains, thin = 50,
                 store.burnin = TRUE, threads = ifelse(
                   nchains <= parallel::detectCores() - 1,
                   nchains, parallel::detectCores() - 1),

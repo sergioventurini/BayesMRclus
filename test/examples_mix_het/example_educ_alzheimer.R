@@ -10,7 +10,7 @@ dat <- data.frame(SNP = educ_alzheimer[, "SNP"],
                   se_outcome = educ_alzheimer[, "se.outcome"])
 
 n <- nrow(educ_alzheimer)
-educalz_data <- new("bayesmr_data", data = dat, n = n, harmonization = TRUE)
+educalz_data <- new("bayesmr_data", data = dat, n = n, reorientation = TRUE)
 data_tmp <- educalz_data@data
 # summary(educalz_data)
 # plot(educalz_data, se = TRUE)

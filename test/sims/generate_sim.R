@@ -184,7 +184,7 @@ dat <- data.frame(beta_exposure = data_sc1[, "gamma_hat"],
                   se_exposure = data_sc1[, "s_gamma_hat"],
                   se_outcome = data_sc1[, "s_Gamma_hat"])
 
-dat_sc1 <- new("bayesmr_data", data = dat, n = nrow(dat), harmonization = TRUE)
+dat_sc1 <- new("bayesmr_data", data = dat, n = nrow(dat), reorientation = TRUE)
 # summary(dat_sc1)
 # plot(dat_sc1, se = TRUE)
 hist(dat_sc1@data$beta_outcome/dat_sc1@data$beta_exposure, breaks = 20)
@@ -203,7 +203,7 @@ dat <- data.frame(beta_exposure = data_sc2[, "gamma_hat"],
                   se_exposure = data_sc2[, "s_gamma_hat"],
                   se_outcome = data_sc2[, "s_Gamma_hat"])
 
-dat_sc2 <- new("bayesmr_data", data = dat, n = nrow(dat), harmonization = TRUE)
+dat_sc2 <- new("bayesmr_data", data = dat, n = nrow(dat), reorientation = TRUE)
 # summary(dat_sc2)
 # plot(dat_sc2, se = TRUE)
 hist(dat_sc2@data$beta_outcome/dat_sc2@data$beta_exposure, breaks = 20)
@@ -222,7 +222,7 @@ dat <- data.frame(beta_exposure = data_sc3[, "gamma_hat"],
                   se_exposure = data_sc3[, "s_gamma_hat"],
                   se_outcome = data_sc3[, "s_Gamma_hat"])
 
-dat_sc3 <- new("bayesmr_data", data = dat, n = nrow(dat), harmonization = TRUE)
+dat_sc3 <- new("bayesmr_data", data = dat, n = nrow(dat), reorientation = TRUE)
 # summary(dat_sc3)
 # plot(dat_sc3, se = TRUE)
 abline(a = 0, b = 0.3)
@@ -236,7 +236,7 @@ dat <- data.frame(beta_exposure = data_sc4[, "gamma_hat"],
                   se_exposure = data_sc4[, "s_gamma_hat"],
                   se_outcome = data_sc4[, "s_Gamma_hat"])
 
-dat_sc4 <- new("bayesmr_data", data = dat, n = nrow(dat), harmonization = F)
+dat_sc4 <- new("bayesmr_data", data = dat, n = nrow(dat), reorientation = F)
 # summary(dat_sc4)
 # plot(dat_sc4, se = TRUE)
 hist(dat_sc4@data$beta_outcome/dat_sc4@data$beta_exposure, breaks = 20)

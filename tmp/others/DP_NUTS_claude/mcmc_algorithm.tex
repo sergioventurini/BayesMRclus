@@ -1,0 +1,1037 @@
+%------------------------------------------------------------------
+% Efficient MCMC for Bayesian Nonparametric Mendelian Randomization
+%------------------------------------------------------------------
+\documentclass[12pt, a4paper]{article}
+
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{mathtools}
+\usepackage{bm}
+\usepackage{float}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{geometry}
+\usepackage{enumitem}
+\usepackage{mdframed}
+\usepackage{caption}
+\geometry{margin=2.5cm}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue,
+  citecolor=blue,
+  urlcolor=blue
+}
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+
+\newcommand{\given}{\,|\,}
+\newcommand{\Nor}{\mathcal{N}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\halft}{\mathrm{half\text{-}t}}
+
+%------------------------------------------------------------------
+% Custom pseudocode environment (no external algorithm package)
+%------------------------------------------------------------------
+\newfloat{algfloat}{htbp}{loa}
+\floatname{algfloat}{Algorithm}
+\captionsetup[algfloat]{labelfont=bf, labelsep=period}
+
+% Pseudocode line commands: \pc{indent level}{text}
+\newcommand{\pco}[1]{\item #1}                          % indent 0
+\newcommand{\pci}[1]{\item\hspace{1.5em}#1}             % indent 1
+\newcommand{\pcii}[1]{\item\hspace{3.0em}#1}            % indent 2
+\newcommand{\pciii}[1]{\item\hspace{4.5em}#1}           % indent 3
+\newcommand{\kw}[1]{\textbf{#1}}                        % keyword
+\newcommand{\cm}[1]{\hfill$\triangleright$\;\textit{\small #1}} % comment
+
+\newcounter{pcline}
+\newenvironment{pseudocode}{%
+  \setcounter{pcline}{0}%
+  \begin{list}{\scriptsize\arabic{pcline}.}{%
+    \usecounter{pcline}%
+    \setlength{\leftmargin}{2.5em}%
+    \setlength{\itemsep}{1pt}%
+    \setlength{\parsep}{0pt}%
+    \setlength{\topsep}{3pt}%
+    \small
+  }%
+}{%
+  \end{list}%
+}
+
+%------------------------------------------------------------------
+\title{\textbf{An Efficient Hamiltonian-within-Gibbs Sampler\\[6pt]
+       with Elliptical Slice Sampling and Split--Merge Augmentation\\[6pt]
+       for Bayesian Nonparametric Mendelian Randomization}}
+\author{}
+\date{\today}
+%------------------------------------------------------------------
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%==================================================================
+\section{Overview and Motivation}
+%==================================================================
+
+This document proposes a modern, efficient Markov Chain Monte Carlo
+(MCMC) algorithm for posterior inference in the Bayesian nonparametric
+Mendelian randomization models BNPM-MR and BNPM-PMR.
+
+The target posterior for BNPM-PMR is
+\begin{equation}
+  p\!\bigl(\gamma,\psi,\tau,\beta_{1:p},\alpha \mid y_{1:p}\bigr)
+  \;\propto\;
+  \Biggl[\prod_{j=1}^p p(y_j \mid \gamma,\psi,\tau,\beta_j)\Biggr]
+  p(\gamma)\,p(\psi)\,p(\tau)
+  \Biggl[\prod_{j=1}^p p(\beta_j \mid G)\Biggr]
+  p(G \mid \alpha)\,p(\alpha),
+\label{eq:target}
+\end{equation}
+where the SNP-specific effects $\beta_1,\ldots,\beta_p$ are induced by
+a Dirichlet process (DP) prior.
+Setting $\tau=0$ yields the BNPM-MR target.
+
+The baseline Gibbs sampler in the paper updates each parameter via
+(i)~an exact Gibbs step for $\gamma$, (ii)~random-walk Metropolis--Hastings
+(RWMH) for $\psi$ and $\tau$, (iii)~Neal's Algorithm~8 for the DP
+partition with per-atom RWMH, and (iv)~the Escobar--West
+mixture-of-Gammas update for $\alpha$.
+While asymptotically exact, this scheme has three practical
+inefficiencies:
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+  \item \textbf{Inefficient scale-parameter updates}: RWMH proposals
+    for $\psi$ and $\tau$ require careful hand-tuning and exhibit
+    diffusive exploration, especially when $\psi$ and $\tau$ are
+    a posteriori correlated with the cluster atoms.
+  \item \textbf{Inefficient atom updates}: per-atom RWMH ignores the
+    Gaussian structure of the base measure $G_0$ and the smoothness of
+    the likelihood in $\beta$; proposals must be re-tuned for each
+    dataset.
+  \item \textbf{Slow partition mixing}: sequential, single-site
+    reallocation steps can become trapped in local modes, particularly
+    when two cluster atoms are close in value or when $K$ needs to
+    change.
+\end{enumerate}
+
+The proposed algorithm addresses these inefficiencies through three
+targeted innovations:
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+  \item \textbf{No-U-Turn Sampler (NUTS)} \cite{Hoffman2014} for the
+    scale parameters $(\psi,\tau)$: gradient-based HMC proposals that
+    auto-tune step size and trajectory length via dual averaging,
+    entirely replacing manual tuning.
+  \item \textbf{Elliptical Slice Sampling (ESS)} \cite{Murray2010}
+    for the cluster atoms $\beta_k^*$: a tuning-free, rejection-free
+    sampler that exploits the Gaussian base measure $G_0$ as a
+    natural auxiliary distribution, guaranteeing acceptance in
+    finitely many shrinkage steps.
+  \item \textbf{Jain--Neal split--merge moves} \cite{Jain2004,Jain2007}
+    for the DP partition: non-local transdimensional moves allowing
+    direct transitions between configurations with different numbers
+    of clusters $K$, dramatically improving mixing across causal
+    mechanism configurations.
+\end{enumerate}
+
+The result is a \emph{Hamiltonian-within-Gibbs} sampler augmented
+with split--merge moves that requires no manual tuning beyond the
+specification of prior hyperparameters.
+
+%==================================================================
+\section{Notation and Model Summary}
+%==================================================================
+
+Table~\ref{tab:notation} collects the key notation used throughout.
+
+\begin{table}[h!]
+\centering
+\small
+\caption{Summary of notation.}
+\label{tab:notation}
+\begin{tabular}{@{}lp{9.5cm}@{}}
+\toprule
+Symbol & Description \\
+\midrule
+$p$ & Number of SNPs \\
+$y_j = (\hat\gamma_j,\hat\Gamma_j)^\top$ & Observed summary statistics for SNP $j$ \\
+$(s^2_{\hat\gamma_j}, s^2_{\hat\Gamma_j})$ & Known sampling variances for SNP $j$ \\
+$\gamma$ & Population mean SNP--exposure effect \\
+$\psi > 0$ & Std.\ deviation of population SNP--exposure effects \\
+$\tau \geq 0$ & Systematic pleiotropy std.\ deviation (BNPM-PMR only) \\
+$\beta_j$ & SNP-specific causal effect \\
+$G \sim \mathrm{DP}(\alpha, G_0)$ & DP mixing measure \\
+$\alpha > 0$ & DP concentration parameter \\
+$G_0 = \Nor(\mu_\beta,\sigma_\beta^2)$ & DP base measure \\
+$K$ & Current number of non-empty clusters \\
+$\xi_j \in \{1,\ldots,K\}$ & Cluster allocation for SNP $j$ \\
+$\beta_k^*$ & Atom (causal effect) for cluster $k$ \\
+$n_k = |\{j : \xi_j = k\}|$ & Size of cluster $k$ \\
+$\mathcal{C}_k = \{j : \xi_j = k\}$ & Index set for cluster $k$ \\
+$\theta = \log\psi,\;\phi = \log\tau$ & Log-scale reparameterizations \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Marginalized measurement model.}
+After integrating out $\gamma_j \sim \Nor(\gamma,\psi^2)$,
+the bivariate marginal distribution of $y_j$ is
+\begin{equation}
+  y_j \mid \gamma,\psi,\tau,\beta_j
+  \;\sim\;
+  \Nor_2\!\Bigl(m_j(\gamma,\beta_j),\;\Sigma_j(\psi,\tau,\beta_j)\Bigr),
+\label{eq:marg_lik}
+\end{equation}
+with
+\begin{equation}
+  m_j(\gamma,\beta_j) = \begin{pmatrix}1\\\beta_j\end{pmatrix}\gamma,
+  \qquad
+  \Sigma_j(\psi,\tau,\beta_j)
+  = \begin{pmatrix} a_j & c_j(\beta_j)\\
+                    c_j(\beta_j) & d_j(\beta_j,\tau)\end{pmatrix},
+\end{equation}
+where, for a generic atom value $b$,
+\begin{equation}
+  a_j = \psi^2 + s^2_{\hat\gamma_j}, \qquad
+  c_j(b) = b\,\psi^2, \qquad
+  d_j(b,\tau) = b^2\psi^2 + s^2_{\hat\Gamma_j} + \tau^2.
+\label{eq:acd}
+\end{equation}
+The determinant and inverse are
+\begin{equation}
+  D_j(b,\tau) := |\Sigma_j| = a_j d_j(b,\tau) - c_j(b)^2,
+  \qquad
+  \Sigma_j^{-1} = \frac{1}{D_j}
+  \begin{pmatrix} d_j & -c_j \\ -c_j & a_j \end{pmatrix}.
+\label{eq:det_inv}
+\end{equation}
+The per-SNP log-likelihood (constant terms dropped) is
+\begin{equation}
+  \ell_j(b;\gamma,\psi,\tau)
+  = -\tfrac{1}{2}\log D_j(b,\tau)
+    -\tfrac{1}{2}\,r_j(\gamma,b)^\top \Sigma_j^{-1}(b,\tau)\,r_j(\gamma,b),
+\label{eq:loglik}
+\end{equation}
+where $r_j(\gamma,b) = (\hat\gamma_j - \gamma,\;\hat\Gamma_j - b\gamma)^\top$.
+For BNPM-MR, set $\tau = 0$ everywhere.
+
+%==================================================================
+\section{Gradient Computations}
+\label{sec:gradients}
+%==================================================================
+
+The NUTS update (Section~\ref{sec:nuts}) requires the partial derivatives
+of $\ell_j$ with respect to $\theta = \log\psi$ and (for BNPM-PMR)
+$\phi = \log\tau$.  We also provide the gradient with respect to the
+atom $b$ for use in optional gradient-based atom updates.
+All expressions are per-SNP $j$; indices are suppressed where
+unambiguous.
+
+Define the shorthand quantities
+\begin{equation}
+  u := \hat\gamma_j - \gamma, \qquad
+  v(b) := \hat\Gamma_j - b\gamma, \qquad
+  N(b) := d\,u^2 - 2c\,u\,v + a\,v^2, \qquad
+  Q(b) := \frac{N(b)}{D},
+\label{eq:uvNQ}
+\end{equation}
+so that $r^\top\Sigma^{-1}r = Q$ and
+$\ell_j = -\tfrac{1}{2}\log D - \tfrac{1}{2}Q$.
+
+%------------------------------------------------------------------
+\subsection{Gradient with Respect to the Atom \texorpdfstring{$b$}{b}}
+%------------------------------------------------------------------
+
+The elementary derivatives are
+$\partial c/\partial b = \psi^2$, $\partial d/\partial b = 2b\psi^2$,
+$\partial v/\partial b = -\gamma$, giving
+\begin{equation}
+  \frac{\partial D}{\partial b}
+  = 2b\psi^2(a - \psi^2)
+  = 2b\psi^2\,s^2_{\hat\gamma_j},
+\label{eq:dD_db}
+\end{equation}
+\begin{equation}
+  \frac{\partial N}{\partial b}
+  = 2b\psi^2 u^2 - 2\psi^2 uv
+    + 2b\psi^2 u\gamma - 2a\gamma v.
+\label{eq:dN_db}
+\end{equation}
+The full gradient of the log-likelihood is
+\begin{equation}
+  \boxed{
+  \frac{\partial \ell_j}{\partial b}
+  = \frac{1}{2D}\,\frac{\partial D}{\partial b}\,(Q - 1)
+    - \frac{1}{2D}\,\frac{\partial N}{\partial b}.
+  }
+\label{eq:grad_b}
+\end{equation}
+
+%------------------------------------------------------------------
+\subsection{Gradient with Respect to \texorpdfstring{$\theta = \log\psi$}{theta}}
+%------------------------------------------------------------------
+
+Using $\partial/\partial\theta = \psi\,\partial/\partial\psi$,
+with $\partial a/\partial\psi = 2\psi$, $\partial c/\partial\psi = 2b\psi$,
+$\partial d/\partial\psi = 2b^2\psi$, one obtains
+\begin{equation}
+  \frac{\partial D}{\partial\psi}
+  = 2\psi\bigl(s^2_{\hat\Gamma_j} + b^2 s^2_{\hat\gamma_j}\bigr),
+  \qquad
+  \frac{\partial N}{\partial\psi}
+  = 2\psi\,(bu - v)^2.
+\end{equation}
+Multiplying by $\psi$ to convert to the log-scale:
+\begin{equation}
+  \boxed{
+  \frac{\partial \ell_j}{\partial\theta}
+  = \frac{\psi^2\bigl(s^2_{\hat\Gamma_j} + b^2 s^2_{\hat\gamma_j}\bigr)}{D}
+    \,(Q - 1)
+    - \frac{\psi^2\,(bu - v)^2}{D}.
+  }
+\label{eq:grad_theta}
+\end{equation}
+The half-$t(\nu,0,\sigma)$ prior contributes on the log-scale:
+\begin{equation}
+  \frac{\partial\log p(\theta)}{\partial\theta}
+  = 1 - \frac{(\nu+1)\,e^{2\theta}}{\nu\sigma^2 + e^{2\theta}}.
+\label{eq:grad_prior_psi}
+\end{equation}
+
+%------------------------------------------------------------------
+\subsection{Gradient with Respect to
+  \texorpdfstring{$\phi = \log\tau$}{phi} (BNPM-PMR only)}
+%------------------------------------------------------------------
+
+Since $\tau$ enters only through the additive $\tau^2$ in $d_j$,
+we have $\partial d/\partial\tau = 2\tau$,
+$\partial D/\partial\tau = 2\tau a$,
+$\partial N/\partial\tau = 2\tau u^2$.  On the log-scale:
+\begin{equation}
+  \boxed{
+  \frac{\partial \ell_j}{\partial\phi}
+  = \frac{\tau^2}{D}\bigl(aQ - a - u^2\bigr).
+  }
+\label{eq:grad_phi}
+\end{equation}
+The prior gradient mirrors~\eqref{eq:grad_prior_psi} with parameters
+$(\nu_\tau, \sigma_\tau)$.
+
+%==================================================================
+\section{The Proposed MCMC Algorithm}
+%==================================================================
+
+%------------------------------------------------------------------
+\subsection{Algorithm Overview}
+%------------------------------------------------------------------
+
+One full sweep of the proposed sampler for BNPM-PMR consists of the
+following steps.  Set $\tau = 0$ throughout for BNPM-MR.
+
+\begin{enumerate}[label=\textbf{Step \arabic*.}, leftmargin=*, itemsep=6pt]
+  \item \textbf{Exact Gibbs update for $\gamma$.}
+  \item \textbf{NUTS update for $(\theta,\phi) = (\log\psi, \log\tau)$},
+        using the analytic gradients from Section~\ref{sec:gradients}.
+  \item \textbf{Sequential allocation update for $\xi_{1:p}$}
+        (Neal's Algorithm~8).
+  \item \textbf{Elliptical Slice Sampling for atoms $\beta_k^*$},
+        $k=1,\ldots,K$.
+  \item \textbf{Split--merge move} (every $T_{\mathrm{SM}}$ sweeps).
+  \item \textbf{Escobar--West update for $\alpha$} (exact).
+\end{enumerate}
+
+%------------------------------------------------------------------
+\subsection{Step 1: Exact Gibbs Update for \texorpdfstring{$\gamma$}{gamma}}
+%------------------------------------------------------------------
+
+Let $\mathbf{A}_j = (1, b_j)^\top$ with $b_j = \beta_{\xi_j}^*$.
+With the conjugate prior $\gamma \sim \Nor(\mu_\gamma, \sigma_\gamma^2)$,
+the full conditional is
+\begin{equation}
+  \gamma \mid \mathrm{rest}
+  \;\sim\;
+  \Nor\!\bigl(\mu_{\gamma\mid},\, V_{\gamma\mid}\bigr),
+\end{equation}
+with
+\begin{equation}
+  V_{\gamma\mid}^{-1}
+  = \sigma_\gamma^{-2} + \sum_{j=1}^p \mathbf{A}_j^\top \Sigma_j^{-1} \mathbf{A}_j,
+  \qquad
+  \mu_{\gamma\mid}
+  = V_{\gamma\mid}\!\left(\sigma_\gamma^{-2}\mu_\gamma
+    + \sum_{j=1}^p \mathbf{A}_j^\top \Sigma_j^{-1} y_j\right).
+\end{equation}
+This step is exact and costs $\mathcal{O}(p)$.
+
+%------------------------------------------------------------------
+\subsection{Step 2: NUTS Update for \texorpdfstring{$(\theta,\phi)$}{(theta,phi)}}
+\label{sec:nuts}
+%------------------------------------------------------------------
+
+\paragraph{Target log-density.}
+\begin{equation}
+  \mathcal{L}(\vartheta)
+  = \sum_{j=1}^p \ell_j(b_j;\gamma,e^\theta,e^\phi)
+    + \log p(\theta) + \log p(\phi),
+\label{eq:nuts_target}
+\end{equation}
+where $\vartheta = (\theta,\phi)^\top$ (or just $\theta$ for BNPM-MR),
+and $b_j = \beta_{\xi_j}^*$ is the current atom for SNP $j$.
+The gradient $\nabla_\vartheta\mathcal{L}$ is assembled from
+equations~\eqref{eq:grad_theta}, \eqref{eq:grad_phi},
+\eqref{eq:grad_prior_psi}, and their counterpart for $\phi$.
+
+\paragraph{Leapfrog integrator.}
+Introduce auxiliary momentum $\mathbf{r} \sim \Nor(\mathbf{0}, M)$
+(mass matrix $M$ adapted during warm-up; see
+Section~\ref{sec:adaptation}).  One leapfrog step with step
+size $\varepsilon$:
+\begin{align}
+  \tilde{\mathbf{r}} &\leftarrow
+    \mathbf{r} + \tfrac{\varepsilon}{2}\,\nabla_\vartheta\mathcal{L}(\vartheta),
+    \label{eq:lf1}\\
+  \tilde\vartheta &\leftarrow
+    \vartheta + \varepsilon\,M^{-1}\tilde{\mathbf{r}},
+    \label{eq:lf2}\\
+  \tilde{\mathbf{r}} &\leftarrow
+    \tilde{\mathbf{r}} + \tfrac{\varepsilon}{2}\,
+    \nabla_\vartheta\mathcal{L}(\tilde\vartheta).
+    \label{eq:lf3}
+\end{align}
+Repeating for $L$ steps (set by NUTS) produces a proposal
+$(\tilde\vartheta, -\tilde{\mathbf{r}})$, accepted with probability
+$\min(1,\, e^{H_0 - \tilde H})$, where
+$H = -\mathcal{L}(\vartheta) + \tfrac{1}{2}\mathbf{r}^\top M^{-1}\mathbf{r}$.
+
+\paragraph{No-U-Turn criterion \cite{Hoffman2014}.}
+The trajectory is terminated when
+$(\tilde\vartheta - \vartheta)^\top\mathbf{r} < 0$ or
+$(\tilde\vartheta - \vartheta)^\top\tilde{\mathbf{r}} < 0$,
+eliminating the need to choose $L$ manually.
+
+\bigskip
+\begin{algfloat}[H]
+\caption{NUTS Update for $(\log\psi,\log\tau)$}
+\label{alg:nuts}
+\begin{mdframed}[linewidth=0.6pt, innertopmargin=6pt, innerbottommargin=6pt]
+\textbf{Input:} Current $(\theta,\phi)$, atoms $\{b_k\}$,
+allocations $\{\xi_j\}$, $\gamma$; mass matrix $M$; step size $\varepsilon$
+\begin{pseudocode}
+\pco{Compute $\nabla_{(\theta,\phi)}\mathcal{L}$ from~\eqref{eq:grad_theta}--\eqref{eq:grad_phi} summed over all SNPs}
+\pco{Sample $\mathbf{r} \sim \Nor(\mathbf{0}, M)$;\quad
+     $H_0 \leftarrow -\mathcal{L}(\theta,\phi) + \tfrac{1}{2}\mathbf{r}^\top M^{-1}\mathbf{r}$}
+\pco{Run NUTS tree-building (leapfrog + No-U-Turn criterion), producing proposal $(\tilde\theta,\tilde\phi)$ with Hamiltonian $\tilde H$}
+\pco{Set $(\theta,\phi) \leftarrow (\tilde\theta,\tilde\phi)$ with probability $\min(1, e^{H_0 - \tilde H})$}
+\pco{$\psi \leftarrow e^\theta$;\enspace $\tau \leftarrow e^\phi$}
+\pco{\textbf{(Warm-up only)} Update $\varepsilon$ via dual averaging~\cite{Nesterov2009}; update $M$ via Welford estimator}
+\end{pseudocode}
+\end{mdframed}
+\end{algfloat}
+
+\begin{remark}
+For BNPM-MR the update reduces to a one-dimensional NUTS on $\theta$.
+Even a single-leapfrog HMC step (i.e.\ MALA) with dual-averaged step
+size substantially outperforms RWMH for this target.
+\end{remark}
+
+%------------------------------------------------------------------
+\subsection{Step 3: Sequential Allocation for
+  \texorpdfstring{$\xi_{1:p}$}{the partition}}
+%------------------------------------------------------------------
+
+We retain Neal's Algorithm~8 \cite{Neal2000} with $m$ auxiliary atoms.
+For each SNP $j = 1,\ldots,p$:
+\begin{enumerate}[leftmargin=*, itemsep=3pt]
+  \item Remove SNP $j$ from its cluster; delete if empty.  Let $K^{-j}$
+        be the current number of non-empty clusters.
+  \item Draw $m$ auxiliary atoms
+        $b_1^\circ,\ldots,b_m^\circ \overset{\mathrm{iid}}{\sim} G_0$.
+  \item Compute unnormalized log-weights
+        \begin{equation}
+          \log w_k =
+          \begin{cases}
+            \log n_k^{-j} + \ell_j(b_k;\gamma,\psi,\tau), &
+              k = 1,\ldots,K^{-j},\\[4pt]
+            \log(\alpha/m) + \ell_j(b_r^\circ;\gamma,\psi,\tau), &
+              r = 1,\ldots,m;
+          \end{cases}
+        \label{eq:neal8_weights}
+        \end{equation}
+        normalize using log-sum-exp for numerical stability.
+  \item Sample $\xi_j$ from the resulting categorical distribution.
+        If a new cluster is chosen, initialize its atom at $b_r^\circ$.
+\end{enumerate}
+Full sweep cost: $\mathcal{O}(p(K+m))$ likelihood evaluations.
+
+%------------------------------------------------------------------
+\subsection{Step 4: Elliptical Slice Sampling for Atoms}
+%------------------------------------------------------------------
+
+After the allocation sweep, each atom $\beta_k^*$ is updated
+targeting
+\begin{equation}
+  p(\beta_k^* \mid \mathcal{C}_k,\gamma,\psi,\tau)
+  \;\propto\;
+  \Nor(\beta_k^*;\mu_\beta,\sigma_\beta^2)
+  \prod_{j\in\mathcal{C}_k} p(y_j \mid \gamma,\psi,\tau,\beta_k^*).
+\label{eq:atom_post}
+\end{equation}
+
+\paragraph{Why Elliptical Slice Sampling?}
+The base measure $G_0 = \Nor(\mu_\beta,\sigma_\beta^2)$ is Gaussian,
+making it the natural auxiliary distribution in the ESS framework
+\cite{Murray2010}.  ESS is tuning-free (no step size to set),
+rejection-free (each call returns an accepted sample), and exploits
+the Gaussian prior structure via the ``ellipse''
+\begin{equation}
+  \beta(\varphi) = (b - \mu_\beta)\cos\varphi + (\nu - \mu_\beta)\sin\varphi + \mu_\beta,
+  \quad \varphi \in [0,2\pi),
+\label{eq:ellipse}
+\end{equation}
+where $\nu \sim G_0$ is an auxiliary draw.  All points on this ellipse
+share the same prior density, so acceptance depends only on the
+likelihood.
+
+\bigskip
+\begin{algfloat}[H]
+\caption{ESS Update for One Cluster Atom $\beta_k^*$}
+\label{alg:ess_one}
+\begin{mdframed}[linewidth=0.6pt, innertopmargin=6pt, innerbottommargin=6pt]
+\textbf{Input:} Current atom $b$; cluster $\mathcal{C}_k$;
+parameters $(\gamma,\psi,\tau)$; $G_0 = \Nor(\mu_\beta,\sigma_\beta^2)$
+\begin{pseudocode}
+\pco{Draw $\nu \sim \Nor(\mu_\beta,\sigma_\beta^2)$ \cm{Gaussian auxiliary point}}
+\pco{Draw $u \sim \mathrm{Uniform}(0,1)$;\enspace
+     $\ell^* \leftarrow \sum_{j\in\mathcal{C}_k}\ell_j(b;\gamma,\psi,\tau) + \log u$
+     \cm{Likelihood threshold}}
+\pco{Draw $\varphi \sim \mathrm{Uniform}(0,2\pi)$;\enspace
+     set bracket $[\varphi_{\min},\varphi_{\max}] \leftarrow [\varphi - 2\pi,\, \varphi]$}
+\pco{\kw{Repeat:}}
+\pci{Propose $b^{\mathrm{prop}} \leftarrow (b - \mu_\beta)\cos\varphi
+     + (\nu - \mu_\beta)\sin\varphi + \mu_\beta$ \cm{see~\eqref{eq:ellipse}}}
+\pci{\kw{If} $\;\sum_{j\in\mathcal{C}_k}\ell_j(b^{\mathrm{prop}};\gamma,\psi,\tau) > \ell^*$:
+     \enspace $b \leftarrow b^{\mathrm{prop}}$;\; \kw{return}}
+\pci{\kw{Else:} shrink bracket---if $\varphi < 0$ set $\varphi_{\min} \leftarrow \varphi$,
+     else $\varphi_{\max} \leftarrow \varphi$}
+\pci{Redraw $\varphi \sim \mathrm{Uniform}(\varphi_{\min},\varphi_{\max})$;\enspace
+     go to Step~5}
+\pco{\kw{Until} accepted;\enspace $\beta_k^* \leftarrow b$}
+\end{pseudocode}
+\end{mdframed}
+\end{algfloat}
+
+\medskip
+\begin{algfloat}[H]
+\caption{ESS Update for All $K$ Cluster Atoms}
+\label{alg:ess_all}
+\begin{mdframed}[linewidth=0.6pt, innertopmargin=6pt, innerbottommargin=6pt]
+\textbf{Input:} Allocations $\{\xi_j\}$; atoms $\{b_k\}_{k=1}^K$;
+parameters $(\gamma,\psi,\tau)$; $G_0$
+\begin{pseudocode}
+\pco{\kw{For} $k = 1$ \kw{to} $K$ \cm{Can be parallelized across clusters}}
+\pci{$\mathcal{C}_k \leftarrow \{j : \xi_j = k\}$}
+\pci{Run Algorithm~\ref{alg:ess_one} with atom $b_k$ and cluster $\mathcal{C}_k$}
+\pci{Update $b_k \leftarrow$ new sample from Algorithm~\ref{alg:ess_one}}
+\pco{\kw{End for}}
+\end{pseudocode}
+\end{mdframed}
+\end{algfloat}
+
+\begin{remark}[Gradient-based alternative]
+If the atom posterior~\eqref{eq:atom_post} is suspected to be
+multimodal (e.g.\ for very large clusters), one may supplement ESS
+with a NUTS step on $\beta_k^*$ using the gradient~\eqref{eq:grad_b}
+summed over $j\in\mathcal{C}_k$, together with the Gaussian prior
+gradient.
+\end{remark}
+
+%------------------------------------------------------------------
+\subsection{Step 5: Split--Merge Moves}
+\label{sec:split_merge}
+%------------------------------------------------------------------
+
+Single-site allocation steps can fail to transition between
+configurations with different $K$.  Split--merge moves
+\cite{Jain2004,Jain2007} address this by proposing non-local,
+transdimensional moves.
+
+A split--merge proposal is attempted every $T_{\mathrm{SM}}$ full
+sweeps (recommended: $T_{\mathrm{SM}} = 5$--$10$).
+
+\paragraph{Setup.}
+Select two distinct SNPs $i$ and $j$ uniformly at random.
+If $\xi_i = \xi_j = c$: propose a \textbf{split} of cluster $c$.
+If $\xi_i = c \neq d = \xi_j$: propose a \textbf{merge} of $c$ and $d$.
+
+\subsubsection{Split Move}
+
+Let $\mathcal{C}_c = \{l:\xi_l = c\}$ with current atom $b_c^*$.
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+  \item \textit{Initialize launch atoms.}
+        Draw $b_i^{\mathrm{lnch}} \sim G_0$ and
+        $b_j^{\mathrm{lnch}} \sim G_0$ independently.
+        Set $S_i \leftarrow \{i\}$, $S_j \leftarrow \{j\}$.
+
+  \item \textit{Launch sequence} (for $t = 1,\ldots,t_{\mathrm{lnch}}$,
+        recommended $t_{\mathrm{lnch}} = 3$--$5$):
+        \begin{enumerate}[label=(\alph*), itemsep=2pt]
+          \item For each $l \in \mathcal{C}_c \setminus \{i,j\}$ in
+                random order, assign $l$ to $S_i$ or $S_j$ with
+                probabilities proportional to
+                \begin{equation}
+                  |S_i|\exp[\ell_l(b_i^{\mathrm{lnch}};\gamma,\psi,\tau)]
+                  \quad\text{and}\quad
+                  |S_j|\exp[\ell_l(b_j^{\mathrm{lnch}};\gamma,\psi,\tau)].
+                \label{eq:rest_gibbs}
+                \end{equation}
+          \item Update $b_i^{\mathrm{lnch}}$ via one ESS step
+                targeting $p(\beta \mid S_i, \gamma,\psi,\tau)$;
+                update $b_j^{\mathrm{lnch}}$ similarly.
+        \end{enumerate}
+
+  \item \textit{Record proposal probability.}
+        Denote proposed clusters $\mathcal{C}_{c_1} = S_i$,
+        $\mathcal{C}_{c_2} = S_j$, with atoms
+        $\tilde b_{c_1}, \tilde b_{c_2}$.  Record
+        \begin{equation}
+          \log q_{\mathrm{split}}
+          = \sum_{l\in\mathcal{C}_c\setminus\{i,j\}}
+            \log\tilde p_{\mathrm{lnch}}\!\bigl(l \to S_{\xi_l^{\mathrm{lnch}}}\bigr),
+        \label{eq:q_split}
+        \end{equation}
+        where $\tilde p_{\mathrm{lnch}}(\cdot)$ is the
+        probability~\eqref{eq:rest_gibbs} from the final launch sweep.
+
+  \item \textit{Accept/reject.}
+        Accept the split with probability $\min(1, A_{\mathrm{split}})$
+        where
+        \begin{multline}
+          \log A_{\mathrm{split}}
+          = \underbrace{(L_{c_1} + L_{c_2} - L_c)}_{\text{likelihood}}
+            + \underbrace{(P_{c_1} + P_{c_2} - P_c)}_{\text{atom prior}}\\
+            + \underbrace{\log\alpha + \log\Gamma(n_{c_1}) + \log\Gamma(n_{c_2})
+              - \log\Gamma(n_c)}_{\text{CRP prior}}
+            - \underbrace{\log q_{\mathrm{split}}}_{\text{proposal}},
+        \label{eq:A_split}
+        \end{multline}
+        with $L_k = \sum_{l\in\mathcal{C}_k}\ell_l(b_k^*;\gamma,\psi,\tau)$
+        and $P_k = \log\Nor(\beta_k^*;\mu_\beta,\sigma_\beta^2)$.
+        If accepted: $K \leftarrow K+1$, update memberships and atoms.
+\end{enumerate}
+
+\subsubsection{Merge Move}
+
+This is the time-reversal of the split.
+Define $\mathcal{C}_{\mathrm{new}} = \mathcal{C}_c \cup \mathcal{C}_d$.
+
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+  \item \textit{Merged atom.}
+        Draw $b_{\mathrm{new}} \sim G_0$, then run one ESS step targeting
+        $p(\beta \mid \mathcal{C}_{\mathrm{new}},\gamma,\psi,\tau)$.
+
+  \item \textit{Compute reverse proposal probability.}
+        Replay the restricted allocation~\eqref{eq:rest_gibbs}
+        with atoms $(b_c^*, b_d^*)$ for all
+        $l \in \mathcal{C}_{\mathrm{new}} \setminus \{i,j\}$
+        to obtain $\log q_{\mathrm{split}}^{\mathrm{rev}}$.
+
+  \item \textit{Accept/reject.}
+        \begin{multline}
+          \log A_{\mathrm{merge}}
+          = (L_{\mathrm{new}} - L_c - L_d)
+            + (P_{\mathrm{new}} - P_c - P_d)\\
+            + \log\Gamma(n_c + n_d)
+            - \log\alpha - \log\Gamma(n_c) - \log\Gamma(n_d)
+            + \log q_{\mathrm{split}}^{\mathrm{rev}}.
+        \label{eq:A_merge}
+        \end{multline}
+        Note $A_{\mathrm{merge}} = A_{\mathrm{split}}^{-1}$ in the
+        reverse configuration, ensuring detailed balance
+        \cite{Jain2004,Jain2007}.
+\end{enumerate}
+
+%------------------------------------------------------------------
+\subsection{Step 6: Escobar--West Update for \texorpdfstring{$\alpha$}{alpha}}
+%------------------------------------------------------------------
+
+Under the conjugate prior $\alpha \sim \mathrm{Gamma}(a_\alpha, b_\alpha)$,
+the full conditional of $\alpha$ given $K$ and $p$ is
+\cite{EscobarWest1995}:
+\begin{enumerate}[leftmargin=*, itemsep=2pt]
+  \item Sample $\eta \mid \alpha \sim \mathrm{Beta}(\alpha+1, p)$.
+  \item Sample $\alpha \mid K,\eta$ from the mixture
+        \begin{equation}
+          g\cdot\mathrm{Gamma}(a_\alpha + K,\; b_\alpha - \log\eta)
+          + (1-g)\cdot\mathrm{Gamma}(a_\alpha + K - 1,\; b_\alpha - \log\eta),
+        \label{eq:EW}
+        \end{equation}
+        with weight $g/(1-g) = (a_\alpha + K - 1)/[p(b_\alpha - \log\eta)]$.
+\end{enumerate}
+Cost: $\mathcal{O}(1)$.
+
+%------------------------------------------------------------------
+\subsection{Full Algorithm}
+%------------------------------------------------------------------
+
+\begin{algfloat}[H]
+\caption{Full Proposed MCMC Sampler for BNPM-PMR
+  ($\tau = 0$ for BNPM-MR)}
+\label{alg:full}
+\begin{mdframed}[linewidth=0.6pt, innertopmargin=6pt, innerbottommargin=6pt]
+\textbf{Input:} Data $\{y_j, s^2_{\hat\gamma_j}, s^2_{\hat\Gamma_j}\}_{j=1}^p$;
+hyperparameters; $S_{\mathrm{wu}}$ warm-up iterations;
+$S$ post-warmup iterations; $T_{\mathrm{SM}}$
+\begin{pseudocode}
+\pco{\textbf{Initialize:} $\gamma\leftarrow 0$, $\psi\leftarrow 1$,
+     $\tau\leftarrow 0.01$, $K\leftarrow 1$,
+     $\xi_{1:p}\leftarrow\mathbf{1}$, $b_1^*\leftarrow 0$, $\alpha\leftarrow 1$}
+\pco{\kw{For} $s = 1$ \kw{to} $S_{\mathrm{wu}} + S$:}
+\pci{\textbf{Step~1:} Sample $\gamma \mid \mathrm{rest}$ (exact Gibbs, Sec.~4.2)}
+\pci{\textbf{Step~2:} Sample $(\log\psi,\log\tau) \mid \mathrm{rest}$
+     (NUTS, Alg.~\ref{alg:nuts})}
+\pci{\textbf{Step~3:} \kw{For} $j = 1,\ldots,p$: update $\xi_j$
+     (Neal's Alg.~8 with $m$ auxiliary atoms, Sec.~4.3)}
+\pci{\textbf{Step~4:} Update $b_k^*$ for $k = 1,\ldots,K$
+     (ESS, Alg.~\ref{alg:ess_all}) \cm{Parallelizable over $k$}}
+\pci{\kw{If} $s \bmod T_{\mathrm{SM}} = 0$:
+     \textbf{Step~5:} propose split or merge (Sec.~\ref{sec:split_merge})}
+\pci{\textbf{Step~6:} Sample $\alpha \mid K, \mathrm{rest}$
+     (Escobar--West, Sec.~4.6)}
+\pci{\kw{If} $s \leq S_{\mathrm{wu}}$: adapt $\varepsilon$ and $M$ (Sec.~\ref{sec:adaptation})}
+\pci{\kw{Else:} store $(\gamma,\psi,\tau,\{\xi_j\},\{b_k^*\},K,\alpha)$}
+\pco{\kw{End for}}
+\end{pseudocode}
+\end{mdframed}
+\end{algfloat}
+
+%==================================================================
+\section{Extension to BNPM-PMR}
+%==================================================================
+
+BNPM-PMR augments BNPM-MR with the systematic pleiotropy variance
+$\tau^2$, which enters only through
+$d_j(b,\tau) = b^2\psi^2 + s^2_{\hat\Gamma_j} + \tau^2$.
+The proposed algorithm requires only two modifications:
+\begin{enumerate}[leftmargin=*, itemsep=4pt]
+  \item \textbf{NUTS operates on $(\theta,\phi) \in \R^2$ jointly.}
+        The mass matrix $M$ adapts during warm-up to capture any
+        posterior correlation between $\psi$ and $\tau$, automatically
+        improving proposal geometry.
+  \item \textbf{All likelihood evaluations} use $d_j(b,\tau)$;
+        gradients~\eqref{eq:grad_theta} and~\eqref{eq:grad_phi} are
+        used as written.
+\end{enumerate}
+A practical identifiability concern: both $\tau^2$ and within-cluster
+dispersion of $\{\beta_k^*\}$ can explain variability in $\hat\Gamma_j$.
+The joint NUTS update for $(\psi,\tau)$ and the DP prior on $\alpha$
+provide a coherent solution: any ridge in the $(\psi,\tau)$ marginal
+posterior is explored along its principal axis by the adapted mass
+matrix, while the cluster structure is simultaneously updated in
+Steps~3--5.
+
+%==================================================================
+\section{Implementation Details}
+\label{sec:impl}
+%==================================================================
+
+%------------------------------------------------------------------
+\subsection{Warm-Up and Adaptation}
+\label{sec:adaptation}
+%------------------------------------------------------------------
+
+\paragraph{Step size adaptation.}
+Use Nesterov's dual-averaging scheme \cite{Nesterov2009} to adapt
+$\varepsilon$ toward mean acceptance probability $\delta^* = 0.65$:
+\begin{equation}
+  \log\bar\varepsilon_s
+  = \mu - \frac{\sqrt{s}}{t_0}
+    \sum_{t=1}^s \frac{\delta^* - a_t}{s\,t^\kappa},
+\end{equation}
+where $a_t$ is the realized HMC acceptance probability, and typical
+defaults are $\mu = \log(10\varepsilon_0)$, $t_0 = 10$, $\kappa = 0.75$.
+
+\paragraph{Mass matrix.}
+After $S_{\mathrm{wu}}/2$ burn-in iterations, estimate $M$ via the
+online Welford estimator applied to $(\theta,\phi)$ samples.
+A dense $2\times 2$ matrix is feasible and recommended when $\psi$
+and $\tau$ are correlated.
+
+\paragraph{Warm-up schedule.}
+Recommended: $S_{\mathrm{wu}} = 1000$ total; first 500 iterations
+adapt $\varepsilon$ only; second 500 also estimate $M$.
+
+\paragraph{Auxiliary atoms.}
+Default $m = 3$ for Neal's Algorithm~8; $m = 1$ suffices when $K$
+is large.
+
+%------------------------------------------------------------------
+\subsection{Computational Cost}
+%------------------------------------------------------------------
+
+\begin{table}[h!]
+\centering
+\small
+\caption{Per-sweep computational cost of each step.}
+\label{tab:complexity}
+\begin{tabular}{@{}llp{6.3cm}@{}}
+\toprule
+Step & Cost & Notes \\
+\midrule
+Gibbs for $\gamma$ & $\mathcal{O}(p)$ & Exact; matrix-vector products \\
+NUTS for $(\psi,\tau)$ & $\mathcal{O}(pL)$ & $L \leq 10$ typical; gradient each step \\
+Allocation sweep & $\mathcal{O}(p(K+m))$ & Sequential; inner loop vectorizable \\
+ESS for atoms & $\mathcal{O}(K n_{\max} I_{\max})$ &
+  $n_{\max}$: largest cluster; $I_{\max} \lesssim 10$;
+  parallelizable over $k$ \\
+Split--merge & $\mathcal{O}(n_c\,t_{\mathrm{lnch}})$ &
+  $n_c$: size of affected cluster \\
+Escobar--West & $\mathcal{O}(1)$ & Exact \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For typical MR datasets ($p = 60$--$200$, $K \leq 6$), the full
+sampler runs at $>1000$ iterations per second on a single core in
+a compiled language (C++/Julia).
+
+%------------------------------------------------------------------
+\subsection{Parallelization}
+%------------------------------------------------------------------
+
+\begin{enumerate}[leftmargin=*, itemsep=3pt]
+  \item \textbf{Atom updates (Step~4)}: atoms $\{\beta_k^*\}_{k=1}^K$
+        are conditionally independent given $(\gamma,\psi,\tau,\xi_{1:p})$;
+        all $K$ ESS transitions can be dispatched to separate threads.
+  \item \textbf{Likelihood evaluations}: the $p$ terms in the NUTS
+        gradient and the $p(K+m)$ terms in the allocation sweep are
+        independent across SNPs and can be vectorized.
+\end{enumerate}
+
+%------------------------------------------------------------------
+\subsection{Numerical Stability}
+%------------------------------------------------------------------
+
+\begin{itemize}[leftmargin=*, itemsep=3pt]
+  \item \textbf{Log-sum-exp} for categorical weights in Step~3.
+  \item \textbf{Determinant}: assert $D_j > \epsilon$ (e.g.\
+        $\epsilon = 10^{-12}$).
+  \item \textbf{ESS}: cap the shrinkage loop at 100 iterations.
+  \item \textbf{NUTS near $\tau = 0$}: clamp $\tau \geq 10^{-6}$
+        during warm-up.
+\end{itemize}
+
+%------------------------------------------------------------------
+\subsection{Convergence Diagnostics}
+%------------------------------------------------------------------
+
+\paragraph{Continuous parameters.}
+Run $\geq 4$ parallel chains from overdispersed starting values.
+Monitor $\hat R < 1.01$ and bulk ESS $> 400$ for
+$(\gamma,\psi,\tau,\alpha)$ \cite{Vehtari2021}.  Additionally:
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item NUTS divergence rate (target $< 0.5\%$).
+  \item E-BFMI $> 0.2$ (values below indicate poor posterior geometry).
+\end{itemize}
+
+\paragraph{Partition.}
+Monitor $K^{(s)}$ across iterations; a well-mixing chain should
+show multiple transitions between different $K$ values.
+\begin{itemize}[leftmargin=*, itemsep=2pt]
+  \item \textit{PSM convergence}: compare PSMs from two chains via
+        $\|\widehat{\mathrm{PSM}}_1 - \widehat{\mathrm{PSM}}_2\|_F / p < 0.05$.
+  \item \textit{Split--merge acceptance}: target $20$--$40\%$ for both
+        moves; rates below $5\%$ suggest $t_{\mathrm{lnch}}$ is too
+        small.
+\end{itemize}
+
+%------------------------------------------------------------------
+\subsection{Post-Processing: Label Switching}
+%------------------------------------------------------------------
+
+Cluster labels are non-identifiable across MCMC iterations.
+Use label-invariant summaries:
+\begin{itemize}[leftmargin=*, itemsep=3pt]
+  \item \textbf{PSM}: $\widehat{\mathrm{PSM}}_{ij}
+        = S^{-1}\sum_{s}\mathbf{1}\{\xi_i^{(s)} = \xi_j^{(s)}\}$.
+  \item \textbf{Distribution of $K$}:
+        $\hat p(K = k) = S^{-1}\sum_s\mathbf{1}\{K^{(s)} = k\}$.
+  \item \textbf{BMA effect}:
+        $\hat\beta_j = S^{-1}\sum_s b^{*(s)}_{\xi_j^{(s)}}$.
+  \item \textbf{Point partition}: Dahl \cite{Dahl2006} or SALSO
+        \cite{Dahl2022}.
+\end{itemize}
+
+%==================================================================
+\section{Summary of Improvements}
+%==================================================================
+
+\begin{table}[h!]
+\centering
+\small
+\caption{Baseline vs.\ proposed sampler.}
+\label{tab:compare}
+\begin{tabular}{@{}p{3.2cm}p{5.2cm}p{5.2cm}@{}}
+\toprule
+Component & Baseline & Proposed \\
+\midrule
+$\gamma$ & Exact Gibbs & Exact Gibbs (unchanged) \\[2pt]
+$\psi$ & RWMH on $\log\psi$; manual tuning & NUTS; auto-tuned \\[2pt]
+$\tau$ & RWMH on $\log\tau$; manual tuning & Joint NUTS on $(\log\psi,\log\tau)$;
+  mass matrix adapts \\[2pt]
+$\xi_{1:p}$ & Neal's Alg.~8 only & Neal's Alg.~8 $+$ split--merge \\[2pt]
+$\beta_k^*$ & Per-atom RWMH; hand-tuned & ESS; tuning-free \\[2pt]
+$\alpha$ & Escobar--West (exact) & Escobar--West (unchanged) \\[2pt]
+Partition moves & Local single-site & Local $+$ global split--merge \\[2pt]
+Tuning & Manual throughout & Fully automated \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The three principal gains are:
+\begin{enumerate}[leftmargin=*, itemsep=3pt]
+  \item Elimination of all manual tuning via NUTS dual averaging
+        (scale parameters) and parameter-free ESS (atoms).
+  \item Better mixing for $(\psi,\tau)$ via gradient-informed
+        proposals that adapt to posterior geometry and correlations.
+  \item Faster exploration of the partition space through split--merge
+        moves, enabling the chain to discover the correct number of
+        causal mechanisms $K$ from any initialization.
+\end{enumerate}
+
+%==================================================================
+\appendix
+\section{Explicit Gradient Formulas for Reference Implementation}
+\label{app:gradients}
+%==================================================================
+
+Set $a = \psi^2 + s^2_{\hat\gamma}$, $c = b\psi^2$,
+$d = b^2\psi^2 + s^2_{\hat\Gamma} + \tau^2$, $D = ad - c^2$,
+$u = \hat\gamma - \gamma$, $v = \hat\Gamma - b\gamma$,
+$Q = (du^2 - 2cuv + av^2)/D$.
+
+\begin{align}
+\ell &= -\tfrac{1}{2}\log D
+        - \tfrac{1}{2}(du^2 - 2cuv + av^2)/D,
+        \label{app:lik}\\[4pt]
+\frac{\partial\ell}{\partial b}
+  &= \frac{b\psi^2 s^2_{\hat\gamma}}{D}(Q - 1)
+     - \frac{b\psi^2 u^2 - \psi^2 uv + b\psi^2 u\gamma - av\gamma}{D},
+     \label{app:grad_b}\\[4pt]
+\frac{\partial\ell}{\partial\theta}
+  &= \frac{\psi^2(s^2_{\hat\Gamma}+b^2 s^2_{\hat\gamma})}{D}(Q - 1)
+     - \frac{\psi^2(bu - v)^2}{D},
+     \label{app:grad_theta}\\[4pt]
+\frac{\partial\ell}{\partial\phi}
+  &= \frac{\tau^2}{D}(aQ - a - u^2).
+     \label{app:grad_phi}
+\end{align}
+Sum over all $j = 1,\ldots,p$ and add prior
+gradients~\eqref{eq:grad_prior_psi} to obtain the full NUTS gradient.
+
+%==================================================================
+\section{Detailed Balance for Split--Merge Moves}
+\label{app:sm_balance}
+%==================================================================
+
+Let the joint density of the augmented state (partition $+$ atoms) be
+\begin{equation}
+  \pi(\rho) \;\propto\; \alpha^K \prod_{k=1}^K
+  \Bigl[\Gamma(n_k)\,p(\beta_k^*)
+  \prod_{j\in\mathcal{C}_k}
+  p(y_j \mid \gamma,\psi,\tau,\beta_k^*)\Bigr].
+\end{equation}
+The MH ratio for the split equals
+$A_{\mathrm{split}}$~\eqref{eq:A_split}
+by direct computation of
+$\pi(\rho')/\pi(\rho) \times q(\rho'\to\rho)/q(\rho\to\rho')$.
+The merge ratio $A_{\mathrm{merge}} = A_{\mathrm{split}}^{-1}$
+follows by reversibility \cite{Jain2004}.
+The non-conjugate extension uses the atom-marginalized acceptance
+criterion of \cite{Jain2007}.
+
+%==================================================================
+\begin{thebibliography}{99}
+
+\bibitem[Carpenter et al.(2017)]{Carpenter2017}
+Carpenter, B., Gelman, A., Hoffman, M.~D., Lee, D., Goodrich, B.,
+Betancourt, M., Brubaker, M., Guo, J., Li, P., and Riddell, A. (2017).
+Stan: A probabilistic programming language.
+\textit{Journal of Statistical Software}, 76(1), 1--32.
+
+\bibitem[Dahl(2006)]{Dahl2006}
+Dahl, D.~B. (2006).
+Model-based clustering for expression data via a Dirichlet process
+mixture model.
+In \textit{Bayesian Inference for Gene Expression and Proteomics},
+pp.~201--218. Cambridge University Press.
+
+\bibitem[Dahl et al.(2022)]{Dahl2022}
+Dahl, D.~B., Johnson, D.~J., and M\"{u}ller, P. (2022).
+Search algorithms and loss functions for Bayesian clustering.
+\textit{Journal of Computational and Graphical Statistics},
+31(4), 1189--1201.
+
+\bibitem[Escobar and West(1995)]{EscobarWest1995}
+Escobar, M.~D. and West, M. (1995).
+Bayesian density estimation and inference using mixtures.
+\textit{Journal of the American Statistical Association},
+90(430), 577--588.
+
+\bibitem[Hoffman and Gelman(2014)]{Hoffman2014}
+Hoffman, M.~D. and Gelman, A. (2014).
+The No-U-Turn Sampler: Adaptively setting path lengths in Hamiltonian
+Monte Carlo.
+\textit{Journal of Machine Learning Research}, 15, 1593--1623.
+
+\bibitem[Jain and Neal(2004)]{Jain2004}
+Jain, S. and Neal, R.~M. (2004).
+A split-merge Markov chain Monte Carlo procedure for the Dirichlet
+process mixture model.
+\textit{Journal of Computational and Graphical Statistics},
+13(1), 158--182.
+
+\bibitem[Jain and Neal(2007)]{Jain2007}
+Jain, S. and Neal, R.~M. (2007).
+Splitting and merging components of a nonconjugate Dirichlet process
+mixture model.
+\textit{Bayesian Analysis}, 2(3), 445--472.
+
+\bibitem[Murray et al.(2010)]{Murray2010}
+Murray, I., Adams, R.~P., and MacKay, D.~J.~C. (2010).
+Elliptical slice sampling.
+In \textit{Proceedings of the 13th International Conference on
+Artificial Intelligence and Statistics}, pp.~541--548.
+
+\bibitem[Neal(2000)]{Neal2000}
+Neal, R.~M. (2000).
+Markov chain sampling methods for Dirichlet process mixture models.
+\textit{Journal of Computational and Graphical Statistics},
+9(2), 249--265.
+
+\bibitem[Neal(2011)]{Neal2011}
+Neal, R.~M. (2011).
+MCMC using Hamiltonian dynamics.
+In S.~Brooks, A.~Gelman, G.~L. Jones, and X.-L. Meng (Eds.),
+\textit{Handbook of Markov Chain Monte Carlo}, pp.~113--162.
+CRC Press.
+
+\bibitem[Nesterov(2009)]{Nesterov2009}
+Nesterov, Y. (2009).
+Primal-dual subgradient methods for convex problems.
+\textit{Mathematical Programming}, 120(1), 221--259.
+
+\bibitem[Vehtari et al.(2021)]{Vehtari2021}
+Vehtari, A., Gelman, A., Simpson, D., Carpenter, B., and
+B\"{u}rkner, P.-C. (2021).
+Rank-normalization, folding, and localization: An improved $\hat{R}$
+for assessing convergence of MCMC.
+\textit{Bayesian Analysis}, 16(2), 667--718.
+
+\end{thebibliography}
+
+\end{document}

@@ -1,0 +1,7 @@
+cd /Users/Sergio/dev/BayesMRclus/tmp/others/DP_castelletti_claude/sbp_cad/
+
+g++ -O3 -march=native -std=c++17 -o mr_mixture mr_mixture.cpp
+g++ -O2 -std=c++17 -o diagnose_mr_mixture diagnose_mr_mixture.cpp
+
+./mr_mixture sbp_cad.csv 30000 42
+./diagnose_mr_mixture --burn 0.5 --out hdl
