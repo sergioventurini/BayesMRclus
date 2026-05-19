@@ -7,7 +7,20 @@
   # needed to avoid annoying notes in R CMD CHECK
   # (see https://github.com/tidyverse/magrittr/issues/29)
   if (getRversion() >= "2.15.1") {
-    utils::globalVariables(c(".", ""))
+    utils::globalVariables(
+      c(".",
+        "",
+        "A",
+        "B",
+        "cluster",
+        "cluster_class",
+        "cluster_mean",
+        "n",
+        "prec",
+        "stratum",
+        "theta",
+        "theta_se"
+      ))
   }
   .bayesmrEnv$path.to.me <- tools::file_path_as_absolute(lib)
   .bayesmrEnv$nlog.double.eps <- -log(.Machine[["double.eps"]])

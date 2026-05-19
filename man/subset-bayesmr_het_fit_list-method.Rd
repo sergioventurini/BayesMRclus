@@ -3,25 +3,25 @@
 \name{subset,bayesmr_het_fit_list-method}
 \alias{subset,bayesmr_het_fit_list-method}
 \alias{bayesmr_het_fit_list-subset}
-\title{Subsetting a \code{bayesmr_het_fit_list} object.}
+\title{Subset MCMC parameters from a \code{bayesmr_het_fit_list} object.}
 \usage{
 \S4method{subset}{bayesmr_het_fit_list}(x, pars = character(), regex_pars = character(), ...)
 }
 \arguments{
-\item{x}{An object of class \code{\link{bayesmr_het_fit_list}}.}
+\item{x}{An object of class \code{\link[=bayesmr_het_fit_list-class]{bayesmr_het_fit_list}}.}
 
-\item{pars}{An optional character vector of parameter names. If neither
-\code{pars} nor \code{regex_pars} is specified, the default is to use all
-parameters.}
+\item{pars}{An optional character vector of exact parameter names to keep.}
 
-\item{regex_pars}{An optional \code{\link[=grep]{regular expression}} to use
-for parameter selection. Can be specified instead of \code{pars} or in addition
-to \code{pars}.}
+\item{regex_pars}{An optional character vector of regular expressions used to
+select parameter names.}
 
-\item{...}{Further arguments to pass on (currently ignored).}
+\item{...}{Further arguments passed to or ignored by the method.}
+}
+\value{
+A \code{coda::mcmc.list} object containing the selected parameters.
 }
 \description{
-Subsetting a \code{bayesmr_het_fit_list} object.
+Subset MCMC parameters from a \code{bayesmr_het_fit_list} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

@@ -4,7 +4,7 @@
 \alias{bayesmr_control}
 \alias{control_bayesmr}
 \alias{check_control}
-\title{Auxiliary Function for Controlling BayesM Model Fitting}
+\title{Auxiliary Function for Controlling BayesMR Model Fitting}
 \usage{
 bayesmr_control(
   nsim = 5000,
@@ -45,89 +45,86 @@ control_bayesmr(
 check_control(control)
 }
 \arguments{
-\item{nsim}{A length-one numeric vector for the number of draws to be taken
-from the posterior distribution.}
+\item{nsim}{A length-one positive integer giving the number of post-burn-in
+MCMC draws to take from the posterior distribution.}
 
-\item{burnin}{A length-one numeric vector for the number of initial MCMC
-iterations (usually to be discarded).}
+\item{burnin}{A length-one non-negative integer giving the number of
+initial MCMC iterations to discard as burn-in.}
 
-\item{thin}{A length-one numeric vector for the number of iterations between
-consecutive draws.}
+\item{thin}{A length-one positive integer giving the thinning interval;
+only every \code{thin}-th draw is retained.}
 
-\item{nchains}{A length-one numeric vector for the number of parallel chains to run.}
+\item{nchains}{A length-one positive integer giving the number of
+independent MCMC chains to run.}
 
-\item{threads}{A length-one numeric vector for the number of chains to run.
-If greater than 1, package \pkg{\link{parallel}} is used to take advantage of any
-multiprocessing or distributed computing capabilities that may be available.}
+\item{threads}{A length-one positive integer giving the number of parallel
+workers to use. If greater than 1 and \code{parallel != "no"},
+\pkg{parallel} is used to distribute chains across workers.}
 
-\item{seed}{An integer scalar. If supplied, provides the random number seed.}
+\item{seed}{An optional integer scalar providing the random number seed.
+If \code{NULL} (default), the current RNG state is used.}
 
-\item{parallel}{A length-one character vector indicating the type of parallel
-operation to be used (if any). Possible values are \code{multicore}
-(which works only on Unix/mcOS), \code{snow} and \code{no} (i.e. serial
-instead of parallel computing).}
+\item{parallel}{A length-one character vector indicating the parallelism
+backend: \code{"no"} (serial, default), \code{"multicore"} (Unix/macOS
+only, via \code{\link[parallel]{mclapply}}), or \code{"snow"} (via
+\code{\link[parallel]{parLapply}}).}
 
-\item{beta.prop}{A length-one numeric vector providing the standard deviation of the
-proposal distribution for the jump in the individual latent space
-position.}
+\item{beta.prop}{A length-one positive numeric giving the standard deviation
+of the random-walk Metropolis-Hastings proposal for \eqn{\beta}.}
 
-\item{beta.m}{A length-one integer vector providing the number of beta values to draw.}
+\item{beta.m}{A length-one positive integer giving the number of \eqn{\beta}
+values drawn per mixture cluster at each iteration.}
 
-\item{psi.prop}{A length-one numeric vector providing the standard deviation of the
-proposal distribution for the jump in the individual latent space
-position.}
+\item{psi.prop}{A length-one positive numeric giving the standard deviation
+of the random-walk Metropolis-Hastings proposal for \eqn{\psi}.}
 
-\item{tau.prop}{A length-one numeric vector providing the standard deviation of the
-proposal distribution for the jump in the individual latent space
-position.}
+\item{tau.prop}{A length-one positive numeric giving the standard deviation
+of the random-walk Metropolis-Hastings proposal for \eqn{\tau}.}
 
-\item{random_start}{A length-one logical vector. If \code{TRUE} the starting
-values are drawn randomly, otherwise a user-defined starting K_start must
-be provided through the \code{K_start} argument.}
+\item{random_start}{A logical scalar. If \code{TRUE} (default), starting
+values are drawn randomly via \code{\link{bayesmr_init}()}; otherwise,
+user-supplied starting values are used.}
 
-\item{K_start}{A length-one numeric vector providing the user-defined
-starting value for the number of clusters.}
+\item{K_start}{A length-one positive integer giving the initial number of
+mixture clusters.}
 
-\item{store.burnin}{A logical scalar. If \code{TRUE}, the samples from the
-burnin are also stored and returned.}
+\item{store.burnin}{A logical scalar. If \code{TRUE} (default), burn-in
+iterations are stored and returned (useful for diagnosing convergence).}
 
-\item{verbose}{A logical scalar. If \code{TRUE}, causes information to be
-printed out about the progress of the fitting.}
+\item{verbose}{A logical scalar. If \code{TRUE}, prints progress information
+during fitting.}
 
-\item{control}{A list of control options.}
+\item{control}{A named list of control options (used by \code{check_control()}).}
 }
 \value{
-A named list with the control options as components.
+\code{bayesmr_control()} (and its alias) returns a named list with
+all control parameters as components.
+\code{check_control()} returns a length-one logical: \code{TRUE} if the
+list is valid, \code{FALSE} otherwise.
 }
 \description{
-{
-\code{bayesmr_control()} is an auxiliary function as user interface for
-\code{bayesmr()} fitting. Typically only used when calling the \code{bayesmr()}
-function. It is used to set parameters that affect the sampling but do
-not affect the posterior distribution.
-
+\code{bayesmr_control()} creates the list of MCMC control parameters used
+by \code{\link{bayesmr}()} and its variants. It sets parameters that affect
+the sampling algorithm but not the posterior distribution.
+}
+\details{
 \code{control_bayesmr()} is an alias for \code{bayesmr_control()}.
 
-\code{check_control()} is an auxiliary function that verifies the
-correctness of the controls provided before a BayesM is fitted with
-\code{\link{bayesmr}()}.
-}
+\code{check_control()} validates a control list before model fitting.
 }
 \examples{
-\dontrun{
-data(simdiss, package = "bayesmr")
-# Shorter run than default.
-sim.fit <- bayesmr(simdiss,
-  control = bayesmr_control(burnin = 1000, nsim = 2000, thin = 5, verbose = TRUE))
-}
+# Default control settings
+ctrl <- bayesmr_control()
+str(ctrl)
+
+# Custom settings for a short run
+ctrl2 <- bayesmr_control(nsim = 1000, burnin = 500, nchains = 2,
+                         threads = 2, parallel = "multicore")
 
 }
 \seealso{
-\code{\link{bayesmr}()}
+\code{\link{bayesmr}()}, \code{\link{bayesmr_prior}()}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}
 }
-\keyword{based}
-\keyword{clustering}
-\keyword{model}

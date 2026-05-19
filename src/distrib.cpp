@@ -23,7 +23,7 @@ double recycle_get(const std::vector<double>& v, std::size_t i){
 // Probability function for the product of independent bernoulli random variables
 void dprodber(double* prob, const int* d, const double* pi, int m, bool logscale = true){
   double prob_tmp = 0;
-  if(!logscale){
+  if(logscale){
     *prob = 0;
     for(int i = 0; i < m; i++){
       prob_tmp = d[i]*log(pi[i]) + (1 - d[i])*log(1 - pi[i]);
@@ -34,7 +34,7 @@ void dprodber(double* prob, const int* d, const double* pi, int m, bool logscale
     }
   }
   else{
-    *prob = 1;  
+    *prob = 1;
     for(int i = 0; i < m; i++){
       prob_tmp = pow(pi[i], d[i])*pow(1 - pi[i], 1 - d[i]);
       *prob *= prob_tmp;

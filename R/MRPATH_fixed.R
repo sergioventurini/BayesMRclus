@@ -1,3 +1,4 @@
+#' @noRd
 MRPATH_optimizeInitVals_fixed <- function(K, data, Nreps = 10, verbose = FALSE,
                                           altModel = FALSE, init_seed = 8686, ...) {
   initVals.list <- list()
@@ -68,7 +69,7 @@ MRPATH_optimizeInitVals_fixed <- function(K, data, Nreps = 10, verbose = FALSE,
   )
 }
 
-#' @export
+#' @noRd
 MRPATH_BIC <- function(data, K, fit) {
   p <- nrow(data)
   (-2 * fit$convergenceInfo$completeDataLogLik) + (3 * K * log(p))

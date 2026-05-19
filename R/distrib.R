@@ -1,3 +1,4 @@
+#' @noRd
 dinvgamma <- function(x, alpha, beta = 1, log = FALSE) {
 	if ((alpha <= 0) | (beta <= 0)) {
 		stop("alpha (shape) and/or beta (scale) parameter negative in dinvgamma().\n")
@@ -6,6 +7,7 @@ dinvgamma <- function(x, alpha, beta = 1, log = FALSE) {
 	if (log) return(log_density) else return(exp(log_density))
 }
 
+#' @noRd
 ddirichlet <- function(x, alpha) {
 	dirichlet1 <- function(x, alpha) {
 		logD <- sum(lgamma(alpha)) - lgamma(sum(alpha))
@@ -31,18 +33,19 @@ ddirichlet <- function(x, alpha) {
 	pd
 }
 
+#' @noRd
 dbivnorm <- function(x, y, mu_x, mu_y, sigma_xx, sigma_yy, sigma_xy, log = FALSE) {
   if (length(x) != length(y))
     stop("the x and y vectors must have the same length.")
 
   if (sigma_xx <= 0 || sigma_yy <= 0) {
-    if (log) -Inf else 0
+    return(if (log) -Inf else 0)
   }
-  
+
   # check positive definiteness
   det_sigma <- sigma_xx*sigma_yy - sigma_xy^2
   if (det_sigma <= 0) {
-    if (log) -Inf else 0
+    return(if (log) -Inf else 0)
   }
   
   # centre observations
@@ -123,6 +126,7 @@ dhalft <- function(x, alpha = 25, nu = 1, log = FALSE) {
   if (log) log_dens else exp(log_dens)
 }
 
+#' @noRd
 pst <- function(q, mu = 0, sigma = 1, nu = 10, lower.tail = TRUE, log.p = FALSE)  {
   q <- as.vector(q)
   mu <- as.vector(mu)
@@ -148,6 +152,7 @@ pst <- function(q, mu = 0, sigma = 1, nu = 10, lower.tail = TRUE, log.p = FALSE)
   p
 }
 
+#' @noRd
 qst <- function(p, mu = 0, sigma = 1, nu = 10, lower.tail = TRUE, log.p = FALSE) {
   p <- as.vector(p)
   mu <- as.vector(mu)
@@ -172,6 +177,7 @@ qst <- function(p, mu = 0, sigma = 1, nu = 10, lower.tail = TRUE, log.p = FALSE)
   q
 }
 
+#' @noRd
 qtrunc <- function(p, spec, a = -Inf, b = Inf, ...) {
   if (any(p < 0) || any(p > 1)) 
     stop("p must be in [0,1].")
@@ -186,6 +192,7 @@ qtrunc <- function(p, spec, a = -Inf, b = Inf, ...) {
   q
 }
 
+#' @noRd
 rtrunc <-function(n, spec, a = -Inf, b = Inf, ...) {
   if (a >= b) 
     stop("Lower bound a is not less than upper bound b.")

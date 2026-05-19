@@ -1,36 +1,47 @@
-#' Function to compute the starting values before fitting a BayesMR models.
+#' Generate Starting Values for BayesMR Model Fitting
 #'
-#' \code{bayesmr_init()} is the main function that estimates a BayesMR model.
+#' \code{bayesmr_init()} draws or validates starting values for the MCMC
+#' sampler before fitting a BayesMR model.
 #'
-#' @param data A list whose elements are the dissimilarity matrices corresponding
-#'   to the judgments expressed by the \emph{S} subjects/raters. These matrices
-#'   must be defined as a \code{dist} object.
-#' @param random_start A length-one logical vector. If \code{TRUE} the starting
-#'   values are drawn randomly, otherwise.
-#' @param K_start A length-one numeric vector providing the initial
-#'   value for the number of clusters.
-#' @return A named \code{list} with the following items:
-#'   \describe{
-#'     \item{\code{z}: }{array of latent coordinates starting values}
-#'     \item{\code{x}: }{numeric vector of initial cluster memberships}
-#'     \item{\code{ng}: }{numeric vector of initial cluster sizes}
-#'     \item{\code{alpha}: }{numeric vector of alpha starting values}
-#'     \item{\code{eta}: }{numeric vector of eta starting values}
-#'     \item{\code{sigma2}: }{numeric vector of sigma2 starting values}
-#'     \item{\code{lambda}: }{numeric vector of lambda starting values}
-#'   }
+#' @param data An object of class \code{\link{bayesmr_data-class}} containing
+#'   the SNP-level summary statistics.
+#' @param random_start A length-one logical. If \code{TRUE} (default),
+#'   starting values are drawn randomly from diffuse distributions. If
+#'   \code{FALSE}, the values in \code{start_values} are validated and
+#'   returned.
+#' @param K_start A length-one positive integer giving the initial number of
+#'   mixture clusters. Use \code{K_start = 1} for the non-mixture models
+#'   (\code{\link{bayesmr}()}, \code{\link{bayesmr_het}()}).
+#' @param start_values A named list of user-supplied starting values, used
+#'   when \code{random_start = FALSE}. See \code{\link{bayesmr_startvalues}()}
+#'   for the expected format.
+#'
+#' @return A named list of starting values. For \code{K_start = 1}: contains
+#'   \code{gamma}, \code{beta}, \code{psi}, \code{tau}. For
+#'   \code{K_start > 1}: also contains \code{K}, \code{xi}, \code{alpha}.
+#'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#' @seealso \code{\link{bayesmr}()} for fitting a BayesMR model.
+#'
+#' @seealso \code{\link{bayesmr}()}, \code{\link{bayesmr_startvalues}()},
+#'   \code{\link{bayesmr_data-class}}.
+#'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical
+#'   Modeling for Two-Sample Summary-Data Mendelian Randomization under
+#'   Heterogeneity", working paper.
+#'
 #' @examples
-#' data(simdiss, package = "bayesmr")
-#' bayesmr_init(simdiss@diss, random_start = TRUE)
+#' \dontrun{
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
+#' # Random start for the no-clustering model
+#' sv1 <- bayesmr_init(dat, random_start = TRUE, K_start = 1)
+#' # Random start for the mixture model with 3 initial clusters
+#' sv3 <- bayesmr_init(dat, random_start = TRUE, K_start = 3)
+#' }
+#'
 #' @export
 bayesmr_init <- function(data, random_start = TRUE, K_start = 1, start_values) {
-  n <- nrow(data)
-  
   if (random_start) {
     # initialize psi and tau
     psi_tau <- rhalft(2, alpha = .01, nu = 3)
@@ -74,49 +85,42 @@ bayesmr_init <- function(data, random_start = TRUE, K_start = 1, start_values) {
   }
 }
 
-#' Auxiliary Function for Setting BayesMR Model Starting Values
-#' 
-#' @description{
-#' \code{bayesmr_startvalues()} is an auxiliary function as user interface for
-#'   \code{bayesmr()} fitting. Typically only used when calling the \code{bayesmr()}
-#'   function. It is used to set prior hyperparameters.
-#' 
-#' \code{prior_bayesmr()} is an alias for \code{bayesmr_startvalues()}.
-#' 
-#' \code{check_prior()} is an auxiliary function that verifies the
-#'   correctness of the prior hyperparameters provided before a BayesMR is fitted
-#'   with \code{\link{bayesmr}()}.
-#' 
-#' \code{update_prior()} is an auxiliary function to modify a set of prior
-#'   choices using a new value of \emph{p} and \emph{G}. It is intended for
-#'   internal use mainly in the \code{\link{bayesmr_ic}()} function.
-#' }
+#' Construct a Starting-Values List for BayesMR
 #'
-#' @param gammaj A named list containing the hyperparameters for the prior
-#'   distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-#'   contain two numeric vectors, namely \code{a} and \code{b}.
-#' @param Gammaj A named list containing the hyperparameters for the prior
-#'   distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-#'   contain two numeric vectors, namely \code{a} and \code{b}.
-#' @param gamma A named list containing the hyperparameters for the prior
-#'   distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-#'   contain two numeric vectors, namely \code{a} and \code{b}.
-#' @param beta A named list containing the hyperparameters for the prior
-#'   distributions of the \eqn{\sigma^2_1,\ldots,\sigma^2_G} parameters. It
-#'   should contain two numeric scalars, namely \code{a} and \code{b}.
-#' @param prior A named list of prior hyperparameters.
-#' @return A list with the prior hyperparameters as components.
+#' \code{bayesmr_startvalues()} assembles a named list of user-supplied
+#' starting values to pass to \code{\link{bayesmr_init}()} when
+#' \code{random_start = FALSE}.
+#'
+#' \code{startvalues_bayesmr()} is an alias for \code{bayesmr_startvalues()}.
+#'
+#' \code{check_startvalues()} validates the list before model fitting.
+#'
+#' @param gamma A length-one numeric value for the initial causal effect
+#'   \eqn{\gamma}.
+#' @param beta A numeric vector of initial causal effect(s) \eqn{\beta} (or
+#'   cluster-specific effects \eqn{\beta^*_1, \ldots, \beta^*_K} for mixture
+#'   models). Length must equal \code{K} (supplied via \code{...}).
+#' @param ... Additional named starting values. For mixture models, supply
+#'   \code{K} (integer, number of clusters), \code{xi} (integer vector of
+#'   length \eqn{n} with cluster labels in \eqn{1,\ldots,K}), and
+#'   \code{alpha} (positive scalar, DP concentration). For heterogeneity
+#'   models, also supply \code{psi} and \code{tau} (positive scalars).
+#' @param startvalues A named list of starting values (used by
+#'   \code{check_startvalues()}).
+#'
+#' @return \code{bayesmr_startvalues()} returns a named list.
+#'   \code{check_startvalues()} returns a length-one logical: \code{TRUE} if
+#'   the list is valid, \code{FALSE} otherwise.
+#'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#' @seealso \code{\link{bayesmr}()}
-#' @keywords model based clustering
+#'
+#' @seealso \code{\link{bayesmr_init}()}, \code{\link{bayesmr}()}.
+#'
 #' @examples
-#' \dontrun{
-#' data(simdiss, package = "bayesmr")
-#' # Shorter run than default.
-#' sim.fit <- bayesmr(simdiss,
-#'   control = bayesmr_control(burnin = 1000, nsim = 2000, thin = 1, verbose = TRUE),
-#'   prior = bayesmr_startvalues(gamma = list(mean = 0, var = 1)))
-#' }
+#' # Starting values for the no-clustering model
+#' sv <- bayesmr_startvalues(gamma = 0.1, beta = 0.2,
+#'                           K = 1, psi = 0.05, tau = 0.05)
+#' check_startvalues(sv)
 #'
 #' @export
 bayesmr_startvalues <- function(gamma, beta, ...) {
@@ -145,11 +149,6 @@ check_startvalues <- function(startvalues) {
     startvalues_ok <- FALSE
     return(startvalues_ok)
   }
-  if (startvalues[["gamma"]] < 0) {
-    startvalues_ok <- FALSE
-    return(startvalues_ok)
-  }
-
   # check beta startvalues
   if (is.null(startvalues[["beta"]])) {
     startvalues_ok <- FALSE
@@ -179,10 +178,6 @@ check_startvalues <- function(startvalues) {
     if (startvalues[["K"]] > 1) {
       # check xi startvalues
       if (is.null(startvalues[["xi"]])) {
-        startvalues_ok <- FALSE
-        return(startvalues_ok)
-      }
-      if (length(startvalues[["xi"]]) != startvalues[["K"]]) {
         startvalues_ok <- FALSE
         return(startvalues_ok)
       }

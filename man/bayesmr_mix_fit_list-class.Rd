@@ -4,28 +4,23 @@
 \name{bayesmr_mix_fit_list-class}
 \alias{bayesmr_mix_fit_list-class}
 \alias{bayesmr_mix_fit_list}
-\title{An S4 class to represent the results of fitting BayesMR model.}
+\title{List of fitted BayesMR mixture-model chains.}
 \description{
-An S4 class to represent the results of fitting BayesMR model using multiple
-Markov Chain Monte Carlo chains.
+Stores the output from one or more MCMC chains for a BayesMR mixture model with
+cluster-specific causal effects and fixed heterogeneity.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{results}}{An object of class \code{list}; list of \code{bayesmr_fit}
-objects corresponding to the parallel MCMC chains simulated during the
-estimation.}
+\item{\code{results}}{A list of \code{\link[=bayesmr_mix_fit-class]{bayesmr_mix_fit}} objects, one for each
+simulated chain.}
 }}
 
-\examples{
-showClass("bayesmr_mix_fit_list")
-
-}
 \references{
-Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+Consonni, G., Venturini, S., Castelletti, F. (2026).
+"Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+Randomization under Heterogeneity". Working paper.
 }
-\seealso{
-\code{\link{bayesmr_fit}} for more details on the components of each element of
-the list.
+\author{
+Sergio Venturini \email{sergio.venturini@unicatt.it}
 }

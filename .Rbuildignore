@@ -1,6 +1,10 @@
+^\.travis\.yml$
 ^.*\.Rproj$
 ^\.Rproj\.user$
-^\tmp
+^\test$
+^\tmp$
 ^README\.md$
 ^TODO$
 ^\.github$
+^\.positai$
+^\.claude$

@@ -3,69 +3,40 @@
 \docType{class}
 \name{bayesmr_fit-class}
 \alias{bayesmr_fit-class}
-\title{An S4 class to represent the results of fitting BayesMR model.}
+\title{Fitted BayesMR model with fixed heterogeneity.}
 \description{
-An S4 class to represent the results of fitting BayesMR model using a single
-Markov Chain Monte Carlo chain.
+Stores the output from a single MCMC chain for a BayesMR model without mixture
+clustering and with fixed heterogeneity.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{z.chain}}{An object of class \code{array}; posterior draws from
-the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.}
+\item{\code{gamma.chain}}{An array containing posterior draws of the exposure effect
+parameter \code{gamma}.}
 
-\item{\code{z.chain.p}}{An object of class \code{array}; posterior draws from
-the MCMC algorithm for the (Procrustes-transformed) latent configuration
-\eqn{Z}.}
+\item{\code{beta.chain}}{An array containing posterior draws of the causal effect
+parameter \code{beta}.}
 
-\item{\code{alpha.chain}}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\alpha} parameters.}
+\item{\code{accept}}{A numeric vector containing Metropolis-Hastings acceptance
+information.}
 
-\item{\code{eta.chain}}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\eta} parameters.}
+\item{\code{data}}{A data frame containing the analyzed summary data.}
 
-\item{\code{sigma2.chain}}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\sigma^2} parameters.}
+\item{\code{dens}}{A list with log-density components, typically \code{loglik}, \code{logprior},
+and \code{logpost}.}
 
-\item{\code{lambda.chain}}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\lambda} parameters.}
+\item{\code{control}}{A named list of MCMC control settings.}
 
-\item{\code{prob.chain}}{An object of class \code{array}; posterior draws
-from the MCMC algorithm for the cluster membership probabilities.}
+\item{\code{prior}}{A named list of prior hyperparameters.}
 
-\item{\code{x.ind.chain}}{An object of class \code{array}; posterior draws
-from the MCMC algorithm for the cluster membership indicators.}
-
-\item{\code{x.chain}}{An object of class \code{matrix}; posterior draws from
-the MCMC algorithm for the cluster membership labels.}
-
-\item{\code{accept}}{An object of class \code{matrix}; final acceptance rates
-for the MCMC algorithm.}
-
-\item{\code{data}}{An object of class \code{list}; list of observed
-dissimilarity matrices.}
-
-\item{\code{dens}}{An object of class \code{list}; list of log-likelihood,
-log-prior and log-posterior values at each iteration of the MCMC simulation.}
-
-\item{\code{control}}{An object of class \code{list}; list of the control
-parameters (number of burnin and sample iterations, number of MCMC chains,
-etc.). See \code{\link{bayesmr_control}()} for more information.}
-
-\item{\code{prior}}{An object of class \code{list}; list of the prior
-hyperparameters. See \code{\link{bayesmr_prior}()} for more information.}
-
-\item{\code{dim}}{An object of class \code{list}; list of dimensions for
-the estimated model, i.e. number of objects (\emph{n}), number of latent
-dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-subjects (\emph{S}).}
+\item{\code{dim}}{A list of model dimensions, including \code{n}, the number of SNPs.}
 }}
 
-\examples{
-showClass("bayesmr_fit")
-
-}
 \references{
-Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+Consonni, G., Venturini, S., Castelletti, F. (2026).
+"Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+Randomization under Heterogeneity". Working paper.
+}
+\author{
+Sergio Venturini \email{sergio.venturini@unicatt.it}
 }

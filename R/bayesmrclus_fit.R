@@ -1,56 +1,65 @@
-#' Fitting function for BayesMR models with fixed heterogeneity.
+#' Fit a BayesMR model with fixed heterogeneity.
 #'
-#' \code{bayesmr_fit()} is the main function that estimates a BayesMR model.
+#' `bayesmr_fit()` runs the MCMC sampler for a BayesMR model with fixed
+#' heterogeneity and returns the fitted chain. This is a lower-level fitting
+#' function called by [`bayesmr()`]; most users should call [`bayesmr()`]
+#' directly.
 #'
-#' @param data An object of class \code{\link{bayesmr_data}}).
-#' @param control A list of control parameters that affect the sampling
-#'   but do not affect the posterior distribution See
-#'   \code{\link{bayesmr_control}()} for more details.
-#' @param prior A list containing the prior hyperparameters. See
-#'   \code{\link{bayesmr_prior}()} for more details.
-#' @param start A named list of starting values for the MCMC algorithm (see
-#'   \code{\link{bayesmr_init}}).
-#' @return A \code{bayesmr_fit_list} object.
+#' @param data An object of class [`bayesmr_data-class`] containing the summary
+#'   data to be analyzed.
+#' @param control A named list of control parameters for the MCMC sampler, such
+#'   as the number of iterations, burn-in, thinning, proposal variance, and
+#'   verbosity. See [`bayesmr_control()`] for details.
+#' @param prior A named list containing the prior hyperparameters. See
+#'   [`bayesmr_prior()`] for details.
+#' @param start A named list of starting values for the MCMC algorithm, typically
+#'   created by [`bayesmr_init()`]. It must contain at least the elements
+#'   `gamma` and `beta`.
+#'
+#' @return An object of class [`bayesmr_fit-class`] containing the simulated
+#'   chains, acceptance information, log-density values, data, control settings,
+#'   prior specification, and model dimensions.
+#'
+#' @details
+#' The function calls the compiled sampler `bayesmr_mcmc_noclus_wrap`, then
+#' applies burn-in removal and thinning according to the supplied `control`
+#' settings. If `control$store.burnin` is `TRUE`, burn-in iterations are retained
+#' before thinning; otherwise only post-burn-in draws are stored.
+#'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#' @seealso \code{\link{bayesmr_data}} for a description of the data format.
-#' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
-#'   included in the returned object.
+#'
+#' @seealso
+#' [`bayesmr()`] for the main user-facing fitting function;
+#' [`bayesmr_data-class`] for the input data format;
+#' [`bayesmr_fit-class`] for the returned object;
+#' [`bayesmr_control()`], [`bayesmr_prior()`], and [`bayesmr_init()`].
+#'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
+#'
 #' @examples
 #' \dontrun{
-#' data(simdiss, package = "bayesmr")
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
 #'
-#' G <- 3
-#' p <- 2
-#' prm.prop <- list(z = 1.5, alpha = .75)
-#' burnin <- 20000
-#' nsim <- 10000
-#' seed <- 2301
+#' ctrl <- bayesmr_control(nsim = 500, burnin = 500)
+#' pr <- bayesmr_prior()
+#' st <- bayesmr_init(
+#'   data = dat,
+#'   random_start = ctrl$random_start,
+#'   K_start = ctrl$K_start
+#' )
 #'
-#' set.seed(seed)
-#'
-#' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
-#'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
-#'   parallel = "snow")
-#' sim.bayesmr <- bayesmr(simdiss, control)
-#'
-#' summary(sim.bayesmr, include.burnin = FALSE)
-#'
-#' library(bayesplot)
-#' library(ggplot2)
-#' color_scheme_set("teal")
-#' plot(sim.bayesmr, what = "trace", regex_pars = "eta")
-#'
-#' z <- bayesmr_get_configuration(sim.bayesmr, chain = 1, est = "mean",
-#'   labels = 1:16)
-#' summary(z)
-#' color_scheme_set("mix-pink-blue")
-#' graph <- plot(z, size = 2, size_lbl = 3)
-#' graph + panel_bg(fill = "gray90", color = NA)
+#' fit <- bayesmr_fit(
+#'   data = dat,
+#'   control = ctrl,
+#'   prior = pr,
+#'   start = st
+#' )
 #' }
+#'
 #' @export
 bayesmr_fit <- function(data, control, prior, start) {
 	n <- data@n
@@ -129,59 +138,69 @@ bayesmr_fit <- function(data, control, prior, start) {
 	return(out)
 }
 
-#' Fitting function for BayesMR models with random heterogeneity.
+#' Fit a BayesMR model with random heterogeneity.
 #'
-#' \code{bayesmr_het_fit()} is the main function that estimates a BayesMR model.
+#' `bayesmr_het_fit()` runs the MCMC sampler for a BayesMR model with random
+#' heterogeneity and returns the fitted chain. This is a lower-level fitting
+#' function; most users should call [`bayesmr()`] or the relevant user-facing
+#' wrapper directly.
 #'
-#' @param data An object of class \code{\link{bayesmr_data}}).
-#' @param control A list of control parameters that affect the sampling
-#'   but do not affect the posterior distribution See
-#'   \code{\link{bayesmr_control}()} for more details.
-#' @param prior A list containing the prior hyperparameters. See
-#'   \code{\link{bayesmr_prior}()} for more details.
-#' @param start A named list of starting values for the MCMC algorithm (see
-#'   \code{\link{bayesmr_init}}).
-#' @return A \code{bayesmr_het_fit_list} object.
+#' @param data An object of class [`bayesmr_data-class`] containing the summary
+#'   data to be analyzed.
+#' @param control A named list of control parameters for the MCMC sampler, such
+#'   as the number of iterations, burn-in, thinning, proposal variances, and
+#'   verbosity. See [`bayesmr_control()`] for details.
+#' @param prior A named list containing the prior hyperparameters. See
+#'   [`bayesmr_prior()`] for details.
+#' @param start A named list of starting values for the MCMC algorithm, typically
+#'   created by [`bayesmr_init()`]. It must contain at least the elements
+#'   `gamma`, `beta`, `psi`, and `tau`.
+#'
+#' @return An object of class [`bayesmr_het_fit-class`] containing the simulated
+#'   chains for `gamma`, `beta`, `psi`, and `tau`, acceptance information,
+#'   log-density values, data, control settings, prior specification, and model
+#'   dimensions.
+#'
+#' @details
+#' The function calls the compiled sampler `bayesmr_mcmc_noclus_het_wrap`, then
+#' applies burn-in removal and thinning according to the supplied `control`
+#' settings. If `control$store.burnin` is `TRUE`, burn-in iterations are retained
+#' before thinning; otherwise only post-burn-in draws are stored.
+#'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#' @seealso \code{\link{bayesmr_data}} for a description of the data format.
-#' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
-#'   included in the returned object.
+#'
+#' @seealso
+#' [`bayesmr()`] for the main user-facing fitting function;
+#' [`bayesmr_data-class`] for the input data format;
+#' [`bayesmr_het_fit-class`] for the returned object;
+#' [`bayesmr_control()`], [`bayesmr_prior()`], and [`bayesmr_init()`].
+#'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
+#'
 #' @examples
 #' \dontrun{
-#' data(simdiss, package = "bayesmr")
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
 #'
-#' G <- 3
-#' p <- 2
-#' prm.prop <- list(z = 1.5, alpha = .75)
-#' burnin <- 20000
-#' nsim <- 10000
-#' seed <- 2301
+#' ctrl <- bayesmr_control(nsim = 500, burnin = 500)
+#' pr <- bayesmr_prior()
+#' st <- bayesmr_init(
+#'   data = dat,
+#'   random_start = ctrl$random_start,
+#'   K_start = ctrl$K_start
+#' )
 #'
-#' set.seed(seed)
-#'
-#' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
-#'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
-#'   parallel = "snow")
-#' sim.bayesmr <- bayesmr_het(simdiss, control)
-#'
-#' summary(sim.bayesmr, include.burnin = FALSE)
-#'
-#' library(bayesplot)
-#' library(ggplot2)
-#' color_scheme_set("teal")
-#' plot(sim.bayesmr, what = "trace", regex_pars = "eta")
-#'
-#' z <- bayesmr_get_configuration(sim.bayesmr, chain = 1, est = "mean",
-#'   labels = 1:16)
-#' summary(z)
-#' color_scheme_set("mix-pink-blue")
-#' graph <- plot(z, size = 2, size_lbl = 3)
-#' graph + panel_bg(fill = "gray90", color = NA)
+#' fit <- bayesmr_het_fit(
+#'   data = dat,
+#'   control = ctrl,
+#'   prior = pr,
+#'   start = st
+#' )
 #' }
+#'
 #' @export
 bayesmr_het_fit <- function(data, control, prior, start) {
   n <- data@n
@@ -274,59 +293,72 @@ bayesmr_het_fit <- function(data, control, prior, start) {
   return(out)
 }
 
-#' Fitting function for BayesMR models with fixed heterogeneity.
+#' Fit a BayesMR mixture model.
 #'
-#' \code{bayesmr_fit()} is the main function that estimates a BayesMR model.
+#' `bayesmr_mix_fit()` runs the MCMC sampler for a BayesMR mixture model with
+#' cluster-specific causal effects and fixed heterogeneity. This is a lower-level
+#' fitting function; most users should call [`bayesmr()`] or the relevant
+#' user-facing wrapper directly.
 #'
-#' @param data An object of class \code{\link{bayesmr_data}}).
-#' @param control A list of control parameters that affect the sampling
-#'   but do not affect the posterior distribution See
-#'   \code{\link{bayesmr_control}()} for more details.
-#' @param prior A list containing the prior hyperparameters. See
-#'   \code{\link{bayesmr_prior}()} for more details.
-#' @param start A named list of starting values for the MCMC algorithm (see
-#'   \code{\link{bayesmr_init}}).
-#' @return A \code{bayesmr_fit_list} object.
+#' @param data An object of class [`bayesmr_data-class`] containing the summary
+#'   data to be analyzed.
+#' @param control A named list of control parameters for the MCMC sampler, such
+#'   as the number of iterations, burn-in, thinning, proposal variance, mixture
+#'   proposal settings, and verbosity. See [`bayesmr_control()`] for details.
+#' @param prior A named list containing the prior hyperparameters. See
+#'   [`bayesmr_prior()`] for details.
+#' @param start A named list of starting values for the MCMC algorithm, typically
+#'   created by [`bayesmr_init()`]. It must contain at least the elements
+#'   `gamma`, `beta`, `xi`, `alpha`, and `K`.
+#'
+#' @return An object of class [`bayesmr_mix_fit-class`] containing the simulated
+#'   chains for `gamma`, `beta`, `xi`, and `alpha`, acceptance information,
+#'   log-density values, data, control settings, prior specification, and model
+#'   dimensions.
+#'
+#' @details
+#' The function calls the compiled sampler `bayesmr_mcmc_mix_wrap`, then applies
+#' burn-in removal and thinning according to the supplied `control` settings. If
+#' `control$store.burnin` is `TRUE`, burn-in iterations are retained before
+#' thinning; otherwise only post-burn-in draws are stored.
+#'
+#' The returned `beta.chain` and `xi.chain` matrices have one row per stored MCMC
+#' iteration and one column per genetic instrument.
+#'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#' @seealso \code{\link{bayesmr_data}} for a description of the data format.
-#' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
-#'   included in the returned object.
+#'
+#' @seealso
+#' [`bayesmr()`] for the main user-facing fitting function;
+#' [`bayesmr_data-class`] for the input data format;
+#' [`bayesmr_mix_fit-class`] for the returned object;
+#' [`bayesmr_control()`], [`bayesmr_prior()`], and [`bayesmr_init()`].
+#'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
+#'
 #' @examples
 #' \dontrun{
-#' data(simdiss, package = "bayesmr")
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
 #'
-#' G <- 3
-#' p <- 2
-#' prm.prop <- list(z = 1.5, alpha = .75)
-#' burnin <- 20000
-#' nsim <- 10000
-#' seed <- 2301
+#' ctrl <- bayesmr_control(nsim = 500, burnin = 500)
+#' pr <- bayesmr_prior()
+#' st <- bayesmr_init(
+#'   data = dat,
+#'   random_start = ctrl$random_start,
+#'   K_start = ctrl$K_start
+#' )
 #'
-#' set.seed(seed)
-#'
-#' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
-#'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
-#'   parallel = "snow")
-#' sim.bayesmr <- bayesmr(simdiss, control)
-#'
-#' summary(sim.bayesmr, include.burnin = FALSE)
-#'
-#' library(bayesplot)
-#' library(ggplot2)
-#' color_scheme_set("teal")
-#' plot(sim.bayesmr, what = "trace", regex_pars = "eta")
-#'
-#' z <- bayesmr_get_configuration(sim.bayesmr, chain = 1, est = "mean",
-#'   labels = 1:16)
-#' summary(z)
-#' color_scheme_set("mix-pink-blue")
-#' graph <- plot(z, size = 2, size_lbl = 3)
-#' graph + panel_bg(fill = "gray90", color = NA)
+#' fit <- bayesmr_mix_fit(
+#'   data = dat,
+#'   control = ctrl,
+#'   prior = pr,
+#'   start = st
+#' )
 #' }
+#'
 #' @export
 bayesmr_mix_fit <- function(data, control, prior, start) {
   n <- data@n
@@ -360,7 +392,7 @@ bayesmr_mix_fit <- function(data, control, prior, start) {
     rn = as.integer(n),
     rtotiter = as.integer(totiter),
     rC_beta = as.double(control[["beta.prop"]]),
-    rm_beta = as.double(control[["beta.m"]]),
+    rm_beta = as.integer(control[["beta.m"]]),
     rhyper_gammaj_psi2 = as.double(hyper.gammaj.psi2),
     rhyper_Gammaj_tau2 = as.double(hyper.Gammaj.tau2),
     rhyper_gamma_mean = as.double(hyper.gamma.mean),
@@ -420,59 +452,72 @@ bayesmr_mix_fit <- function(data, control, prior, start) {
   return(out)
 }
 
-#' Fitting function for BayesMR models with random heterogeneity.
+#' Fit a BayesMR mixture model with random heterogeneity.
 #'
-#' \code{bayesmr_fit()} is the main function that estimates a BayesMR model.
+#' `bayesmr_mix_het_fit()` runs the MCMC sampler for a BayesMR mixture model
+#' with cluster-specific causal effects and random heterogeneity. This is a
+#' lower-level fitting function; most users should call [`bayesmr()`] or the
+#' relevant user-facing wrapper directly.
 #'
-#' @param data An object of class \code{\link{bayesmr_data}}).
-#' @param control A list of control parameters that affect the sampling
-#'   but do not affect the posterior distribution See
-#'   \code{\link{bayesmr_control}()} for more details.
-#' @param prior A list containing the prior hyperparameters. See
-#'   \code{\link{bayesmr_prior}()} for more details.
-#' @param start A named list of starting values for the MCMC algorithm (see
-#'   \code{\link{bayesmr_init}}).
-#' @return A \code{bayesmr_fit_list} object.
+#' @param data An object of class [`bayesmr_data-class`] containing the summary
+#'   data to be analyzed.
+#' @param control A named list of control parameters for the MCMC sampler, such
+#'   as the number of iterations, burn-in, thinning, proposal variances, mixture
+#'   proposal settings, and verbosity. See [`bayesmr_control()`] for details.
+#' @param prior A named list containing the prior hyperparameters. See
+#'   [`bayesmr_prior()`] for details.
+#' @param start A named list of starting values for the MCMC algorithm, typically
+#'   created by [`bayesmr_init()`]. It must contain at least the elements
+#'   `gamma`, `beta`, `xi`, `alpha`, `psi`, `tau`, and `K`.
+#'
+#' @return An object of class [`bayesmr_mix_het_fit-class`] containing the
+#'   simulated chains for `gamma`, `beta`, `xi`, `alpha`, `psi`, and `tau`,
+#'   acceptance information, log-density values, data, control settings, prior
+#'   specification, and model dimensions.
+#'
+#' @details
+#' The function calls the compiled sampler `bayesmr_mcmc_mix_het_wrap`, then
+#' applies burn-in removal and thinning according to the supplied `control`
+#' settings. If `control$store.burnin` is `TRUE`, burn-in iterations are retained
+#' before thinning; otherwise only post-burn-in draws are stored.
+#'
+#' The returned `beta.chain` and `xi.chain` matrices have one row per stored MCMC
+#' iteration and one column per genetic instrument.
+#'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#' @seealso \code{\link{bayesmr_data}} for a description of the data format.
-#' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
-#'   included in the returned object.
+#'
+#' @seealso
+#' [`bayesmr()`] for the main user-facing fitting function;
+#' [`bayesmr_data-class`] for the input data format;
+#' [`bayesmr_mix_het_fit-class`] for the returned object;
+#' [`bayesmr_control()`], [`bayesmr_prior()`], and [`bayesmr_init()`].
+#'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
+#'
 #' @examples
 #' \dontrun{
-#' data(simdiss, package = "bayesmr")
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
 #'
-#' G <- 3
-#' p <- 2
-#' prm.prop <- list(z = 1.5, alpha = .75)
-#' burnin <- 20000
-#' nsim <- 10000
-#' seed <- 2301
+#' ctrl <- bayesmr_control(nsim = 500, burnin = 500)
+#' pr <- bayesmr_prior()
+#' st <- bayesmr_init(
+#'   data = dat,
+#'   random_start = ctrl$random_start,
+#'   K_start = ctrl$K_start
+#' )
 #'
-#' set.seed(seed)
-#'
-#' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
-#'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
-#'   parallel = "snow")
-#' sim.bayesmr <- bayesmr(simdiss, control)
-#'
-#' summary(sim.bayesmr, include.burnin = FALSE)
-#'
-#' library(bayesplot)
-#' library(ggplot2)
-#' color_scheme_set("teal")
-#' plot(sim.bayesmr, what = "trace", regex_pars = "eta")
-#'
-#' z <- bayesmr_get_configuration(sim.bayesmr, chain = 1, est = "mean",
-#'   labels = 1:16)
-#' summary(z)
-#' color_scheme_set("mix-pink-blue")
-#' graph <- plot(z, size = 2, size_lbl = 3)
-#' graph + panel_bg(fill = "gray90", color = NA)
+#' fit <- bayesmr_mix_het_fit(
+#'   data = dat,
+#'   control = ctrl,
+#'   prior = pr,
+#'   start = st
+#' )
 #' }
+#'
 #' @export
 bayesmr_mix_het_fit <- function(data, control, prior, start) {
   n <- data@n
@@ -512,7 +557,7 @@ bayesmr_mix_het_fit <- function(data, control, prior, start) {
     rC_beta = as.double(control[["beta.prop"]]),
     rC_logpsi = as.double(control[["psi.prop"]]),
     rC_logtau = as.double(control[["tau.prop"]]),
-    rm_beta = as.double(control[["beta.m"]]),
+    rm_beta = as.integer(control[["beta.m"]]),
     rhyper_gamma_mean = as.double(hyper.gamma.mean),
     rhyper_gamma_var = as.double(hyper.gamma.var),
     rhyper_beta_mean = as.double(hyper.beta.mean),

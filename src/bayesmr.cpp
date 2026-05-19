@@ -251,7 +251,7 @@ RcppExport SEXP bayesmr_mcmc_mix_wrap(
   int n = Rf_asInteger(rn);
   int totiter = Rf_asInteger(rtotiter);
   double C_beta = Rf_asReal(rC_beta);
-  double m_beta = Rf_asReal(rm_beta);
+  int m_beta = Rf_asInteger(rm_beta);
   double gamma_val = Rf_asReal(radgamma);
   double *beta_vals = REAL(radbeta);
   int *xi_vals = INTEGER(radxi);
@@ -363,7 +363,7 @@ RcppExport SEXP bayesmr_mcmc_mix_het_wrap(
   double C_beta = Rf_asReal(rC_beta);
   double C_logpsi = Rf_asReal(rC_logpsi);
   double C_logtau = Rf_asReal(rC_logtau);
-  double m_beta = Rf_asReal(rm_beta);
+  int m_beta = Rf_asInteger(rm_beta);
   double gamma_val = Rf_asReal(radgamma);
   double *beta_vals = REAL(radbeta);
   int *xi_vals = INTEGER(radxi);

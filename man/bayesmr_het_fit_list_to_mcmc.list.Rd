@@ -2,51 +2,42 @@
 % Please edit documentation in R/convert.R
 \name{bayesmr_het_fit_list_to_mcmc.list}
 \alias{bayesmr_het_fit_list_to_mcmc.list}
-\title{Conversion of an \code{bayesmr_het_fit_list} object to an object of class
-\code{mcmc.list}.}
+\title{Conversion of a \code{bayesmr_het_fit_list} Object to \code{mcmc.list}}
 \usage{
 bayesmr_het_fit_list_to_mcmc.list(res, include.burnin = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{res}{An object of type \code{bayesmr_het_fit_list}.}
+\item{res}{An object of class \code{bayesmr_het_fit_list}.}
 
-\item{include.burnin}{A logical scalar. If \code{TRUE} the burnin
-iterations (if available) are not removed.}
+\item{include.burnin}{Logical; if \code{TRUE} the burn-in iterations
+(when stored) are included. Default is \code{FALSE}.}
 
-\item{verbose}{A logical scalar. If \code{TRUE} prints additional
-warnings during the conversion.}
+\item{verbose}{Logical; if \code{TRUE} prints warnings during conversion.
+Default is \code{TRUE}.}
 }
 \value{
-An object of type \code{mcmc.list}.
+A \code{\link[coda]{mcmc.list}} object.
 }
 \description{
-\code{bayesmr_het_fit_list_to_mcmc.list} converts an object of class
-\code{bayesmr_het_fit_list} to an object with class \code{mcmc.list}.
+Converts a multi-chain \code{\link{bayesmr_het_fit_list-class}} object to a
+\code{\link[coda]{mcmc.list}} for convergence diagnostics.
 }
 \examples{
 \dontrun{
-data(simdiss, package = "bayesmr")
-
-G <- 3
-p <- 2
-prm.prop <- list(z = 1.5, alpha = .75)
-burnin <- 2000
-nsim <- 1000
-seed <- 2301
-
-set.seed(seed)
-
-control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-  alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
-sim.bayesmr <- bayesmr(simdiss, control)
-sim.mcmc <- bayesmr_het_fit_list_to_mcmc.list(sim.bayesmr, TRUE)
-plot(sim.mcmc)
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
+res <- bayesmr_het(dat, control = bayesmr_control(nsim = 500, burnin = 500,
+                                                  nchains = 2))
+mc <- bayesmr_het_fit_list_to_mcmc.list(res)
+coda::gelman.diag(mc)
 }
+
 }
 \seealso{
-\code{\link{bayesmr}()} for for fitting a DMBC model;
-\code{\link{bayesmr_het_fit_list-class}};
-\code{\link[coda]{mcmc.list}}.
+\code{\link{bayesmr_het}()},
+\code{\link{bayesmr_het_fit_list-class}},
+\code{\link[coda]{mcmc.list}},
+\code{\link{bayesmr_het_fit_list_to_list}()}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

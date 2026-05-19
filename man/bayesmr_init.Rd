@@ -2,46 +2,55 @@
 % Please edit documentation in R/bayesmrclus_init.R
 \name{bayesmr_init}
 \alias{bayesmr_init}
-\title{Function to compute the starting values before fitting a BayesMR models.}
+\title{Generate Starting Values for BayesMR Model Fitting}
 \usage{
 bayesmr_init(data, random_start = TRUE, K_start = 1, start_values)
 }
 \arguments{
-\item{data}{A list whose elements are the dissimilarity matrices corresponding
-to the judgments expressed by the \emph{S} subjects/raters. These matrices
-must be defined as a \code{dist} object.}
+\item{data}{An object of class \code{\link{bayesmr_data-class}} containing
+the SNP-level summary statistics.}
 
-\item{random_start}{A length-one logical vector. If \code{TRUE} the starting
-values are drawn randomly, otherwise.}
+\item{random_start}{A length-one logical. If \code{TRUE} (default),
+starting values are drawn randomly from diffuse distributions. If
+\code{FALSE}, the values in \code{start_values} are validated and
+returned.}
 
-\item{K_start}{A length-one numeric vector providing the initial
-value for the number of clusters.}
+\item{K_start}{A length-one positive integer giving the initial number of
+mixture clusters. Use \code{K_start = 1} for the non-mixture models
+(\code{\link{bayesmr}()}, \code{\link{bayesmr_het}()}).}
+
+\item{start_values}{A named list of user-supplied starting values, used
+when \code{random_start = FALSE}. See \code{\link{bayesmr_startvalues}()}
+for the expected format.}
 }
 \value{
-A named \code{list} with the following items:
-\describe{
-\item{\code{z}: }{array of latent coordinates starting values}
-\item{\code{x}: }{numeric vector of initial cluster memberships}
-\item{\code{ng}: }{numeric vector of initial cluster sizes}
-\item{\code{alpha}: }{numeric vector of alpha starting values}
-\item{\code{eta}: }{numeric vector of eta starting values}
-\item{\code{sigma2}: }{numeric vector of sigma2 starting values}
-\item{\code{lambda}: }{numeric vector of lambda starting values}
-}
+A named list of starting values. For \code{K_start = 1}: contains
+\code{gamma}, \code{beta}, \code{psi}, \code{tau}. For
+\code{K_start > 1}: also contains \code{K}, \code{xi}, \code{alpha}.
 }
 \description{
-\code{bayesmr_init()} is the main function that estimates a BayesMR model.
+\code{bayesmr_init()} draws or validates starting values for the MCMC
+sampler before fitting a BayesMR model.
 }
 \examples{
-data(simdiss, package = "bayesmr")
-bayesmr_init(simdiss@diss, random_start = TRUE)
+\dontrun{
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
+# Random start for the no-clustering model
+sv1 <- bayesmr_init(dat, random_start = TRUE, K_start = 1)
+# Random start for the mixture model with 3 initial clusters
+sv3 <- bayesmr_init(dat, random_start = TRUE, K_start = 3)
+}
+
 }
 \references{
-Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical
+Modeling for Two-Sample Summary-Data Mendelian Randomization under
+Heterogeneity", working paper.
 }
 \seealso{
-\code{\link{bayesmr}()} for fitting a BayesMR model.
+\code{\link{bayesmr}()}, \code{\link{bayesmr_startvalues}()},
+\code{\link{bayesmr_data-class}}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

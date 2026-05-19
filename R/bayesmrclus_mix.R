@@ -1,64 +1,83 @@
-#' Estimation of a BayesMR model.
+#' Estimate a BayesMR mixture model.
 #'
-#' \code{bayesmr_mix()}, the main function of the package, estimates a BayesMR model
-#'   for a given set of \emph{S} dissimilarity matrices.
+#' `bayesmr_mix()` estimates a BayesMR mixture model with cluster-specific
+#' causal effects and fixed heterogeneity. It initializes and runs one or more
+#' MCMC chains, either serially or in parallel according to the settings supplied
+#' through [`bayesmr_control()`].
 #'
-#' @param data An object of class \code{bayesmr_data} containing the data
-#'   to analyze.
-#' @param control A list of control parameters that affect the sampling
-#'   but do not affect the posterior distribution. See
-#'   \code{\link{bayesmr_control}()} for more details.
-#' @param prior A list containing the prior hyperparameters. See
-#'   \code{\link{bayesmr_prior}()} for more details.
-#' @param cl An optional \pkg{parallel} or \pkg{snow} cluster for use if
-#'   \code{parallel = "snow"}. If not supplied, a cluster on the local machine
-#'   is created for the duration of the \code{bayesmr_mix()} call.
-#' @param post_all A length-one logical vector, which if TRUE applies a further
-#'   post-processing to the simulated chains (in case these are more than one).
-#' @return A \code{bayesmr_fit_list} object.
+#' @param data An object of class [`bayesmr_data-class`] containing the summary
+#'   data to be analyzed.
+#' @param control A named list of control parameters for the MCMC sampler, such
+#'   as the number of iterations, burn-in, thinning, number of chains, seed,
+#'   initial number of clusters, and parallelization options. Missing entries are
+#'   filled with the defaults from [`bayesmr_control()`].
+#' @param prior A named list of prior hyperparameters, or `NULL`. If `NULL`, the
+#'   default prior specification returned by [`bayesmr_prior()`] is used. Missing
+#'   entries are filled with the defaults from [`bayesmr_prior()`].
+#' @param cl An optional cluster object created by [parallel::makeCluster()] or
+#'   a compatible `snow` cluster. This is used only when
+#'   `control$parallel = "snow"` and more than one chain is run. If `NULL`, a
+#'   temporary local PSOCK cluster is created and stopped when the function exits.
+#'   For user-supplied clusters, the random-number seed must be set externally.
+#' @param post_all A length-one logical vector. Currently reserved for optional
+#'   post-processing of multiple simulated chains.
+#'
+#' @return An object of class [`bayesmr_mix_fit_list-class`] containing one
+#'   fitted [`bayesmr_mix_fit-class`] object for each simulated chain.
+#'
+#' @details
+#' The function validates the supplied `control` and `prior` lists, initializes
+#' each chain with [`bayesmr_init()`], and fits each chain with
+#' [`bayesmr_mix_fit()`]. If `control$K_start` is `NULL` or smaller than 2, it is
+#' set to 2 before initialization.
+#'
+#' If a seed is supplied through `control$seed`, it is used internally while
+#' preserving the caller's random-number generator state. Parallel execution is
+#' used only when more than one chain is requested and `control$parallel` is set
+#' to either `"multicore"` or `"snow"`. Multicore execution is unavailable on
+#' Windows.
+#'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
-#' @seealso \code{\link{bmds}} for Bayesian (metric) multidimensional scaling.
-#' @seealso \code{\link{bayesmr_data}} for a description of the data format.
-#' @seealso \code{\link{bayesmr_fit_list}} for a description of the elements
-#'   included in the returned object.
+#'
+#' @seealso
+#' [`bayesmr_mix_fit()`] for the lower-level single-chain fitting function;
+#' [`bayesmr_data-class`] for the input data format;
+#' [`bayesmr_mix_fit_list-class`] for the returned object;
+#' [`bayesmr_control()`], [`bayesmr_prior()`], and [`bayesmr_init()`].
+#'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
+#'
 #' @examples
 #' \dontrun{
-#' data(simdiss, package = "bayesmr")
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
 #'
-#' G <- 3
-#' p <- 2
-#' prm.prop <- list(z = 1.5, alpha = .75)
-#' burnin <- 20000
-#' nsim <- 10000
-#' seed <- 2301
+#' control <- bayesmr_control(
+#'   nsim = 1000,
+#'   burnin = 1000,
+#'   K_start = 2,
+#'   nchains = 2,
+#'   verbose = TRUE
+#' )
+#' prior <- bayesmr_prior()
 #'
-#' set.seed(seed)
+#' res <- bayesmr_mix(
+#'   data = dat,
+#'   control = control,
+#'   prior = prior
+#' )
+#' summary(res)
 #'
-#' control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-#'   alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
-#'   nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
-#'   parallel = "snow")
-#' sim.bayesmr <- bayesmr_mix(simdiss, control)
-#'
-#' summary(sim.bayesmr, include.burnin = FALSE)
-#'
-#' library(bayesplot)
-#' library(ggplot2)
-#' color_scheme_set("teal")
-#' plot(sim.bayesmr, what = "trace", regex_pars = "eta")
-#'
-#' z <- bayesmr_get_configuration(sim.bayesmr, chain = 1, est = "mean",
-#'   labels = 1:16)
-#' summary(z)
-#' color_scheme_set("mix-pink-blue")
-#' graph <- plot(z, size = 2, size_lbl = 3)
-#' graph + panel_bg(fill = "gray90", color = NA)
+#' pp <- run_bnpmr_postprocess(
+#'   fit = res,
+#'   burnin = 500L,
+#'   pleiotropy = FALSE
+#' )
 #' }
 #'
-#' @importFrom abind abind
 #' @export
 bayesmr_mix <- function(data, control = bayesmr_control(),
   prior = NULL, cl = NULL, post_all = FALSE) {
@@ -83,9 +102,8 @@ bayesmr_mix <- function(data, control = bayesmr_control(),
   store.burnin <- control[["store.burnin"]]
   verbose <- control[["verbose"]]
 
-  n <- nrow(data)
   totiter <- burnin + nsim
-  
+
   if (is.null(prior)) {
     prior <- bayesmr_prior()
   } else {
@@ -258,35 +276,6 @@ bayesmr_mix <- function(data, control = bayesmr_control(),
         prior.c = prior
       )
     }
-  }
-
-  # final post-processing of all chains
-  if (nchains > 1 && post_all) {
-    # gamma.chain <- res[[1]]@gamma.chain
-    # beta.chain <- res[[1]]@beta.chain
-    # xi.chain <- res[[1]]@xi.chain
-    # alpha.chain <- res[[1]]@alpha.chain
-    # niter <- length(gamma.chain)
-    # for (ch in 2:nchains) {
-    #   gamma.chain <- abind::abind(gamma.chain, res[[ch]]@gamma.chain, along = 1)
-    #   beta.chain <- c(beta.chain, res[[ch]]@beta.chain)
-    #   xi.chain <- abind::abind(xi.chain, res[[ch]]@xi.chain, along = 1)
-    #   alpha.chain <- abind::abind(alpha.chain, res[[ch]]@alpha.chain, along = 1)
-    # }
-
-    # if (control[["verbose"]]) message("Final post-processing of all chains:")
-
-    # if (control[["verbose"]]) {
-    #   # message("done!")
-    #   close(pb)
-    # }
-
-    # for (ch in 1:nchains) {
-    #   res[[ch]]@gamma.chain <- gamma.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-    #   res[[ch]]@beta.chain <- beta.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-    #   res[[ch]]@xi.chain <- xi.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-    #   res[[ch]]@alpha.chain <- alpha.chain[(niter*(ch - 1) + 1):(niter*ch), , drop = FALSE]
-    # }
   }
 
   res <- new("bayesmr_mix_fit_list", results = res)

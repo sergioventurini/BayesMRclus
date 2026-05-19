@@ -3,15 +3,19 @@
 \name{show,bayesmr_data-method}
 \alias{show,bayesmr_data-method}
 \alias{bayesmr_data-show}
-\title{Show an instance of the \code{bayesmr_data} class.}
+\title{Show a \code{bayesmr_data} object.}
 \usage{
 \S4method{show}{bayesmr_data}(object)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmr_data}}.}
+\item{object}{An object of class \code{\link[=bayesmr_data-class]{bayesmr_data}}.}
+}
+\value{
+Invisibly returns \code{NULL}; called for its side effect of printing a
+short description of the object.
 }
 \description{
-Show an instance of the \code{bayesmr_data} class.
+Show a \code{bayesmr_data} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

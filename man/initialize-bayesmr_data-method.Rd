@@ -3,25 +3,27 @@
 \name{initialize,bayesmr_data-method}
 \alias{initialize,bayesmr_data-method}
 \alias{bayesmr_data-initialize}
-\title{Create an instance of the \code{bayesmr_data} class using new/initialize.}
+\title{Initialize a \code{bayesmr_data} object.}
 \usage{
-\S4method{initialize}{bayesmr_data}(.Object, data = list(), n = numeric(), reorientation = TRUE)
+\S4method{initialize}{bayesmr_data}(.Object, data = data.frame(), reorientation = TRUE)
 }
 \arguments{
-\item{.Object}{Prototype object from the class \code{\link{bayesmr_data}}.}
+\item{.Object}{Prototype object from class \code{\link[=bayesmr_data-class]{bayesmr_data}}.}
 
-\item{data}{A list whose elements are the dissimilarity matrices corresponding
-to the judgments expressed by the \emph{S} subjects/raters. These matrices
-must be defined as a \code{dist} object.}
+\item{data}{A data frame containing the columns \code{SNP}, \code{beta_exposure},
+\code{beta_outcome}, \code{se_exposure}, and \code{se_outcome}. Dot variants of the four
+numeric column names, namely \code{beta.exposure}, \code{beta.outcome}, \code{se.exposure},
+and \code{se.outcome}, are also accepted and renamed internally.}
 
-\item{n}{A length-one character vector representing the number of objects
-compared by each subject.}
-
-\item{reorientation}{A length-one logical vector indicating whether to apply
-allele reorientation.}
+\item{reorientation}{A length-one logical value. If \code{TRUE}, rows with negative
+\code{beta_exposure} are reoriented by changing the sign of both \code{beta_exposure}
+and \code{beta_outcome}.}
+}
+\value{
+An initialized \code{\link[=bayesmr_data-class]{bayesmr_data}} object.
 }
 \description{
-Create an instance of the \code{bayesmr_data} class using new/initialize.
+Initialize a \code{bayesmr_data} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

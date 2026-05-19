@@ -2,72 +2,75 @@
 % Please edit documentation in R/bayesmrclus_fit.R
 \name{bayesmr_het_fit}
 \alias{bayesmr_het_fit}
-\title{Fitting function for BayesMR models with random heterogeneity.}
+\title{Fit a BayesMR model with random heterogeneity.}
 \usage{
 bayesmr_het_fit(data, control, prior, start)
 }
 \arguments{
-\item{data}{An object of class \code{\link{bayesmr_data}}).}
+\item{data}{An object of class \code{\link[=bayesmr_data-class]{bayesmr_data}} containing the summary
+data to be analyzed.}
 
-\item{control}{A list of control parameters that affect the sampling
-but do not affect the posterior distribution See
-\code{\link{bayesmr_control}()} for more details.}
+\item{control}{A named list of control parameters for the MCMC sampler, such
+as the number of iterations, burn-in, thinning, proposal variances, and
+verbosity. See \code{\link[=bayesmr_control]{bayesmr_control()}} for details.}
 
-\item{prior}{A list containing the prior hyperparameters. See
-\code{\link{bayesmr_prior}()} for more details.}
+\item{prior}{A named list containing the prior hyperparameters. See
+\code{\link[=bayesmr_prior]{bayesmr_prior()}} for details.}
 
-\item{start}{A named list of starting values for the MCMC algorithm (see
-\code{\link{bayesmr_init}}).}
+\item{start}{A named list of starting values for the MCMC algorithm, typically
+created by \code{\link[=bayesmr_init]{bayesmr_init()}}. It must contain at least the elements
+\code{gamma}, \code{beta}, \code{psi}, and \code{tau}.}
 }
 \value{
-A \code{bayesmr_het_fit_list} object.
+An object of class \code{\link[=bayesmr_het_fit-class]{bayesmr_het_fit}} containing the simulated
+chains for \code{gamma}, \code{beta}, \code{psi}, and \code{tau}, acceptance information,
+log-density values, data, control settings, prior specification, and model
+dimensions.
 }
 \description{
-\code{bayesmr_het_fit()} is the main function that estimates a BayesMR model.
+\code{bayesmr_het_fit()} runs the MCMC sampler for a BayesMR model with random
+heterogeneity and returns the fitted chain. This is a lower-level fitting
+function; most users should call \code{\link[=bayesmr]{bayesmr()}} or the relevant user-facing
+wrapper directly.
+}
+\details{
+The function calls the compiled sampler \code{bayesmr_mcmc_noclus_het_wrap}, then
+applies burn-in removal and thinning according to the supplied \code{control}
+settings. If \code{control$store.burnin} is \code{TRUE}, burn-in iterations are retained
+before thinning; otherwise only post-burn-in draws are stored.
 }
 \examples{
 \dontrun{
-data(simdiss, package = "bayesmr")
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
 
-G <- 3
-p <- 2
-prm.prop <- list(z = 1.5, alpha = .75)
-burnin <- 20000
-nsim <- 10000
-seed <- 2301
+ctrl <- bayesmr_control(nsim = 500, burnin = 500)
+pr <- bayesmr_prior()
+st <- bayesmr_init(
+  data = dat,
+  random_start = ctrl$random_start,
+  K_start = ctrl$K_start
+)
 
-set.seed(seed)
-
-control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-  alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
-  nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
-  parallel = "snow")
-sim.bayesmr <- bayesmr_het(simdiss, control)
-
-summary(sim.bayesmr, include.burnin = FALSE)
-
-library(bayesplot)
-library(ggplot2)
-color_scheme_set("teal")
-plot(sim.bayesmr, what = "trace", regex_pars = "eta")
-
-z <- bayesmr_get_configuration(sim.bayesmr, chain = 1, est = "mean",
-  labels = 1:16)
-summary(z)
-color_scheme_set("mix-pink-blue")
-graph <- plot(z, size = 2, size_lbl = 3)
-graph + panel_bg(fill = "gray90", color = NA)
+fit <- bayesmr_het_fit(
+  data = dat,
+  control = ctrl,
+  prior = pr,
+  start = st
+)
 }
+
 }
 \references{
-Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+Consonni, G., Venturini, S., Castelletti, F. (2026).
+"Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+Randomization under Heterogeneity". Working paper.
 }
 \seealso{
-\code{\link{bayesmr_data}} for a description of the data format.
-
-\code{\link{bayesmr_fit_list}} for a description of the elements
-included in the returned object.
+\code{\link[=bayesmr]{bayesmr()}} for the main user-facing fitting function;
+\code{\link[=bayesmr_data-class]{bayesmr_data}} for the input data format;
+\code{\link[=bayesmr_het_fit-class]{bayesmr_het_fit}} for the returned object;
+\code{\link[=bayesmr_control]{bayesmr_control()}}, \code{\link[=bayesmr_prior]{bayesmr_prior()}}, and \code{\link[=bayesmr_init]{bayesmr_init()}}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

@@ -8,6 +8,7 @@
 #' @param burnin     Number of initial iterations to discard
 #' @param pleiotropy Declare whether the model assumes pleiotropy
 #' @return           A list with components described in the header above
+#' @noRd
 read_mcmc_output <- function(res, burnin, pleiotropy = TRUE) {
   nchains <- length(res@results)
   
@@ -74,6 +75,7 @@ read_mcmc_output <- function(res, burnin, pleiotropy = TRUE) {
 #' @param chain_list  List of out objects from remove_burnin()
 #' @param pleiotropy  Declare whether the model assumes pleiotropy
 #' @return            A single merged out object
+#' @noRd
 combine_chains <- function(chain_list, pleiotropy = TRUE) {
   p <- chain_list[[1]]$p
   
@@ -104,6 +106,7 @@ combine_chains <- function(chain_list, pleiotropy = TRUE) {
 #' @param burnin     Number of initial iterations to discard
 #' @param pleiotropy Declare whether the model assumes pleiotropy
 #' @return           Trimmed object with updated S
+#' @noRd
 remove_burnin <- function(out, burnin, pleiotropy = TRUE) {
   stopifnot(burnin < out$S)
   idx <- seq(burnin + 1L, out$S)
@@ -132,6 +135,7 @@ remove_burnin <- function(out, burnin, pleiotropy = TRUE) {
 #' @param chains     Optional list of additional out objects (for multi-chain Rhat)
 #' @param pleiotropy Declare whether the model assumes pleiotropy
 #' @return           Data frame with columns: param, mean, sd, ess, rhat
+#' @noRd
 convergence_diagnostics <- function(out, chains = NULL, pleiotropy = TRUE) {
   
   # Effective sample size via batch means
@@ -194,6 +198,7 @@ convergence_diagnostics <- function(out, chains = NULL, pleiotropy = TRUE) {
 #'
 #' @param out   Object from remove_burnin()
 #' @return      Data frame with columns k, count, proportion
+#' @noRd
 posterior_K <- function(out) {
   K_vec <- sapply(out$beta, length)
   tab   <- table(K_vec)
@@ -216,6 +221,7 @@ posterior_K <- function(out) {
 #'
 #' @param out   Object from remove_burnin()
 #' @return      Symmetric numeric matrix, dim p × p, entries in [0,1]
+#' @noRd
 compute_psm <- function(out) {
   S <- out$S; p <- out$p
   PSM <- matrix(0.0, p, p)
@@ -249,7 +255,8 @@ compute_psm <- function(out) {
 #'                $partition  integer vector length p
 #'                $loss       expected loss of the selected partition
 #'                $info       salso info data frame
-salso_partition <- function(out, loss = VI()) {
+#' @noRd
+salso_partition <- function(out, loss = salso::VI()) {
   # salso expects an integer matrix with rows = iterations, cols = items
   # out$xi is already in this format (S × p, 1-indexed)
   est  <- salso::salso(out$xi, loss = loss)
@@ -276,6 +283,7 @@ salso_partition <- function(out, loss = VI()) {
 #' @return      Data frame with columns:
 #'                snp_index, mean, sd, lower, upper,
 #'                prob_positive, prob_negative
+#' @noRd
 snp_bma_effects <- function(out, ci = 0.95) {
   S <- out$S; p <- out$p
   alpha_ci <- (1 - ci) / 2
@@ -315,6 +323,7 @@ snp_bma_effects <- function(out, ci = 0.95) {
 #' @param out     Output from remove_burnin()
 #' @param ci      Credible interval level (default 0.95)
 #' @return        Data frame with one row per cluster
+#' @noRd
 cluster_summaries <- function(binder, bma, out, ci = 0.95) {
   part   <- binder$partition
   K_rep  <- length(unique(part))
@@ -367,6 +376,7 @@ cluster_summaries <- function(binder, bma, out, ci = 0.95) {
 #'                  $mean_T   posterior mean of T
 #'                  $ci_T     95% credible interval for T
 #'                  $r_matrix S × p matrix of standardised residuals
+#' @noRd
 pleiotropy_check <- function(out, dat) {
   S  <- out$S
   p  <- out$p
@@ -421,6 +431,7 @@ pleiotropy_check <- function(out, dat) {
 #' @param width      Width of the image file saved on disk
 #' @param height     Height of the image file saved on disk
 #' @param res        Resolution of the image file saved on disk
+#' @noRd
 plot_psm <- function(psm, binder, snp_names = NULL,
                      name_cex     = 0.35,
                      file         = NULL,
@@ -532,6 +543,7 @@ plot_psm <- function(psm, binder, snp_names = NULL,
 #' @param width      Width of the image file saved on disk
 #' @param height     Height of the image file saved on disk
 #' @param res        Resolution of the image file saved on disk
+#' @noRd
 plot_snp_effects <- function(bma, binder,
                              snp_names  = NULL,
                              wald,
@@ -653,6 +665,7 @@ plot_snp_effects <- function(bma, binder,
 #'
 #' @param Kd    Output from posterior_K()
 #' @param file  Optional file path
+#' @noRd
 plot_posterior_K <- function(Kd, file = NULL) {
   if (!is.null(file)) png(file, width = 1200, height = 900, res = 220)
   
@@ -676,6 +689,7 @@ plot_posterior_K <- function(Kd, file = NULL) {
 #' @param out        Object from remove_burnin()
 #' @param pleiotropy Declare whether the model assumes pleiotropy
 #' @param file       Optional file path
+#' @noRd
 plot_traces <- function(out, file = NULL, pleiotropy = TRUE) {
   if (!is.null(file)) png(file, width = 1800, height = 1400, res = 220)
   
@@ -759,10 +773,10 @@ run_bnpmr_postprocess <- function(res,
                                   pleiotropy = TRUE) {
   if (verbose) cat("Reading MCMC output ...\n")
   out  <- read_mcmc_output(res, burnin, pleiotropy = pleiotropy)
-  if (verbose) cat(sprintf("  S = %d iterations,  p = %d SNPs\n", out$S, out$p))
-  
+  if (verbose) cat(sprintf("  S = %d iterations,  p = %d SNPs\n", out$combined$S, out$combined$p))
+
   if (verbose) cat("Convergence diagnostics ...\n")
-  diag <- lapply(out$chain_list, convergence_diagnostics, pleiotropy = pleiotropy)
+  diag <- lapply(out$chains, convergence_diagnostics, pleiotropy = pleiotropy)
   if (verbose) print(diag)
   
   out <- out$combined

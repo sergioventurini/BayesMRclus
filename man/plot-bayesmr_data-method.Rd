@@ -3,35 +3,41 @@
 \name{plot,bayesmr_data-method}
 \alias{plot,bayesmr_data-method}
 \alias{bayesmr_data-plot}
-\title{Provide a graphical summary of a \code{bayesmr_data} class instance.}
+\title{Plot a \code{bayesmr_data} object.}
 \usage{
 \S4method{plot}{bayesmr_data}(x, se = TRUE, colors = c("white", "black"), font = NA, cex.font = NA, ...)
 }
 \arguments{
-\item{x}{An object of class \code{\link{bayesmr_data}}.}
+\item{x}{An object of class \code{\link[=bayesmr_data-class]{bayesmr_data}}.}
 
-\item{se}{A length-one logical vector indicating whether to plot the error bars or not.}
+\item{se}{A length-one logical value indicating whether standard-error bars
+should be drawn.}
 
-\item{colors}{A character vector providing the colors to use in the plot.}
+\item{colors}{A character vector of colors. This argument is currently accepted
+for compatibility but is not used by the plotting code.}
 
-\item{font}{A length-one numeric vector for the font to use for text.
-Can be a vector. \code{NA} values (the default) mean use \code{par("font")}.}
+\item{font}{A numeric value or vector controlling the font for text. This
+argument is currently accepted for compatibility but is not used by the
+plotting code.}
 
-\item{cex.font}{A length-one numeric vector for the character expansion
-factor. \code{NULL} and \code{NA} are equivalent to \code{1.0}. This is an
-absolute measure, not scaled by \code{par("cex")} or by setting
-'   \code{par("mfrow")} or \code{par("mfcol")}. Can be a vector.}
+\item{cex.font}{A numeric value or vector controlling text expansion. This
+argument is currently accepted for compatibility but is not used by the
+plotting code.}
 
-\item{...}{Further arguments to pass on (currently ignored).}
+\item{...}{Further arguments passed to or ignored by the method.}
+}
+\value{
+Invisibly returns \code{NULL}; called for its side effect of producing a base
+R plot.
 }
 \description{
-Provide a graphical summary of a \code{bayesmr_data} class instance.
+Produces a scatter plot of SNP-exposure effect estimates against SNP-outcome
+effect estimates, optionally with horizontal and vertical standard-error bars.
 }
 \examples{
-data(simdiss)
-library(bayesplot)
-cols <- color_scheme_set("brightblue")
-plot(simdiss, colors = unlist(cols)[c(1, 6)], font = 1, cex.font = 0.75)
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
+plot(dat)
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

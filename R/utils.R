@@ -1,11 +1,14 @@
+#' @noRd
 expit <- function(x) {
 	return(1/(1 + exp(-x)))
 }
 
+#' @noRd
 list2matrix <- function(D) {
 	return(t(sapply(D, as.numeric)))
 }
 
+#' @noRd
 list2array <- function(D) {
 	S <- length(D)
 	n <- nrow(as.matrix(D[[1]]))
@@ -19,6 +22,7 @@ list2array <- function(D) {
 	return(out)
 }
 
+#' @noRd
 list.sum <- function(x) {
 	m <- length(x)
 	z <- x[[1]]
@@ -75,6 +79,7 @@ check_list_na <- function(orig, des) {
   return(orig_new)
 }
 
+#' @noRd
 colMedians <- function(x, na.rm = TRUE, dims = 1L) {
   if (is.data.frame(x)) 
     x <- as.matrix(x)
@@ -84,7 +89,7 @@ colMedians <- function(x, na.rm = TRUE, dims = 1L) {
     stop("invalid 'dims'")
   n <- prod(dn[id <- seq_len(dims)])
   dn <- dn[-id]
-  z <- apply(x, 2, median, nar.rm = na.rm)
+  z <- apply(x, 2, median, na.rm = na.rm)
   if (length(dn) > 1L) {
     dim(z) <- dn
     dimnames(z) <- dimnames(x)[-id]
@@ -93,6 +98,7 @@ colMedians <- function(x, na.rm = TRUE, dims = 1L) {
   return(z)
 }
 
+#' @noRd
 bayesmr_pb <- function(min = 0, max = 1, initial = 0, char = "=", width = 49, skip = 5) {
   e <- new.env(parent = emptyenv())
   e$.val <- initial
@@ -133,6 +139,7 @@ bayesmr_pb <- function(min = 0, max = 1, initial = 0, char = "=", width = 49, sk
   structure(list(getVal = getVal, up = up3, kill = kill), class = "txtProgressBar")
 }
 
+#' @noRd
 bayesmr_setpb <- function(pb, value) {
     oldval <- pb$getVal()
     pb$up(value)
@@ -211,6 +218,7 @@ select_pars <- function(explicit = character(), patterns = character(), complete
   unique(c(explicit, regex_pars))
 }
 
+#' @noRd
 choose_colors <- function(n) {
   all_clrs <- unlist(bayesplot::color_scheme_get())
   clrs <- switch(
@@ -264,6 +272,7 @@ scheme_level_names <- function() {
 }
 
 # Print a matrix in a pretty way
+#' @noRd
 print_matrix <- function(mat, rownm = NULL, colnm = NULL, colwidth = 10, between_cols = 2, ndigits = 2, shift = 0,
   isint = FALSE) {
   nr <- nrow(mat)

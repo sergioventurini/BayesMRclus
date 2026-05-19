@@ -3,15 +3,19 @@
 \name{show,bayesmr_het_fit-method}
 \alias{show,bayesmr_het_fit-method}
 \alias{bayesmr_het_fit-show}
-\title{Show an instance of the \code{bayesmr_het_fit} class.}
+\title{Show a \code{bayesmr_het_fit} object.}
 \usage{
 \S4method{show}{bayesmr_het_fit}(object)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmr_het_fit}}.}
+\item{object}{An object of class \code{\link[=bayesmr_het_fit-class]{bayesmr_het_fit}}.}
+}
+\value{
+Invisibly returns \code{NULL}; called for its side effect of printing a
+short description of the object.
 }
 \description{
-Show an instance of the \code{bayesmr_het_fit} class.
+Show a \code{bayesmr_het_fit} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

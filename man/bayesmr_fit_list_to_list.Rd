@@ -2,52 +2,43 @@
 % Please edit documentation in R/convert.R
 \name{bayesmr_fit_list_to_list}
 \alias{bayesmr_fit_list_to_list}
-\title{Conversion of an \code{bayesmr_fit_list} object to a \code{list}.}
+\title{Conversion of a \code{bayesmr_fit_list} Object to a \code{list}}
 \usage{
 bayesmr_fit_list_to_list(res, include.burnin = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{res}{An object of type \code{bayesmr_fit_list}.}
+\item{res}{An object of class \code{bayesmr_fit_list}.}
 
-\item{include.burnin}{A logical scalar. If \code{TRUE} the burnin
-iterations (if available) are not removed.}
+\item{include.burnin}{Logical; if \code{TRUE} the burn-in iterations
+(when stored) are included. Default is \code{FALSE}.}
 
-\item{verbose}{A logical scalar. If \code{TRUE} prints additional
-warnings during the conversion.}
+\item{verbose}{Logical; if \code{TRUE} prints warnings during conversion.
+Default is \code{TRUE}.}
 }
 \value{
-An object of type \code{mcmc.list}.
+A list of numeric matrices, one per chain, with columns
+\code{gamma}, \code{beta}, \code{loglik}, \code{logprior},
+\code{logpost}.
 }
 \description{
-\code{bayesmr_fit_list_to_list} converts an object of class
-\code{bayesmr_fit_list} to a list of arrays including all the parameter.
-chains. It is intended for internal use mainly.
+Converts a multi-chain \code{\link{bayesmr_fit_list-class}} object to a
+plain list of matrices (one per chain) suitable for use with
+\pkg{bayesplot} functions.
 }
 \examples{
 \dontrun{
-data(simdiss, package = "bayesmr")
-
-G <- 3
-p <- 2
-prm.prop <- list(z = 1.5, alpha = .75)
-burnin <- 2000
-nsim <- 1000
-seed <- 2301
-
-set.seed(seed)
-
-control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-  alpha.prop = prm.prop[["alpha"]], nchains = 2, verbose = TRUE)
-sim.bayesmr <- bayesmr(simdiss, control)
-sim.list <- bayesmr_fit_list_to_list(sim.bayesmr, TRUE)
-
-library(bayesplot)
-mcmc_trace(sim.list, regex_pars = "lambda")
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
+res <- bayesmr(dat, control = bayesmr_control(nsim = 500, burnin = 500,
+                                              nchains = 2))
+lst <- bayesmr_fit_list_to_list(res)
+bayesplot::mcmc_trace(lst, pars = "gamma")
 }
+
 }
 \seealso{
-\code{\link{bayesmr}()} for for fitting a DMBC model;
-\code{\link{bayesmr_fit_list-class}}.
+\code{\link{bayesmr}()}, \code{\link{bayesmr_fit_list-class}},
+\code{\link{bayesmr_fit_list_to_mcmc.list}()}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

@@ -1,44 +1,3 @@
-#' Effect of Body Mass Index (BMI) on Systolic Blood Pressure (SBP)
-#'
-#' Summary data obtained by combining three genome-wide association studies:
-#' \enumerate{
-#' \item{BMI-FEM:}{BMI in females by the Genetic Investigation of ANthropometric Traits (GIANT) consortium (sample size: 171977).}
-#' \item{BMI-MAL:}{BMI in males in the same study by the GIANT consortium (sample size: 152893)}
-#' \item{SBP-UKBB:}{SBP using the United Kingdom BioBank (UKBB) data (sample size: 317754)}
-#' }
-#'
-#' The BMI-FEM dataset is used for SNP selection (column \code{pval.selection}). The BMI-MAL dataset estimates the SNPs' effect on BMI and the SBP-UKBB dataset estimates the SNPs' on SBP.
-#'
-#' @docType data
-#'
-#' @usage data(bmi_sbp)
-#'
-#' @format A \code{data.frame} with 160 rows and 29 variables.
-#'
-#' @keywords datasets
-#'
-"bmi_sbp"
-
-#' Effect of HDL choesterol on age-related macular degeneration (AMD)
-#'
-#' Summary data obtained by combining the following genome-wide association studies:
-#' \enumerate{
-#' \item{SNP-HDL:}{Kettunen et al. Available from: http://europepmc.org/articles/PMC4814583}
-#' \item{SNP-AMD:}{International AMD Genomics Consortium (IAMDGC) Available from: http://europepmc.org/articles/PMC4745342}
-#' }
-#'
-#' The Metabolic Syndrome in Men (METSIM) GWAS has been used for SNP selection.
-#'
-#' @docType data
-#'
-#' @usage data(amd_hdl)
-#'
-#' @format A \code{data.frame} with 27 rows and 4 variables.
-#'
-#' @keywords datasets
-#'
-"amd_hdl"
-
 #' Effect of HDL Cholesterol (HDL-C) on Coronary Heart Disease (CHD)
 #'
 #' This dataset is created from three genome-wide association studies using the three-sample summary-data
@@ -66,129 +25,266 @@
 #'
 "hdl_chd"
 
-#' Effect of Body Mass Index (BMI) on Type-2 Diabetes (T2D)
+#' LDL Cholesterol and Coronary Artery Disease GWAS Summary Statistics
 #'
-#' This dataset is created from three genome-wide association studies using the three-sample summary-data MR design
-#' \insertCite{zhao2019powerful}{BayesMRclus}:
-#' \enumerate{
-#' \item \strong{Selection}: \insertCite{akiyama2017genome;textual}{BayesMRclus}
-#' \item \strong{Exposure}: \insertCite{locke2015genetic;textual}{BayesMRclus}
-#' \item \strong{Outcome}: \insertCite{mahajan2018fine;textual}{BayesMRclus}
+#' @description
+#' Harmonised two-sample Mendelian randomisation (MR) summary statistics for the
+#' causal effect of low-density lipoprotein (LDL) cholesterol on coronary artery
+#' disease (CAD), derived from publicly available genome-wide association studies
+#' (GWAS) accessed through the OpenGWAS database
+#' \insertCite{Elsworth2020}{BayesMRclus}.
+#'
+#' The dataset was constructed using the \pkg{TwoSampleMR} R package
+#' \insertCite{Hemani2018}{BayesMRclus}. Genetic instruments for LDL cholesterol
+#' were selected at genome-wide significance and pruned for linkage
+#' disequilibrium. Exposure and outcome associations were harmonised with
+#' \code{action = 2}; variants passing the \code{mr_keep} harmonisation filter
+#' were retained.
+#'
+#' @format A data frame with 73 rows and 44 variables:
+#' \describe{
+#'   \item{SNP}{Character. SNP identifier in dbSNP \code{rs} format.}
+#'   \item{effect_allele.exposure}{Character. Effect allele in the exposure GWAS.}
+#'   \item{other_allele.exposure}{Character. Other allele in the exposure GWAS.}
+#'   \item{effect_allele.outcome}{Character. Effect allele in the outcome GWAS.}
+#'   \item{other_allele.outcome}{Character. Other allele in the outcome GWAS.}
+#'   \item{beta.exposure}{Numeric. SNP association with LDL cholesterol.}
+#'   \item{beta.outcome}{Numeric. SNP association with coronary artery disease, expressed as a log-odds ratio.}
+#'   \item{eaf.exposure}{Numeric. Effect allele frequency in the exposure GWAS.}
+#'   \item{eaf.outcome}{Numeric. Effect allele frequency in the outcome GWAS.}
+#'   \item{remove}{Logical. Harmonisation flag indicating variants to remove.}
+#'   \item{palindromic}{Logical. Whether the variant is palindromic.}
+#'   \item{ambiguous}{Logical. Whether the variant is ambiguous.}
+#'   \item{id.outcome}{Character. OpenGWAS outcome identifier.}
+#'   \item{chr}{Integer. Chromosome in the outcome GWAS.}
+#'   \item{pos}{Integer. Base-pair position in the outcome GWAS.}
+#'   \item{se.outcome}{Numeric. Standard error of \code{beta.outcome}.}
+#'   \item{samplesize.outcome}{Integer. Outcome GWAS sample size.}
+#'   \item{pval.outcome}{Numeric. Outcome GWAS association p-value.}
+#'   \item{outcome}{Character. Outcome trait name and identifier.}
+#'   \item{originalname.outcome}{Character. Original outcome trait name.}
+#'   \item{outcome.deprecated}{Character. Deprecated outcome trait label.}
+#'   \item{mr_keep.outcome}{Logical. Outcome-side harmonisation keep flag.}
+#'   \item{data_source.outcome}{Character. Outcome data source.}
+#'   \item{proxy.outcome}{Logical. Whether the outcome association used a proxy SNP.}
+#'   \item{target_snp.outcome}{Character. Target SNP for proxy lookup, if any.}
+#'   \item{proxy_snp.outcome}{Character. Proxy SNP used for the outcome, if any.}
+#'   \item{target_a1.outcome}{Character. Target effect allele for proxy lookup.}
+#'   \item{target_a2.outcome}{Character. Target other allele for proxy lookup.}
+#'   \item{proxy_a1.outcome}{Character. Proxy effect allele.}
+#'   \item{proxy_a2.outcome}{Character. Proxy other allele.}
+#'   \item{id.exposure}{Character. OpenGWAS exposure identifier.}
+#'   \item{chr.exposure}{Integer. Chromosome in the exposure GWAS.}
+#'   \item{pos.exposure}{Integer. Base-pair position in the exposure GWAS.}
+#'   \item{se.exposure}{Numeric. Standard error of \code{beta.exposure}.}
+#'   \item{pval.exposure}{Numeric. Exposure GWAS association p-value.}
+#'   \item{samplesize.exposure}{Numeric. Exposure GWAS sample size.}
+#'   \item{exposure}{Character. Exposure trait name and identifier.}
+#'   \item{mr_keep.exposure}{Logical. Exposure-side harmonisation keep flag.}
+#'   \item{pval_origin.exposure}{Character. Source of the exposure p-value.}
+#'   \item{data_source.exposure}{Character. Exposure data source.}
+#'   \item{action}{Integer. Harmonisation action used by \pkg{TwoSampleMR}.}
+#'   \item{SNP_index}{Integer. SNP index.}
+#'   \item{mr_keep}{Logical. Overall harmonisation keep flag.}
 #' }
 #'
-#' The 60 SNPs selected are independent (distance \eqn{\ge 10} mega base pairs, \eqn{R^2 \le 0.001} in a
-#' reference panel) and are associated with T2D (p-value less than \eqn{5*10^{-8}}).
+#' @details
+#' \strong{Allele harmonisation.}
+#' Exposure and outcome associations are reported with respect to harmonised
+#' effect alleles. The exposure associations are not reoriented to be positive;
+#' therefore \code{beta.exposure} contains both positive and negative values.
+#'
+#' @examples
+#' data(ldl_cad)
+#'
+#' wald <- ldl_cad$beta.outcome / ldl_cad$beta.exposure
+#' hist(
+#'   wald,
+#'   breaks = 30,
+#'   main = "Wald ratio distribution: LDL cholesterol on CAD",
+#'   xlab = "Wald ratio"
+#' )
+#'
+#' w <- 1 / ldl_cad$se.outcome^2
+#' beta_ivw <- sum(
+#'   w * ldl_cad$beta.outcome * ldl_cad$beta.exposure
+#' ) / sum(
+#'   w * ldl_cad$beta.exposure^2
+#' )
+#'
+#' cat(sprintf("IVW estimate (log-OR): %.4f\n", beta_ivw))
+#'
+#' mcmc_dat <- data.frame(
+#'   gamma_hat = ldl_cad$beta.exposure,
+#'   Gamma_hat = ldl_cad$beta.outcome,
+#'   sigma2X   = ldl_cad$se.exposure^2,
+#'   sigma2Y   = ldl_cad$se.outcome^2
+#' )
+"ldl_cad"
+
+#' WHRadjBMI and Fasting Insulin GWAS Summary Statistics
+#'
+#' @description
+#' Harmonised two-sample Mendelian randomisation (MR) summary statistics
+#' for the causal effect of waist-to-hip ratio adjusted for body mass
+#' index (WHRadjBMI) on fasting blood insulin. Data were derived from
+#' publicly available genome-wide association studies (GWAS) accessed
+#' through the OpenGWAS database \insertCite{Elsworth2020}{BayesMRclus}
+#' and harmonised using the \pkg{TwoSampleMR} R package
+#' \insertCite{Hemani2018}{BayesMRclus}.
+#'
+#' The dataset contains 213 genetic instruments for WHRadjBMI selected
+#' at genome-wide significance (\eqn{p < 5 \times 10^{-8}}) and pruned
+#' for linkage disequilibrium using \eqn{r^2 < 0.001} within a 10 Mb
+#' window. Exposure and outcome associations were harmonised with
+#' \code{action = 2}, allowing palindromic variants to be aligned using
+#' allele frequency information where possible. Only variants passing
+#' the \code{mr_keep} harmonisation filter were retained.
+#'
+#' This dataset is used as a primary empirical application for evaluating
+#' Bayesian nonparametric mixture MR methods in a setting with substantial
+#' instrument heterogeneity.
+#'
+#' @format A data frame with 213 rows and 44 variables:
+#' \describe{
+#'   \item{SNP}{Character. SNP identifier in dbSNP \code{rs} format.}
+#'   \item{effect_allele.exposure}{Character. Effect allele in the exposure GWAS.}
+#'   \item{other_allele.exposure}{Character. Other allele in the exposure GWAS.}
+#'   \item{effect_allele.outcome}{Character. Effect allele in the outcome GWAS.}
+#'   \item{other_allele.outcome}{Character. Other allele in the outcome GWAS.}
+#'   \item{beta.exposure}{Numeric. SNP association with WHRadjBMI.}
+#'   \item{beta.outcome}{Numeric. SNP association with fasting insulin.}
+#'   \item{eaf.exposure}{Numeric. Effect allele frequency in the exposure GWAS.}
+#'   \item{eaf.outcome}{Numeric. Effect allele frequency in the outcome GWAS.}
+#'   \item{remove}{Logical. Harmonisation flag indicating variants to remove.}
+#'   \item{palindromic}{Logical. Whether the variant is palindromic.}
+#'   \item{ambiguous}{Logical. Whether the variant is ambiguous.}
+#'   \item{id.outcome}{Character. OpenGWAS outcome identifier.}
+#'   \item{chr}{Integer. Chromosome in the outcome GWAS.}
+#'   \item{pos}{Integer. Base-pair position in the outcome GWAS.}
+#'   \item{se.outcome}{Numeric. Standard error of \code{beta.outcome}.}
+#'   \item{samplesize.outcome}{Integer. Outcome GWAS sample size.}
+#'   \item{pval.outcome}{Numeric. Outcome GWAS association p-value.}
+#'   \item{outcome}{Character. Outcome trait name and identifier.}
+#'   \item{originalname.outcome}{Character. Original outcome trait name.}
+#'   \item{outcome.deprecated}{Character. Deprecated outcome trait label.}
+#'   \item{mr_keep.outcome}{Logical. Outcome-side harmonisation keep flag.}
+#'   \item{data_source.outcome}{Character. Outcome data source.}
+#'   \item{proxy.outcome}{Logical. Whether the outcome association used a proxy SNP.}
+#'   \item{target_snp.outcome}{Character. Target SNP for proxy lookup, if any.}
+#'   \item{proxy_snp.outcome}{Character. Proxy SNP used for the outcome, if any.}
+#'   \item{target_a1.outcome}{Character. Target effect allele for proxy lookup.}
+#'   \item{target_a2.outcome}{Character. Target other allele for proxy lookup.}
+#'   \item{proxy_a1.outcome}{Character. Proxy effect allele.}
+#'   \item{proxy_a2.outcome}{Character. Proxy other allele.}
+#'   \item{id.exposure}{Character. OpenGWAS exposure identifier.}
+#'   \item{chr.exposure}{Integer. Chromosome in the exposure GWAS.}
+#'   \item{pos.exposure}{Integer. Base-pair position in the exposure GWAS.}
+#'   \item{se.exposure}{Numeric. Standard error of \code{beta.exposure}.}
+#'   \item{pval.exposure}{Numeric. Exposure GWAS association p-value.}
+#'   \item{samplesize.exposure}{Integer. Exposure GWAS sample size.}
+#'   \item{exposure}{Character. Exposure trait name and identifier.}
+#'   \item{mr_keep.exposure}{Logical. Exposure-side harmonisation keep flag.}
+#'   \item{pval_origin.exposure}{Character. Source of the exposure p-value.}
+#'   \item{data_source.exposure}{Character. Exposure data source.}
+#'   \item{action}{Integer. Harmonisation action used by \pkg{TwoSampleMR}.}
+#'   \item{SNP_index}{Integer. SNP index.}
+#'   \item{mr_keep}{Logical. Overall harmonisation keep flag.}
+#' }
+#'
+#' @details
+#' \strong{Exposure GWAS.}
+#' WHRadjBMI summary statistics were obtained from the GIANT consortium
+#' sex-combined GWAS meta-analysis (\eqn{n = 458{,}349}; OpenGWAS
+#' accession \code{ebi-a-GCST90025996})
+#' \insertCite{Shungin2015}{BayesMRclus}. WHRadjBMI is a measure of body
+#' fat distribution adjusted for overall adiposity.
+#'
+#' \strong{Outcome GWAS.}
+#' Fasting insulin summary statistics were obtained from the MAGIC
+#' consortium GWAS (\eqn{n = 51{,}750}; OpenGWAS accession
+#' \code{ebi-a-GCST005185}) \insertCite{Manning2012}{BayesMRclus}.
+#' The outcome is inverse-normal transformed log-fasting insulin, so
+#' effect sizes are not directly interpretable in clinical units.
+#'
+#' \strong{Instrument selection and harmonisation.}
+#' Instruments were extracted using
+#' \code{TwoSampleMR::extract_instruments()} with
+#' \code{p1 = 5e-8}, \code{clump = TRUE},
+#' \code{r2 = 0.001}, and \code{kb = 10000}. Outcome associations were
+#' extracted from the fasting insulin GWAS and harmonised using
+#' \code{harmonise_data(action = 2)}. Variants failing harmonisation or
+#' marked with \code{mr_keep == FALSE} were removed.
+#'
+#' \strong{Instrument strength.}
+#' All retained instruments have strong associations with WHRadjBMI
+#' (\eqn{z_j = \hat\gamma_j / s_{\hat\gamma_j} > 5}), corresponding to
+#' approximate per-variant \eqn{F}-statistics greater than 25.
+#'
+#' \strong{Heterogeneity.}
+#' This application shows substantial heterogeneity in SNP-specific
+#' causal estimates. Preliminary MRClust analysis
+#' \insertCite{Foley2021}{BayesMRclus} identified four components:
+#' a positive causal cluster, a negative causal cluster, a Null component,
+#' and a Junk component. This structure motivates the use of mixture MR
+#' models capable of representing heterogeneous causal pathways.
+#'
+#' \strong{Scientific context.}
+#' Genetic instruments for WHRadjBMI capture multiple biological pathways
+#' related to adipose storage capacity, visceral fat deposition, insulin
+#' resistance, and sex-hormone signalling. Consequently, the relationship
+#' between body fat distribution and fasting insulin is expected to show
+#' more heterogeneity than benchmark MR examples with a single dominant
+#' causal pathway.
+#'
+#' \strong{Data provenance.}
+#' Summary statistics were downloaded from OpenGWAS on April 7, 2026
+#' using \pkg{TwoSampleMR} version 0.7.4.
+#'
+#' @source
+#' Exposure GWAS: OpenGWAS accession \code{ebi-a-GCST90025996}.
+#' \url{https://gwas.mrcieu.ac.uk/datasets/ebi-a-GCST90025996/}
+#'
+#' Outcome GWAS: OpenGWAS accession \code{ebi-a-GCST005185}.
+#' \url{https://gwas.mrcieu.ac.uk/datasets/ebi-a-GCST005185/}
+#'
+#' Harmonisation and instrument extraction performed using
+#' \pkg{TwoSampleMR}:
+#' \url{https://mrcieu.github.io/TwoSampleMR/}
 #'
 #' @references
 #' \insertAllCited{}
 #'
-#' @docType data
+#' @examples
+#' data(whradjbmi_insulin)
 #'
-#' @usage data(bmi_t2d)
+#' # Wald ratios
+#' wald <- whradjbmi_insulin$beta.outcome /
+#'   whradjbmi_insulin$beta.exposure
 #'
-#' @format A \code{data.frame} with 60 rows and 6 variables.
-#'
-#' @keywords datasets
-#'
-"bmi_t2d"
-
-#' Educational attainment → Alzheimer’s disease MR dataset
-#'
-#' Harmonised two-sample Mendelian randomization (MR) dataset
-#' constructed using genome-wide significant SNPs for educational
-#' attainment as instruments and summary statistics for
-#' Alzheimer’s disease as the outcome.
-#'
-#' Instruments were selected at genome-wide significance
-#' (p < 5e-8) and LD-clumped (r2 = 0.001, 10,000 kb window).
-#' Proxy SNPs (rsq >= 0.8) were allowed for the outcome GWAS.
-#'
-#' EXPOSURE: Educational attainment
-#'
-#' OpenGWAS ID: ieu-a-1239
-#'
-#' Source study:
-#' Lee JJ et al. (2018).
-#' Gene discovery and polygenic prediction from a genome-wide
-#' association study of educational attainment in 1.1 million individuals.
-#' Nature Genetics, 50:1112–1121.
-#'
-#' GWAS Catalog accession:
-#' GCST006250
-#'
-#' GWAS Catalog URL:
-#' https://www.ebi.ac.uk/gwas/studies/GCST006250
-#'
-#' OpenGWAS dataset page:
-#' https://gwas.mrcieu.ac.uk/datasets/ieu-a-1239/
-#'
-#' OUTCOME: Alzheimer’s disease
-#'
-#' OpenGWAS ID: ebi-a-GCST90027158
-#'
-#' Source study:
-#' Kunkle BW et al. (2019).
-#' Genetic meta-analysis of diagnosed Alzheimer’s disease
-#' identifies new risk loci and implicates Aβ, tau,
-#' immunity and lipid processing.
-#' Nature Genetics, 51:414–430.
-#'
-#' GWAS Catalog accession:
-#' GCST90027158
-#'
-#' GWAS Catalog URL:
-#' https://www.ebi.ac.uk/gwas/studies/GCST90027158
-#'
-#' OpenGWAS dataset page:
-#' https://gwas.mrcieu.ac.uk/datasets/ebi-a-GCST90027158/
-#'
-#' VARIABLES
-#'
-#' \describe{
-#'   \item{beta_exposure}{Estimated SNP–education association.}
-#'   \item{se_exposure}{Standard error of SNP–education association.}
-#'   \item{beta_outcome}{Estimated SNP–Alzheimer association (log-odds).}
-#'   \item{se_outcome}{Standard error of SNP–Alzheimer association.}
-#' }
-#'
-#' REPRODUCIBILITY
-#'
-#' The dataset can be regenerated with:
-#'
-#' \preformatted{
-#' educ <- extract_instruments(
-#'   outcomes = "ieu-a-1239",
-#'   p1 = 5e-08,
-#'   clump = TRUE,
-#'   r2 = 0.001,
-#'   kb = 10000
+#' hist(
+#'   wald,
+#'   breaks = 30,
+#'   main = "Wald ratio distribution: WHRadjBMI on fasting insulin",
+#'   xlab = "Wald ratio"
 #' )
 #'
-#' alzheimer <- extract_outcome_data(
-#'   snps = educ$SNP,
-#'   outcomes = "ebi-a-GCST90027158",
-#'   proxies = TRUE,
-#'   rsq = 0.8
+#' # Inverse-variance weighted estimate
+#' w <- 1 / whradjbmi_insulin$se.outcome^2
+#' beta_ivw <- sum(
+#'   w * whradjbmi_insulin$beta.outcome *
+#'     whradjbmi_insulin$beta.exposure
+#' ) / sum(
+#'   w * whradjbmi_insulin$beta.exposure^2
 #' )
 #'
-#' dat <- harmonise_data(
-#'   exposure_dat = educ,
-#'   outcome_dat = alzheimer,
-#'   action = 2
+#' cat(sprintf("IVW estimate: %.4f\n", beta_ivw))
+#'
+#' # Prepare input for bayesmr_mixture()
+#' mcmc_dat <- data.frame(
+#'   gamma_hat = whradjbmi_insulin$beta.exposure,
+#'   Gamma_hat = whradjbmi_insulin$beta.outcome,
+#'   sigma2X   = whradjbmi_insulin$se.exposure^2,
+#'   sigma2Y   = whradjbmi_insulin$se.outcome^2
 #' )
-#' }
-#'
-#' @format A \code{data.frame} with 317 rows and 4 variables.
-#'
-#' @source OpenGWAS (https://gwas.mrcieu.ac.uk/)
-#'
-#' @references
-#' Lee JJ et al. (2018) Nature Genetics.
-#' Kunkle BW et al. (2019) Nature Genetics.
-#'
-#' @docType data
-#'
-#' @usage data(educ_alzheimer)
-#'
-#' @keywords datasets MendelianRandomization GWAS
-"educ_alzheimer"
+"whradjbmi_insulin"

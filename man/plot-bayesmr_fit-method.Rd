@@ -3,7 +3,7 @@
 \name{plot,bayesmr_fit-method}
 \alias{plot,bayesmr_fit-method}
 \alias{bayesmr_fit-plot}
-\title{Provide a graphical summary of a \code{bayesmr_fit} class instance.}
+\title{Plot MCMC diagnostics and summaries for a \code{bayesmr_fit} object.}
 \usage{
 \S4method{plot}{bayesmr_fit}(
   x,
@@ -16,34 +16,32 @@
 )
 }
 \arguments{
-\item{x}{An object of class \code{\link{bayesmr_fit}}.}
+\item{x}{An object of class \code{\link[=bayesmr_fit-class]{bayesmr_fit}}.}
 
-\item{what}{A length-one character vector providing the plot type to produce.
-Admissible values are those provided by the \pkg{\link{bayesplot}} package,
-that is: \code{acf}, \code{areas}, \code{dens}, \code{hex}, \code{hist},
-\code{intervals}, \code{neff}, \code{pairs}, \code{parcoord}, \code{recover},
-\code{rhat}, \code{scatter}, \code{trace}, \code{violin} or \code{combo}.
-In particular, \code{combo} allows to mix different plot types. For more
-details see the documentation of the \pkg{\link{bayesplot}} package,
-starting from \code{\link[=MCMC-overview]{this overview page}}.}
+\item{what}{A length-one character vector specifying the plot type. It must be
+one of the plot names supported by the package's internal \code{all_plots_list}
+object, such as \code{"trace"}, \code{"dens"}, \code{"hist"}, \code{"acf"}, \code{"areas"},
+\code{"intervals"}, \code{"rhat"}, \code{"neff"}, or \code{"combo"}.}
 
-\item{pars}{An optional character vector of parameter names. If neither
-\code{pars} nor \code{regex_pars} is specified, the default is to use all parameters.}
+\item{pars}{An optional character vector of exact parameter names to plot.}
 
-\item{regex_pars}{An optional \code{\link[=grep]{regular expression}} to use for
-parameter selection. Can be specified instead of \code{pars} or in addition to
-\code{pars}.}
+\item{regex_pars}{An optional character vector of regular expressions used to
+select parameter names.}
 
-\item{include.burnin}{A length-one logical vector. If \code{TRUE} the
-burnin iterations (if available) are included in the summary.}
+\item{include.burnin}{A length-one logical value indicating whether burn-in
+iterations should be included in the plotted draws.}
 
-\item{combo}{A character vector providing the plot types to combine (see
-\code{\link[bayesplot]{mcmc_combo}}).}
+\item{combo}{A character vector of plot types passed to
+\code{\link[bayesplot:mcmc_combo]{bayesplot::mcmc_combo()}} when \code{what = "combo"}.}
 
-\item{...}{Further arguments to pass on.}
+\item{...}{Further arguments passed to the selected \code{bayesplot} plotting
+function.}
+}
+\value{
+A \code{ggplot} object produced by \code{bayesplot}.
 }
 \description{
-Provide a graphical summary of a \code{bayesmr_fit} class instance.
+Plot MCMC diagnostics and summaries for a \code{bayesmr_fit} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

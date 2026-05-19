@@ -4,27 +4,34 @@
 \name{bayesmr_data-class}
 \alias{bayesmr_data-class}
 \alias{bayesmr_data}
-\title{An S4 class to represent the data to use in a BayesMR model.}
+\title{Input data for a BayesMR analysis.}
 \description{
-An S4 class to represent the data to use in a BayesMR model.
+Stores SNP-level summary statistics for a two-sample summary-data Mendelian
+randomization analysis.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{data}}{A list whose elements are the dissimilarity matrices corresponding
-to the judgments expressed by the \emph{S} subjects/raters. These matrices
-must be defined as a \code{dist} object.}
+\item{\code{data}}{A data frame with four columns: \code{beta_exposure}, \code{beta_outcome},
+\code{se_exposure}, and \code{se_outcome}. Row names are SNP identifiers taken from
+the input \code{SNP} column. When \code{reorientation = TRUE} in the initializer,
+rows with negative \code{beta_exposure} are reoriented by changing the sign of
+both \code{beta_exposure} and \code{beta_outcome}.}
 
-\item{\code{n}}{A length-one character vector representing the number of observations.}
+\item{\code{n}}{A length-one numeric value giving the number of SNPs.}
 }}
 
 \examples{
-showClass("bayesmr_data")
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
+show(dat)
+summary(dat)
 
 }
 \references{
-Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+Consonni, G., Venturini, S., Castelletti, F. (2026).
+"Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+Randomization under Heterogeneity". Working paper.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

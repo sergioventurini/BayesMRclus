@@ -3,23 +3,27 @@
 \name{summary,bayesmr_fit-method}
 \alias{summary,bayesmr_fit-method}
 \alias{bayesmr_fit-summary}
-\title{Provide a summary of a \code{bayesmr_fit} class instance.}
+\title{Summarize a \code{bayesmr_fit} object.}
 \usage{
 \S4method{summary}{bayesmr_fit}(object, include.burnin = FALSE, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmr_fit}}.}
+\item{object}{An object of class \code{\link[=bayesmr_fit-class]{bayesmr_fit}}.}
 
-\item{include.burnin}{A length-one logical vector. If \code{TRUE} the
-burnin iterations (if available) are included in the summary.}
+\item{include.burnin}{A length-one logical value indicating whether burn-in
+iterations should be included when converting fitted objects to \code{coda}
+objects before summarizing.}
 
-\item{...}{Further arguments to pass on (currently ignored).}
-
-\item{summary.Z}{A length-one logical vector. If \code{TRUE} the summary
-also includes the latent configuration coordinates.}
+\item{...}{Further arguments passed to or ignored by the method.}
+}
+\value{
+For fitted objects and fitted-object lists, the result of
+\code{summary.mcmc} or \code{summary.mcmc.list} via the
+corresponding \code{coda} method. For \code{\link[=bayesmr_data-class]{bayesmr_data}}, invisibly returns
+\code{NULL} after printing a summary of the data.
 }
 \description{
-Provide a summary of a \code{bayesmr_fit} class instance.
+Summarize a \code{bayesmr_fit} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

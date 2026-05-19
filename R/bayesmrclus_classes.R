@@ -1,11 +1,16 @@
 ### bayesmr_data ###
 
-#' An S4 class to represent the data to use in a BayesMR model.
+#' Input data for a BayesMR analysis.
 #'
-#' @slot data A list whose elements are the dissimilarity matrices corresponding
-#'   to the judgments expressed by the \emph{S} subjects/raters. These matrices
-#'   must be defined as a \code{dist} object.
-#' @slot n A length-one character vector representing the number of observations.
+#' Stores SNP-level summary statistics for a two-sample summary-data Mendelian
+#' randomization analysis.
+#'
+#' @slot data A data frame with four columns: `beta_exposure`, `beta_outcome`,
+#'   `se_exposure`, and `se_outcome`. Row names are SNP identifiers taken from
+#'   the input `SNP` column. When `reorientation = TRUE` in the initializer,
+#'   rows with negative `beta_exposure` are reoriented by changing the sign of
+#'   both `beta_exposure` and `beta_outcome`.
+#' @slot n A length-one numeric value giving the number of SNPs.
 #'
 #' @name bayesmr_data-class
 #' @rdname bayesmr_data-class
@@ -14,43 +19,48 @@
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @examples
-#' showClass("bayesmr_data")
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
+#' show(dat)
+#' summary(dat)
 #'
 #' @exportClass bayesmr_data
 setClass(Class = "bayesmr_data",
   slots = c(
-    data = "list",
+    data = "data.frame",
     n = "numeric"
   )
 )
 
-#' Create an instance of the \code{bayesmr_data} class using new/initialize.
+#' Initialize a `bayesmr_data` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_data}}.
-#' @param data A list whose elements are the dissimilarity matrices corresponding
-#'   to the judgments expressed by the \emph{S} subjects/raters. These matrices
-#'   must be defined as a \code{dist} object.
-#' @param n A length-one character vector representing the number of objects
-#'   compared by each subject.
-#' @param reorientation A length-one logical vector indicating whether to apply
-#'   allele reorientation.
+#' @param .Object Prototype object from class [`bayesmr_data-class`].
+#' @param data A data frame containing the columns `SNP`, `beta_exposure`,
+#'   `beta_outcome`, `se_exposure`, and `se_outcome`. Dot variants of the four
+#'   numeric column names, namely `beta.exposure`, `beta.outcome`, `se.exposure`,
+#'   and `se.outcome`, are also accepted and renamed internally.
+#' @param reorientation A length-one logical value. If `TRUE`, rows with negative
+#'   `beta_exposure` are reoriented by changing the sign of both `beta_exposure`
+#'   and `beta_outcome`.
+#'
+#' @return An initialized [`bayesmr_data-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_data-method
 #' @aliases bayesmr_data-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize", "bayesmr_data",
   function(
     .Object,
-    data = list(),
-    n = numeric(),
+    data = data.frame(),
     reorientation = TRUE
   )
   {
@@ -70,20 +80,23 @@ setMethod("initialize", "bayesmr_data",
       data_tmp$beta_outcome[flip]  <- -data_tmp$beta_outcome[flip]
     }
     .Object@data <- data_tmp
-    .Object@n <- n
+    .Object@n <- nrow(data_tmp)
     .Object
   }
 )
 
-#' Show an instance of the \code{bayesmr_data} class.
+#' Show a `bayesmr_data` object.
+#'
+#' @param object An object of class [`bayesmr_data-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @param object An object of class \code{\link{bayesmr_data}}.
-#'
 #' @aliases show,bayesmr_data-method
 #' @aliases bayesmr_data-show
-#' 
+#'
 #' @importFrom methods show
 #' @exportMethod show
 setMethod("show",
@@ -94,50 +107,62 @@ setMethod("show",
   }
 )
 
-#' Provide a summary of a \code{bayesmr_data} class instance.
+#' Summarize a `bayesmr_data` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_data}}.
+#' @param object An object of class [`bayesmr_data-class`].
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   summary of the observed data.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases summary,bayesmr_data-method
 #' @aliases bayesmr_data-summary
-#' 
+#'
 #' @exportMethod summary
 setMethod("summary",
   "bayesmr_data",
-    function(object) {
+    function(object, ...) {
       show(object)
       cat("Observed data:\n")
-      summary(object@data)
+      print(summary(object@data))
+      invisible(NULL)
     }
 )
 
-#' Provide a graphical summary of a \code{bayesmr_data} class instance.
+#' Plot a `bayesmr_data` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_data}}.
-#' @param se A length-one logical vector indicating whether to plot the error bars or not.
-#' @param colors A character vector providing the colors to use in the plot.
-#' @param font A length-one numeric vector for the font to use for text.
-#'   Can be a vector. \code{NA} values (the default) mean use \code{par("font")}.
-#' @param cex.font A length-one numeric vector for the character expansion
-#'   factor. \code{NULL} and \code{NA} are equivalent to \code{1.0}. This is an
-#'   absolute measure, not scaled by \code{par("cex")} or by setting
-#''   \code{par("mfrow")} or \code{par("mfcol")}. Can be a vector.
-#' @param ... Further arguments to pass on (currently ignored).
+#' Produces a scatter plot of SNP-exposure effect estimates against SNP-outcome
+#' effect estimates, optionally with horizontal and vertical standard-error bars.
+#'
+#' @param x An object of class [`bayesmr_data-class`].
+#' @param se A length-one logical value indicating whether standard-error bars
+#'   should be drawn.
+#' @param colors A character vector of colors. This argument is currently accepted
+#'   for compatibility but is not used by the plotting code.
+#' @param font A numeric value or vector controlling the font for text. This
+#'   argument is currently accepted for compatibility but is not used by the
+#'   plotting code.
+#' @param cex.font A numeric value or vector controlling text expansion. This
+#'   argument is currently accepted for compatibility but is not used by the
+#'   plotting code.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of producing a base
+#'   R plot.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases plot,bayesmr_data-method
 #' @aliases bayesmr_data-plot
-#' 
+#'
 #' @exportMethod plot
-#' 
+#'
 #' @examples
-#' data(simdiss)
-#' library(bayesplot)
-#' cols <- color_scheme_set("brightblue")
-#' plot(simdiss, colors = unlist(cols)[c(1, 6)], font = 1, cex.font = 0.75)
+#' data(ldl_cad)
+#' dat <- new("bayesmr_data", ldl_cad)
+#' plot(dat)
 setMethod("plot",
   signature(x = "bayesmr_data"),
   function(x, se = TRUE, colors = c("white", "black"), font = NA, cex.font = NA, ...) {
@@ -168,56 +193,33 @@ setMethod("plot",
 
 # ### bayesmr_fit ###
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' Fitted BayesMR model with fixed heterogeneity.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using a single
-#'   Markov Chain Monte Carlo chain.
+#' Stores the output from a single MCMC chain for a BayesMR model without mixture
+#' clustering and with fixed heterogeneity.
 #'
-#' @slot z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @slot z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @slot alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @slot eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @slot sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @slot lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @slot prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @slot x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @slot x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @slot accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @slot data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @slot dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @slot control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @slot prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @slot dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @slot gamma.chain An array containing posterior draws of the exposure effect
+#'   parameter `gamma`.
+#' @slot beta.chain An array containing posterior draws of the causal effect
+#'   parameter `beta`.
+#' @slot accept A numeric vector containing Metropolis-Hastings acceptance
+#'   information.
+#' @slot data A data frame containing the analyzed summary data.
+#' @slot dens A list with log-density components, typically `loglik`, `logprior`,
+#'   and `logpost`.
+#' @slot control A named list of MCMC control settings.
+#' @slot prior A named list of prior hyperparameters.
+#' @slot dim A list of model dimensions, including `n`, the number of SNPs.
 #'
 #' @name bayesmr_fit-class
 #' @rdname bayesmr_fit-class
 #'
-#' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @examples
-#' showClass("bayesmr_fit")
+#' @references
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_fit
 setClass(Class = "bayesmr_fit",
@@ -225,7 +227,7 @@ setClass(Class = "bayesmr_fit",
 		gamma.chain = "array",
 		beta.chain = "array",
 		accept = "numeric",
-		data = "list",
+		data = "data.frame",
 		dens = "list",
 		control = "list",
     prior = "list",
@@ -233,49 +235,25 @@ setClass(Class = "bayesmr_fit",
 	)
 )
 
-#' Create an instance of the \code{bayesmr_fit} class using new/initialize.
+#' Initialize a `bayesmr_fit` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_fit}}.
-#' @param z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @param z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @param alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @param eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @param sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @param lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @param prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @param x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @param x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @param accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @param data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @param dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @param control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @param prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @param dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @param .Object Prototype object from class [`bayesmr_fit-class`].
+#' @param gamma.chain An array containing posterior draws of `gamma`.
+#' @param beta.chain An array containing posterior draws of `beta` or, for mixture models, cluster-specific causal effects.
+#' @param accept A numeric vector or matrix containing Metropolis-Hastings acceptance information.
+#' @param data A data frame containing the analyzed summary data.
+#' @param dens A list with log-density components, typically `loglik`, `logprior`, and `logpost`.
+#' @param control A named list of MCMC control settings.
+#' @param prior A named list of prior hyperparameters.
+#' @param dim A list of model dimensions, including `n`, the number of SNPs.
+#'
+#' @return An initialized [`bayesmr_fit-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_fit-method
 #' @aliases bayesmr_fit-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize",
@@ -285,7 +263,7 @@ setMethod("initialize",
 			gamma.chain = array(),
 			beta.chain = array(),
 			accept = numeric(),
-			data = list(),
+			data = data.frame(),
 			dens = list(),
 			control = list(),
       prior = list(),
@@ -304,15 +282,18 @@ setMethod("initialize",
 		}
 )
 
-#' Show an instance of the \code{bayesmr_fit} class.
+#' Show a `bayesmr_fit` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_fit}}.
+#' @param object An object of class [`bayesmr_fit-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases show,bayesmr_fit-method
 #' @aliases bayesmr_fit-show
-#' 
+#'
 #' @importFrom methods show
 #' @exportMethod show
 setMethod("show",
@@ -324,20 +305,24 @@ setMethod("show",
   }
 )
 
-#' Provide a summary of a \code{bayesmr_fit} class instance.
+#' Summarize a `bayesmr_fit` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_fit}}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param summary.Z A length-one logical vector. If \code{TRUE} the summary
-#'   also includes the latent configuration coordinates.
-#' @param ... Further arguments to pass on (currently ignored).
+#' @param object An object of class [`bayesmr_fit-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases summary,bayesmr_fit-method
 #' @aliases bayesmr_fit-summary
-#' 
+#'
 #' @exportMethod summary
 setMethod("summary",
 	"bayesmr_fit",
@@ -354,25 +339,35 @@ setMethod("summary",
     }
 )
 
-#' @export
-setGeneric("subset", function(x) standardGeneric("subset"))
-
-#' Subsetting a \code{bayesmr_fit} object.
+#' Subset an object.
 #'
-#' @param x An object of class \code{\link{bayesmr_fit}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
-#'   parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
-#'   for parameter selection. Can be specified instead of \code{pars} or in addition
-#'   to \code{pars}.
-#' @param ... Further arguments to pass on (currently ignored).
+#' Generic function for subsetting BayesMR fitted objects by parameter names.
+#'
+#' @param x An object to subset.
+#' @param ... Further arguments passed to methods.
+#'
+#' @return The return value depends on the method.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @export
+setGeneric("subset", function(x, ...) standardGeneric("subset"))
+
+#' Subset MCMC parameters from a `bayesmr_fit` object.
+#'
+#' @param x An object of class [`bayesmr_fit-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc` object containing the selected parameters.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases subset,bayesmr_fit-method
 #' @aliases bayesmr_fit-subset
-#' 
+#'
 #' @export
 setMethod("subset",
   "bayesmr_fit",
@@ -388,33 +383,30 @@ setMethod("subset",
   }
 )
 
-#' Provide a graphical summary of a \code{bayesmr_fit} class instance.
+#' Plot MCMC diagnostics and summaries for a `bayesmr_fit` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_fit}}.
-#' @param what A length-one character vector providing the plot type to produce.
-#'   Admissible values are those provided by the \pkg{\link{bayesplot}} package,
-#'   that is: \code{acf}, \code{areas}, \code{dens}, \code{hex}, \code{hist},
-#'   \code{intervals}, \code{neff}, \code{pairs}, \code{parcoord}, \code{recover},
-#'   \code{rhat}, \code{scatter}, \code{trace}, \code{violin} or \code{combo}.
-#'   In particular, \code{combo} allows to mix different plot types. For more
-#'   details see the documentation of the \pkg{\link{bayesplot}} package,
-#'   starting from \code{\link[=MCMC-overview]{this overview page}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use for
-#'   parameter selection. Can be specified instead of \code{pars} or in addition to
-#'   \code{pars}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param combo A character vector providing the plot types to combine (see
-#'   \code{\link[bayesplot]{mcmc_combo}}).
-#' @param ... Further arguments to pass on.
+#' @param x An object of class [`bayesmr_fit-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases plot,bayesmr_fit-method
 #' @aliases bayesmr_fit-plot
-#' 
+#'
 #' @exportMethod plot
 setMethod("plot",
   signature(x = "bayesmr_fit"),
@@ -554,30 +546,24 @@ setMethod("plot",
   }
 )
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' List of fitted BayesMR fixed-heterogeneity chains.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using multiple
-#'   Markov Chain Monte Carlo chains.
+#' Stores the output from one or more MCMC chains for a BayesMR model without
+#' mixture clustering and with fixed heterogeneity.
 #'
-#' @slot results An object of class \code{list}; list of \code{bayesmr_fit}
-#'   objects corresponding to the parallel MCMC chains simulated during the
-#'   estimation.
+#' @slot results A list of [`bayesmr_fit-class`] objects, one for each simulated
+#'   chain.
 #'
 #' @name bayesmr_fit_list-class
 #' @rdname bayesmr_fit_list-class
 #' @aliases bayesmr_fit_list
 #'
-#' @seealso
-#' \code{\link{bayesmr_fit}} for more details on the components of each element of
-#'   the list.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
-#'
-#' @examples
-#' showClass("bayesmr_fit_list")
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_fit_list
 setClass(Class = "bayesmr_fit_list",
@@ -586,17 +572,18 @@ setClass(Class = "bayesmr_fit_list",
   )
 )
 
-#' Create an instance of the \code{bayesmr_fit_list} class using new/initialize.
+#' Initialize a `bayesmr_fit_list` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_fit_list}}.
-#' @param results A list whose elements are the \code{bayesmr_fit} objects for
-#'   each simulated chain.
+#' @param .Object Prototype object from class [`bayesmr_fit_list-class`].
+#' @param results A list of fitted chain objects.
+#'
+#' @return An initialized [`bayesmr_fit_list-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_fit_list-method
 #' @aliases bayesmr_fit_list-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize", "bayesmr_fit_list",
@@ -610,15 +597,18 @@ setMethod("initialize", "bayesmr_fit_list",
   }
 )
 
-#' Show an instance of the \code{bayesmr_fit_list} class.
+#' Show a `bayesmr_fit_list` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_fit_list}}.
+#' @param object An object of class [`bayesmr_fit_list-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases show,bayesmr_fit_list-method
 #' @aliases bayesmr_fit_list-show
-#' 
+#'
 #' @importFrom methods show
 #' @exportMethod show
 setMethod("show",
@@ -631,20 +621,24 @@ setMethod("show",
   }
 )
 
-#' Provide a summary of a \code{bayesmr_fit_list} class instance.
+#' Summarize a `bayesmr_fit_list` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_fit_list}}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param summary.Z A length-one logical vector. If \code{TRUE} the summary
-#'   also includes the latent configuration coordinates.
-#' @param ... Further arguments to pass on (currently ignored).
+#' @param object An object of class [`bayesmr_fit_list-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases summary,bayesmr_fit_list-method
 #' @aliases bayesmr_fit_list-summary
-#' 
+#'
 #' @exportMethod summary
 setMethod("summary",
   "bayesmr_fit_list",
@@ -662,22 +656,21 @@ setMethod("summary",
     }
 )
 
-#' Subsetting a \code{bayesmr_fit_list} object.
+#' Subset MCMC parameters from a `bayesmr_fit_list` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_fit_list}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
-#'   parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
-#'   for parameter selection. Can be specified instead of \code{pars} or in addition
-#'   to \code{pars}.
-#' @param ... Further arguments to pass on (currently ignored).
+#' @param x An object of class [`bayesmr_fit_list-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc.list` object containing the selected parameters.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases subset,bayesmr_fit_list-method
 #' @aliases bayesmr_fit_list-subset
-#' 
+#'
 #' @export
 setMethod("subset",
   "bayesmr_fit_list",
@@ -693,33 +686,30 @@ setMethod("subset",
   }
 )
 
-#' Provide a graphical summary of a \code{bayesmr_fit_list} class instance.
+#' Plot MCMC diagnostics and summaries for a `bayesmr_fit_list` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_fit_list}}.
-#' @param what A length-one character vector providing the plot type to produce.
-#'   Admissible values are those provided by the \pkg{\link{bayesplot}} package,
-#'   that is: \code{acf}, \code{areas}, \code{dens}, \code{hex}, \code{hist},
-#'   \code{intervals}, \code{neff}, \code{pairs}, \code{parcoord}, \code{recover},
-#'   \code{rhat}, \code{scatter}, \code{trace}, \code{violin} or \code{combo}.
-#'   In particular, \code{combo} allows to mix different plot types. For more
-#'   details see the documentation of the \pkg{\link{bayesplot}} package,
-#'   starting from \code{\link[=MCMC-overview]{this overview page}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use for
-#'   parameter selection. Can be specified instead of \code{pars} or in addition to
-#'   \code{pars}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param combo A character vector providing the plot types to combine (see
-#'   \code{\link[bayesplot]{mcmc_combo}}).
-#' @param ... Further arguments to pass on.
+#' @param x An object of class [`bayesmr_fit_list-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases plot,bayesmr_fit_list-method
 #' @aliases bayesmr_fit_list-plot
-#' 
+#'
 #' @exportMethod plot
 setMethod("plot",
 	signature(x = "bayesmr_fit_list"),
@@ -861,56 +851,32 @@ setMethod("plot",
 
 ### bayesmr_het_fit ###
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' Fitted BayesMR model with random heterogeneity.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using a single
-#'   Markov Chain Monte Carlo chain.
+#' Stores the output from a single MCMC chain for a BayesMR model without mixture
+#' clustering and with random heterogeneity.
 #'
-#' @slot z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @slot z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @slot alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @slot eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @slot sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @slot lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @slot prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @slot x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @slot x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @slot accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @slot data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @slot dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @slot control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @slot prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @slot dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @slot gamma.chain An array containing posterior draws of `gamma`.
+#' @slot beta.chain An array containing posterior draws of `beta`.
+#' @slot psi.chain An array containing posterior draws of `psi`.
+#' @slot tau.chain An array containing posterior draws of `tau`.
+#' @slot accept A matrix containing Metropolis-Hastings acceptance information.
+#' @slot data A data frame containing the analyzed summary data.
+#' @slot dens A list with log-density components, typically `loglik`, `logprior`,
+#'   and `logpost`.
+#' @slot control A named list of MCMC control settings.
+#' @slot prior A named list of prior hyperparameters.
+#' @slot dim A list of model dimensions, including `n`, the number of SNPs.
 #'
 #' @name bayesmr_het_fit-class
 #' @rdname bayesmr_het_fit-class
 #'
-#' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @examples
-#' showClass("bayesmr_het_fit")
+#' @references
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_het_fit
 setClass(Class = "bayesmr_het_fit",
@@ -920,7 +886,7 @@ setClass(Class = "bayesmr_het_fit",
     psi.chain = "array",
     tau.chain = "array",
     accept = "matrix",
-    data = "list",
+    data = "data.frame",
     dens = "list",
     control = "list",
     prior = "list",
@@ -928,49 +894,27 @@ setClass(Class = "bayesmr_het_fit",
   )
 )
 
-#' Create an instance of the \code{bayesmr_het_fit} class using new/initialize.
+#' Initialize a `bayesmr_het_fit` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_het_fit}}.
-#' @param z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @param z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @param alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @param eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @param sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @param lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @param prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @param x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @param x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @param accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @param data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @param dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @param control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @param prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @param dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @param .Object Prototype object from class [`bayesmr_het_fit-class`].
+#' @param gamma.chain An array containing posterior draws of `gamma`.
+#' @param beta.chain An array containing posterior draws of `beta` or, for mixture models, cluster-specific causal effects.
+#' @param psi.chain An array containing posterior draws of `psi`.
+#' @param tau.chain An array containing posterior draws of `tau`.
+#' @param accept A numeric vector or matrix containing Metropolis-Hastings acceptance information.
+#' @param data A data frame containing the analyzed summary data.
+#' @param dens A list with log-density components, typically `loglik`, `logprior`, and `logpost`.
+#' @param control A named list of MCMC control settings.
+#' @param prior A named list of prior hyperparameters.
+#' @param dim A list of model dimensions, including `n`, the number of SNPs.
+#'
+#' @return An initialized [`bayesmr_het_fit-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_het_fit-method
 #' @aliases bayesmr_het_fit-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize",
@@ -982,7 +926,7 @@ setMethod("initialize",
       psi.chain = array(),
       tau.chain = array(),
       accept = matrix(),
-      data = list(),
+      data = data.frame(),
       dens = list(),
       control = list(),
       prior = list(),
@@ -1003,15 +947,18 @@ setMethod("initialize",
     }
 )
 
-#' Show an instance of the \code{bayesmr_het_fit} class.
+#' Show a `bayesmr_het_fit` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_het_fit}}.
+#' @param object An object of class [`bayesmr_het_fit-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases show,bayesmr_het_fit-method
 #' @aliases bayesmr_het_fit-show
-#' 
+#'
 #' @importFrom methods show
 #' @exportMethod show
 setMethod("show",
@@ -1023,20 +970,24 @@ setMethod("show",
   }
 )
 
-#' Provide a summary of a \code{bayesmr_het_fit} class instance.
+#' Summarize a `bayesmr_het_fit` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_het_fit}}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param summary.Z A length-one logical vector. If \code{TRUE} the summary
-#'   also includes the latent configuration coordinates.
-#' @param ... Further arguments to pass on (currently ignored).
+#' @param object An object of class [`bayesmr_het_fit-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases summary,bayesmr_het_fit-method
 #' @aliases bayesmr_het_fit-summary
-#' 
+#'
 #' @exportMethod summary
 setMethod("summary",
   "bayesmr_het_fit",
@@ -1053,25 +1004,21 @@ setMethod("summary",
     }
 )
 
-#' @export
-setGeneric("subset", function(x) standardGeneric("subset"))
-
-#' Subsetting a \code{bayesmr_het_fit} object.
+#' Subset MCMC parameters from a `bayesmr_het_fit` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_het_fit}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
-#'   parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
-#'   for parameter selection. Can be specified instead of \code{pars} or in addition
-#'   to \code{pars}.
-#' @param ... Further arguments to pass on (currently ignored).
+#' @param x An object of class [`bayesmr_het_fit-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc` object containing the selected parameters.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases subset,bayesmr_het_fit-method
 #' @aliases bayesmr_het_fit-subset
-#' 
+#'
 #' @export
 setMethod("subset",
   "bayesmr_het_fit",
@@ -1087,33 +1034,30 @@ setMethod("subset",
   }
 )
 
-#' Provide a graphical summary of a \code{bayesmr_het_fit} class instance.
+#' Plot MCMC diagnostics and summaries for a `bayesmr_het_fit` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_het_fit}}.
-#' @param what A length-one character vector providing the plot type to produce.
-#'   Admissible values are those provided by the \pkg{\link{bayesplot}} package,
-#'   that is: \code{acf}, \code{areas}, \code{dens}, \code{hex}, \code{hist},
-#'   \code{intervals}, \code{neff}, \code{pairs}, \code{parcoord}, \code{recover},
-#'   \code{rhat}, \code{scatter}, \code{trace}, \code{violin} or \code{combo}.
-#'   In particular, \code{combo} allows to mix different plot types. For more
-#'   details see the documentation of the \pkg{\link{bayesplot}} package,
-#'   starting from \code{\link[=MCMC-overview]{this overview page}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use for
-#'   parameter selection. Can be specified instead of \code{pars} or in addition to
-#'   \code{pars}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param combo A character vector providing the plot types to combine (see
-#'   \code{\link[bayesplot]{mcmc_combo}}).
-#' @param ... Further arguments to pass on.
+#' @param x An object of class [`bayesmr_het_fit-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases plot,bayesmr_het_fit-method
 #' @aliases bayesmr_het_fit-plot
-#' 
+#'
 #' @exportMethod plot
 setMethod("plot",
   signature(x = "bayesmr_het_fit"),
@@ -1253,30 +1197,24 @@ setMethod("plot",
   }
 )
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' List of fitted BayesMR random-heterogeneity chains.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using multiple
-#'   Markov Chain Monte Carlo chains.
+#' Stores the output from one or more MCMC chains for a BayesMR model without
+#' mixture clustering and with random heterogeneity.
 #'
-#' @slot results An object of class \code{list}; list of \code{bayesmr_het_fit}
-#'   objects corresponding to the parallel MCMC chains simulated during the
-#'   estimation.
+#' @slot results A list of [`bayesmr_het_fit-class`] objects, one for each
+#'   simulated chain.
 #'
 #' @name bayesmr_het_fit_list-class
 #' @rdname bayesmr_het_fit_list-class
 #' @aliases bayesmr_het_fit_list
 #'
-#' @seealso
-#' \code{\link{bayesmr_het_fit}} for more details on the components of each element of
-#'   the list.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
-#'
-#' @examples
-#' showClass("bayesmr_het_fit_list")
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_het_fit_list
 setClass(Class = "bayesmr_het_fit_list",
@@ -1285,17 +1223,18 @@ setClass(Class = "bayesmr_het_fit_list",
   )
 )
 
-#' Create an instance of the \code{bayesmr_het_fit_list} class using new/initialize.
+#' Initialize a `bayesmr_het_fit_list` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_het_fit_list}}.
-#' @param results A list whose elements are the \code{bayesmr_het_fit} objects for
-#'   each simulated chain.
+#' @param .Object Prototype object from class [`bayesmr_het_fit_list-class`].
+#' @param results A list of fitted chain objects.
+#'
+#' @return An initialized [`bayesmr_het_fit_list-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_het_fit_list-method
 #' @aliases bayesmr_het_fit_list-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize", "bayesmr_het_fit_list",
@@ -1309,15 +1248,18 @@ setMethod("initialize", "bayesmr_het_fit_list",
   }
 )
 
-#' Show an instance of the \code{bayesmr_het_fit_list} class.
+#' Show a `bayesmr_het_fit_list` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_het_fit_list}}.
+#' @param object An object of class [`bayesmr_het_fit_list-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases show,bayesmr_het_fit_list-method
 #' @aliases bayesmr_het_fit_list-show
-#' 
+#'
 #' @importFrom methods show
 #' @exportMethod show
 setMethod("show",
@@ -1330,20 +1272,24 @@ setMethod("show",
   }
 )
 
-#' Provide a summary of a \code{bayesmr_het_fit_list} class instance.
+#' Summarize a `bayesmr_het_fit_list` object.
 #'
-#' @param object An object of class \code{\link{bayesmr_het_fit_list}}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param summary.Z A length-one logical vector. If \code{TRUE} the summary
-#'   also includes the latent configuration coordinates.
-#' @param ... Further arguments to pass on (currently ignored).
+#' @param object An object of class [`bayesmr_het_fit_list-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases summary,bayesmr_het_fit_list-method
 #' @aliases bayesmr_het_fit_list-summary
-#' 
+#'
 #' @exportMethod summary
 setMethod("summary",
   "bayesmr_het_fit_list",
@@ -1361,22 +1307,21 @@ setMethod("summary",
     }
 )
 
-#' Subsetting a \code{bayesmr_het_fit_list} object.
+#' Subset MCMC parameters from a `bayesmr_het_fit_list` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_het_fit_list}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all
-#'   parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use
-#'   for parameter selection. Can be specified instead of \code{pars} or in addition
-#'   to \code{pars}.
-#' @param ... Further arguments to pass on (currently ignored).
+#' @param x An object of class [`bayesmr_het_fit_list-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc.list` object containing the selected parameters.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases subset,bayesmr_het_fit_list-method
 #' @aliases bayesmr_het_fit_list-subset
-#' 
+#'
 #' @export
 setMethod("subset",
   "bayesmr_het_fit_list",
@@ -1392,33 +1337,30 @@ setMethod("subset",
   }
 )
 
-#' Provide a graphical summary of a \code{bayesmr_het_fit_list} class instance.
+#' Plot MCMC diagnostics and summaries for a `bayesmr_het_fit_list` object.
 #'
-#' @param x An object of class \code{\link{bayesmr_het_fit_list}}.
-#' @param what A length-one character vector providing the plot type to produce.
-#'   Admissible values are those provided by the \pkg{\link{bayesplot}} package,
-#'   that is: \code{acf}, \code{areas}, \code{dens}, \code{hex}, \code{hist},
-#'   \code{intervals}, \code{neff}, \code{pairs}, \code{parcoord}, \code{recover},
-#'   \code{rhat}, \code{scatter}, \code{trace}, \code{violin} or \code{combo}.
-#'   In particular, \code{combo} allows to mix different plot types. For more
-#'   details see the documentation of the \pkg{\link{bayesplot}} package,
-#'   starting from \code{\link[=MCMC-overview]{this overview page}}.
-#' @param pars An optional character vector of parameter names. If neither 
-#'   \code{pars} nor \code{regex_pars} is specified, the default is to use all parameters.
-#' @param regex_pars An optional \code{\link[=grep]{regular expression}} to use for
-#'   parameter selection. Can be specified instead of \code{pars} or in addition to
-#'   \code{pars}.
-#' @param include.burnin A length-one logical vector. If \code{TRUE} the
-#'   burnin iterations (if available) are included in the summary.
-#' @param combo A character vector providing the plot types to combine (see
-#'   \code{\link[bayesplot]{mcmc_combo}}).
-#' @param ... Further arguments to pass on.
+#' @param x An object of class [`bayesmr_het_fit_list-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases plot,bayesmr_het_fit_list-method
 #' @aliases bayesmr_het_fit_list-plot
-#' 
+#'
 #' @exportMethod plot
 setMethod("plot",
   signature(x = "bayesmr_het_fit_list"),
@@ -1585,56 +1527,37 @@ setMethod("plot",
 
 ### bayesmr_mix_fit ###
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' Fitted BayesMR mixture model with fixed heterogeneity.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using a single
-#'   Markov Chain Monte Carlo chain.
+#' Stores the output from a single MCMC chain for a BayesMR mixture model with
+#' cluster-specific causal effects and fixed heterogeneity.
 #'
-#' @slot z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @slot z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @slot alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @slot eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @slot sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @slot lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @slot prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @slot x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @slot x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @slot accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @slot data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @slot dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @slot control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @slot prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @slot dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @slot gamma.chain An array containing posterior draws of `gamma`.
+#' @slot beta.chain An array containing posterior draws of the cluster-specific
+#'   causal effects, with one row per stored MCMC iteration and one column per
+#'   SNP.
+#' @slot xi.chain An array containing posterior draws of the cluster allocation
+#'   indicators, with one row per stored MCMC iteration and one column per SNP.
+#' @slot alpha.chain An array containing posterior draws of the mixture
+#'   concentration parameter `alpha`.
+#' @slot accept A numeric vector containing Metropolis-Hastings acceptance
+#'   information.
+#' @slot data A data frame containing the analyzed summary data.
+#' @slot dens A list with log-density components, typically `loglik`, `logprior`,
+#'   and `logpost`.
+#' @slot control A named list of MCMC control settings.
+#' @slot prior A named list of prior hyperparameters.
+#' @slot dim A list of model dimensions, including `n`, the number of SNPs.
 #'
 #' @name bayesmr_mix_fit-class
 #' @rdname bayesmr_mix_fit-class
 #'
-#' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @examples
-#' showClass("bayesmr_mix_fit")
+#' @references
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_mix_fit
 setClass(Class = "bayesmr_mix_fit",
@@ -1644,7 +1567,7 @@ setClass(Class = "bayesmr_mix_fit",
     xi.chain = "array",
     alpha.chain = "array",
     accept = "numeric",
-    data = "list",
+    data = "data.frame",
     dens = "list",
     control = "list",
     prior = "list",
@@ -1652,49 +1575,27 @@ setClass(Class = "bayesmr_mix_fit",
   )
 )
 
-#' Create an instance of the \code{bayesmr_mix_fit} class using new/initialize.
+#' Initialize a `bayesmr_mix_fit` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_mix_fit}}.
-#' @param z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @param z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @param alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @param eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @param sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @param lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @param prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @param x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @param x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @param accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @param data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @param dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @param control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @param prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @param dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @param .Object Prototype object from class [`bayesmr_mix_fit-class`].
+#' @param gamma.chain An array containing posterior draws of `gamma`.
+#' @param beta.chain An array containing posterior draws of `beta` or, for mixture models, cluster-specific causal effects.
+#' @param xi.chain An array containing posterior draws of cluster allocation indicators.
+#' @param alpha.chain An array containing posterior draws of the mixture concentration parameter `alpha`.
+#' @param accept A numeric vector or matrix containing Metropolis-Hastings acceptance information.
+#' @param data A data frame containing the analyzed summary data.
+#' @param dens A list with log-density components, typically `loglik`, `logprior`, and `logpost`.
+#' @param control A named list of MCMC control settings.
+#' @param prior A named list of prior hyperparameters.
+#' @param dim A list of model dimensions, including `n`, the number of SNPs.
+#'
+#' @return An initialized [`bayesmr_mix_fit-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_mix_fit-method
 #' @aliases bayesmr_mix_fit-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize",
@@ -1706,7 +1607,7 @@ setMethod("initialize",
       xi.chain = array(),
       alpha.chain = array(),
       accept = numeric(),
-      data = list(),
+      data = data.frame(),
       dens = list(),
       control = list(),
       prior = list(),
@@ -1727,30 +1628,24 @@ setMethod("initialize",
     }
 )
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' List of fitted BayesMR mixture-model chains.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using multiple
-#'   Markov Chain Monte Carlo chains.
+#' Stores the output from one or more MCMC chains for a BayesMR mixture model with
+#' cluster-specific causal effects and fixed heterogeneity.
 #'
-#' @slot results An object of class \code{list}; list of \code{bayesmr_fit}
-#'   objects corresponding to the parallel MCMC chains simulated during the
-#'   estimation.
+#' @slot results A list of [`bayesmr_mix_fit-class`] objects, one for each
+#'   simulated chain.
 #'
 #' @name bayesmr_mix_fit_list-class
 #' @rdname bayesmr_mix_fit_list-class
 #' @aliases bayesmr_mix_fit_list
 #'
-#' @seealso
-#' \code{\link{bayesmr_fit}} for more details on the components of each element of
-#'   the list.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
-#'
-#' @examples
-#' showClass("bayesmr_mix_fit_list")
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_mix_fit_list
 setClass(Class = "bayesmr_mix_fit_list",
@@ -1759,17 +1654,18 @@ setClass(Class = "bayesmr_mix_fit_list",
   )
 )
 
-#' Create an instance of the \code{bayesmr_mix_fit_list} class using new/initialize.
+#' Initialize a `bayesmr_mix_fit_list` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_mix_fit_list}}.
-#' @param results A list whose elements are the \code{bayesmr_fit} objects for
-#'   each simulated chain.
+#' @param .Object Prototype object from class [`bayesmr_mix_fit_list-class`].
+#' @param results A list of fitted chain objects.
+#'
+#' @return An initialized [`bayesmr_mix_fit_list-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_mix_fit_list-method
 #' @aliases bayesmr_mix_fit_list-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize", "bayesmr_mix_fit_list",
@@ -1785,56 +1681,39 @@ setMethod("initialize", "bayesmr_mix_fit_list",
 
 ### bayesmr_mix_het_fit ###
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' Fitted BayesMR mixture model with random heterogeneity.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using a single
-#'   Markov Chain Monte Carlo chain.
+#' Stores the output from a single MCMC chain for a BayesMR mixture model with
+#' cluster-specific causal effects and random heterogeneity.
 #'
-#' @slot z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @slot z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @slot alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @slot eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @slot sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @slot lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @slot prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @slot x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @slot x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @slot accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @slot data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @slot dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @slot control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @slot prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @slot dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @slot gamma.chain An array containing posterior draws of `gamma`.
+#' @slot beta.chain An array containing posterior draws of the cluster-specific
+#'   causal effects, with one row per stored MCMC iteration and one column per
+#'   SNP.
+#' @slot xi.chain An array containing posterior draws of the cluster allocation
+#'   indicators, with one row per stored MCMC iteration and one column per SNP.
+#' @slot alpha.chain An array containing posterior draws of the mixture
+#'   concentration parameter `alpha`.
+#' @slot psi.chain An array containing posterior draws of `psi`.
+#' @slot tau.chain An array containing posterior draws of `tau`.
+#' @slot accept A numeric vector containing Metropolis-Hastings acceptance
+#'   information.
+#' @slot data A data frame containing the analyzed summary data.
+#' @slot dens A list with log-density components, typically `loglik`, `logprior`,
+#'   and `logpost`.
+#' @slot control A named list of MCMC control settings.
+#' @slot prior A named list of prior hyperparameters.
+#' @slot dim A list of model dimensions, including `n`, the number of SNPs.
 #'
 #' @name bayesmr_mix_het_fit-class
 #' @rdname bayesmr_mix_het_fit-class
 #'
-#' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
-#' @examples
-#' showClass("bayesmr_mix_het_fit")
+#' @references
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_mix_het_fit
 setClass(Class = "bayesmr_mix_het_fit",
@@ -1846,7 +1725,7 @@ setClass(Class = "bayesmr_mix_het_fit",
     psi.chain = "array",
     tau.chain = "array",
     accept = "numeric",
-    data = "list",
+    data = "data.frame",
     dens = "list",
     control = "list",
     prior = "list",
@@ -1854,49 +1733,29 @@ setClass(Class = "bayesmr_mix_het_fit",
   )
 )
 
-#' Create an instance of the \code{bayesmr_mix_het_fit} class using new/initialize.
+#' Initialize a `bayesmr_mix_het_fit` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_mix_het_fit}}.
-#' @param z.chain An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.
-#' @param z.chain.p An object of class \code{array}; posterior draws from
-#'   the MCMC algorithm for the (Procrustes-transformed) latent configuration
-#'   \eqn{Z}.
-#' @param alpha.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\alpha} parameters.
-#' @param eta.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\eta} parameters.
-#' @param sigma2.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\sigma^2} parameters.
-#' @param lambda.chain An object of class \code{matrix}; posterior draws
-#'   from the MCMC algorithm for the \eqn{\lambda} parameters.
-#' @param prob.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership probabilities.
-#' @param x.ind.chain An object of class \code{array}; posterior draws
-#'   from the MCMC algorithm for the cluster membership indicators.
-#' @param x.chain An object of class \code{matrix}; posterior draws from
-#'   the MCMC algorithm for the cluster membership labels.
-#' @param accept An object of class \code{matrix}; final acceptance rates
-#'   for the MCMC algorithm.
-#' @param data An object of class \code{list}; list of observed
-#'   dissimilarity matrices.
-#' @param dens An object of class \code{list}; list of log-likelihood,
-#'   log-prior and log-posterior values at each iteration of the MCMC simulation.
-#' @param control An object of class \code{list}; list of the control
-#'   parameters (number of burnin and sample iterations, number of MCMC chains,
-#'   etc.). See \code{\link{bayesmr_control}()} for more information.
-#' @param prior An object of class \code{list}; list of the prior
-#'   hyperparameters. See \code{\link{bayesmr_prior}()} for more information.
-#' @param dim An object of class \code{list}; list of dimensions for
-#'   the estimated model, i.e. number of objects (\emph{n}), number of latent
-#'   dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-#'   subjects (\emph{S}).
+#' @param .Object Prototype object from class [`bayesmr_mix_het_fit-class`].
+#' @param gamma.chain An array containing posterior draws of `gamma`.
+#' @param beta.chain An array containing posterior draws of `beta` or, for mixture models, cluster-specific causal effects.
+#' @param xi.chain An array containing posterior draws of cluster allocation indicators.
+#' @param alpha.chain An array containing posterior draws of the mixture concentration parameter `alpha`.
+#' @param psi.chain An array containing posterior draws of `psi`.
+#' @param tau.chain An array containing posterior draws of `tau`.
+#' @param accept A numeric vector or matrix containing Metropolis-Hastings acceptance information.
+#' @param data A data frame containing the analyzed summary data.
+#' @param dens A list with log-density components, typically `loglik`, `logprior`, and `logpost`.
+#' @param control A named list of MCMC control settings.
+#' @param prior A named list of prior hyperparameters.
+#' @param dim A list of model dimensions, including `n`, the number of SNPs.
+#'
+#' @return An initialized [`bayesmr_mix_het_fit-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_mix_het_fit-method
 #' @aliases bayesmr_mix_het_fit-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize",
@@ -1910,7 +1769,7 @@ setMethod("initialize",
       psi.chain = array(),
       tau.chain = array(),
       accept = numeric(),
-      data = list(),
+      data = data.frame(),
       dens = list(),
       control = list(),
       prior = list(),
@@ -1933,30 +1792,24 @@ setMethod("initialize",
     }
 )
 
-#' An S4 class to represent the results of fitting BayesMR model.
+#' List of fitted BayesMR mixture random-heterogeneity chains.
 #'
-#' @description
-#'   An S4 class to represent the results of fitting BayesMR model using multiple
-#'   Markov Chain Monte Carlo chains.
+#' Stores the output from one or more MCMC chains for a BayesMR mixture model with
+#' cluster-specific causal effects and random heterogeneity.
 #'
-#' @slot results An object of class \code{list}; list of \code{bayesmr_fit}
-#'   objects corresponding to the parallel MCMC chains simulated during the
-#'   estimation.
+#' @slot results A list of [`bayesmr_mix_het_fit-class`] objects, one for each
+#'   simulated chain.
 #'
 #' @name bayesmr_mix_het_fit_list-class
 #' @rdname bayesmr_mix_het_fit_list-class
 #' @aliases bayesmr_mix_het_fit_list
 #'
-#' @seealso
-#' \code{\link{bayesmr_fit}} for more details on the components of each element of
-#'   the list.
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @references
-#'   Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-#'   Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
-#'
-#' @examples
-#' showClass("bayesmr_mix_het_fit_list")
+#' Consonni, G., Venturini, S., Castelletti, F. (2026).
+#' "Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+#' Randomization under Heterogeneity". Working paper.
 #'
 #' @exportClass bayesmr_mix_het_fit_list
 setClass(Class = "bayesmr_mix_het_fit_list",
@@ -1965,17 +1818,18 @@ setClass(Class = "bayesmr_mix_het_fit_list",
   )
 )
 
-#' Create an instance of the \code{bayesmr_mix_het_fit_list} class using new/initialize.
+#' Initialize a `bayesmr_mix_het_fit_list` object.
 #'
-#' @param .Object Prototype object from the class \code{\link{bayesmr_mix_het_fit_list}}.
-#' @param results A list whose elements are the \code{bayesmr_fit} objects for
-#'   each simulated chain.
+#' @param .Object Prototype object from class [`bayesmr_mix_het_fit_list-class`].
+#' @param results A list of fitted chain objects.
+#'
+#' @return An initialized [`bayesmr_mix_het_fit_list-class`] object.
 #'
 #' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
 #'
 #' @aliases initialize,bayesmr_mix_het_fit_list-method
 #' @aliases bayesmr_mix_het_fit_list-initialize
-#' 
+#'
 #' @importFrom methods initialize
 #' @exportMethod initialize
 setMethod("initialize", "bayesmr_mix_het_fit_list",
@@ -1986,5 +1840,701 @@ setMethod("initialize", "bayesmr_mix_het_fit_list",
   {
     .Object@results <- results
     .Object
+  }
+)
+
+### bayesmr_mix_fit methods ###
+
+#' Show a `bayesmr_mix_fit` object.
+#'
+#' @param object An object of class [`bayesmr_mix_fit-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases show,bayesmr_mix_fit-method
+#' @aliases bayesmr_mix_fit-show
+#'
+#' @importFrom methods show
+#' @exportMethod show
+setMethod("show",
+  "bayesmr_mix_fit",
+  function(object) {
+    cat("Bayesian Two-Sample Summary Data mixture model (single chain)\n")
+    cat("Number of SNPs:", object@dim[["n"]], "\n")
+    cat("\n")
+    cat("To get a summary of the object, use the 'summary()' function.")
+  }
+)
+
+#' Summarize a `bayesmr_mix_fit` object.
+#'
+#' @param object An object of class [`bayesmr_mix_fit-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases summary,bayesmr_mix_fit-method
+#' @aliases bayesmr_mix_fit-summary
+#'
+#' @exportMethod summary
+setMethod("summary",
+  "bayesmr_mix_fit",
+  function(object, include.burnin = FALSE, ...) {
+    res.coda <- bayesmr_mix_fit_to_mcmc(object, include.burnin = include.burnin, verbose = FALSE)
+    out <- summary(res.coda)
+    return(out)
+  }
+)
+
+#' Subset MCMC parameters from a `bayesmr_mix_fit` object.
+#'
+#' @param x An object of class [`bayesmr_mix_fit-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc` object containing the selected parameters.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases subset,bayesmr_mix_fit-method
+#' @aliases bayesmr_mix_fit-subset
+#'
+#' @export
+setMethod("subset",
+  "bayesmr_mix_fit",
+  function(x, pars = character(), regex_pars = character(), ...) {
+    x_mcmc <- bayesmr_mix_fit_to_mcmc(x, include.burnin = TRUE, verbose = FALSE)
+    parnames <- colnames(x_mcmc)
+    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
+    out <- x_mcmc[, pars]
+    return(out)
+  }
+)
+
+#' Plot MCMC diagnostics and summaries for a `bayesmr_mix_fit` object.
+#'
+#' @param x An object of class [`bayesmr_mix_fit-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases plot,bayesmr_mix_fit-method
+#' @aliases bayesmr_mix_fit-plot
+#'
+#' @exportMethod plot
+setMethod("plot",
+  signature(x = "bayesmr_mix_fit"),
+  function(x, what = "trace", pars = character(), regex_pars = character(),
+           include.burnin = FALSE, combo = NULL, ...) {
+    stopifnot(is.character(pars), is.character(regex_pars), is.character(what))
+
+    if (!(what %in% unlist(all_plots_list, use.names = FALSE)))
+      stop("the plot type specified is not available.")
+
+    x_mcmc <- bayesmr_mix_fit_to_mcmc(x, include.burnin = include.burnin, verbose = FALSE)
+    control <- x@control
+
+    if (what %in% acf_plot_list) {
+      if (what == "acf") p <- bayesplot::mcmc_acf(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_acf_bar(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% areas_plot_list) {
+      if (what == "areas") p <- bayesplot::mcmc_areas(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_areas_ridges(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% dens_plot_list) {
+      if (what == "dens") p <- bayesplot::mcmc_dens(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else if (what == "dens_overlay") p <- bayesplot::mcmc_dens_overlay(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_dens_chains(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hex_plot_list) {
+      p <- bayesplot::mcmc_hex(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hist_plot_list) {
+      if (what == "hist") p <- bayesplot::mcmc_hist(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_hist_by_chain(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% intervals_plot_list) {
+      p <- bayesplot::mcmc_intervals(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% neff_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      nsample <- floor((control[["burnin"]] + control[["nsim"]]) / control[["thin"]])
+      neff <- coda::effectiveSize(x_sub)
+      ratio <- neff / nsample
+      if (what == "neff") p <- bayesplot::mcmc_neff(ratio = ratio, ...)
+      else p <- bayesplot::mcmc_neff_hist(ratio = ratio, ...)
+    } else if (what %in% pairs_plot_list) {
+      p <- bayesplot::mcmc_pairs(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% parcoord_plot_list) {
+      p <- bayesplot::mcmc_parcoord(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% recover_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      if (what == "recover_hist") p <- bayesplot::mcmc_recover_hist(x = x_sub, ...)
+      else if (what == "recover_intervals") p <- bayesplot::mcmc_recover_intervals(x = x_sub, ...)
+      else p <- bayesplot::mcmc_recover_scatter(x = x_sub, ...)
+    } else if (what %in% rhat_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      rhat <- coda::gelman.diag(x_sub, multivariate = FALSE)$psrf[, 1]
+      if (what == "rhat") p <- bayesplot::mcmc_rhat(rhat = rhat, ...)
+      else p <- bayesplot::mcmc_rhat_hist(rhat = rhat, ...)
+    } else if (what %in% scatter_plot_list) {
+      p <- bayesplot::mcmc_scatter(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% trace_plot_list) {
+      if (what == "trace") p <- bayesplot::mcmc_trace(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_trace_highlight(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% violin_plot_list) {
+      p <- bayesplot::mcmc_violin(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what == "combo") {
+      if (!is.null(combo))
+        p <- bayesplot::mcmc_combo(x = x_mcmc, pars = pars, regex_pars = regex_pars, combo = combo, ...)
+      else
+        stop("to produce an 'mcmc_combo' plot, the 'combo' option must be specified.")
+    }
+
+    p
+  }
+)
+
+### bayesmr_mix_fit_list methods ###
+
+#' Show a `bayesmr_mix_fit_list` object.
+#'
+#' @param object An object of class [`bayesmr_mix_fit_list-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases show,bayesmr_mix_fit_list-method
+#' @aliases bayesmr_mix_fit_list-show
+#'
+#' @importFrom methods show
+#' @exportMethod show
+setMethod("show",
+  "bayesmr_mix_fit_list",
+  function(object) {
+    cat("List of Bayesian Two-Sample Summary Data mixture model chains\n")
+    cat("Number of simulated chains:", length(object@results), "\n")
+    cat("\n")
+    cat("To get a summary of the object, use the 'summary()' function.")
+  }
+)
+
+#' Summarize a `bayesmr_mix_fit_list` object.
+#'
+#' @param object An object of class [`bayesmr_mix_fit_list-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases summary,bayesmr_mix_fit_list-method
+#' @aliases bayesmr_mix_fit_list-summary
+#'
+#' @exportMethod summary
+setMethod("summary",
+  "bayesmr_mix_fit_list",
+  function(object, include.burnin = FALSE, ...) {
+    res.coda <- bayesmr_mix_fit_list_to_mcmc.list(object, include.burnin = include.burnin, verbose = FALSE)
+    out <- summary(res.coda)
+    return(out)
+  }
+)
+
+#' Subset MCMC parameters from a `bayesmr_mix_fit_list` object.
+#'
+#' @param x An object of class [`bayesmr_mix_fit_list-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc.list` object containing the selected parameters.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases subset,bayesmr_mix_fit_list-method
+#' @aliases bayesmr_mix_fit_list-subset
+#'
+#' @export
+setMethod("subset",
+  "bayesmr_mix_fit_list",
+  function(x, pars = character(), regex_pars = character(), ...) {
+    x_mcmc.list <- bayesmr_mix_fit_list_to_mcmc.list(x, include.burnin = TRUE, verbose = FALSE)
+    parnames <- colnames(x_mcmc.list[[1]])
+    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
+    out <- coda::mcmc.list(lapply(x_mcmc.list, function(chain) chain[, pars]))
+    return(out)
+  }
+)
+
+#' Plot MCMC diagnostics and summaries for a `bayesmr_mix_fit_list` object.
+#'
+#' @param x An object of class [`bayesmr_mix_fit_list-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases plot,bayesmr_mix_fit_list-method
+#' @aliases bayesmr_mix_fit_list-plot
+#'
+#' @exportMethod plot
+setMethod("plot",
+  signature(x = "bayesmr_mix_fit_list"),
+  function(x, what = "trace", pars = character(), regex_pars = character(),
+           include.burnin = FALSE, combo = NULL, ...) {
+    stopifnot(is.character(pars), is.character(regex_pars), is.character(what))
+
+    if (!(what %in% unlist(all_plots_list, use.names = FALSE)))
+      stop("the plot type specified is not available.")
+
+    x_mcmc.list <- bayesmr_mix_fit_list_to_mcmc.list(x, include.burnin = include.burnin, verbose = FALSE)
+    control <- x@results[[1]]@control
+
+    if (what %in% acf_plot_list) {
+      if (what == "acf") p <- bayesplot::mcmc_acf(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_acf_bar(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% areas_plot_list) {
+      if (what == "areas") p <- bayesplot::mcmc_areas(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_areas_ridges(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% dens_plot_list) {
+      if (what == "dens") p <- bayesplot::mcmc_dens(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else if (what == "dens_overlay") p <- bayesplot::mcmc_dens_overlay(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_dens_chains(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hex_plot_list) {
+      p <- bayesplot::mcmc_hex(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hist_plot_list) {
+      if (what == "hist") p <- bayesplot::mcmc_hist(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_hist_by_chain(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% intervals_plot_list) {
+      p <- bayesplot::mcmc_intervals(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% neff_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      nsample <- control[["nchains"]] * floor((control[["burnin"]] + control[["nsim"]]) / control[["thin"]])
+      neff <- coda::effectiveSize(x_sub)
+      ratio <- neff / nsample
+      if (what == "neff") p <- bayesplot::mcmc_neff(ratio = ratio, ...)
+      else p <- bayesplot::mcmc_neff_hist(ratio = ratio, ...)
+    } else if (what %in% pairs_plot_list) {
+      p <- bayesplot::mcmc_pairs(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% parcoord_plot_list) {
+      p <- bayesplot::mcmc_parcoord(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% recover_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      if (what == "recover_hist") p <- bayesplot::mcmc_recover_hist(x = x_sub, ...)
+      else if (what == "recover_intervals") p <- bayesplot::mcmc_recover_intervals(x = x_sub, ...)
+      else p <- bayesplot::mcmc_recover_scatter(x = x_sub, ...)
+    } else if (what %in% rhat_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      rhat <- coda::gelman.diag(x_sub, multivariate = FALSE)$psrf[, 1]
+      if (what == "rhat") p <- bayesplot::mcmc_rhat(rhat = rhat, ...)
+      else p <- bayesplot::mcmc_rhat_hist(rhat = rhat, ...)
+    } else if (what %in% scatter_plot_list) {
+      p <- bayesplot::mcmc_scatter(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% trace_plot_list) {
+      if (what == "trace") p <- bayesplot::mcmc_trace(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_trace_highlight(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% violin_plot_list) {
+      p <- bayesplot::mcmc_violin(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what == "combo") {
+      if (!is.null(combo))
+        p <- bayesplot::mcmc_combo(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, combo = combo, ...)
+      else
+        stop("to produce an 'mcmc_combo' plot, the 'combo' option must be specified.")
+    }
+
+    p
+  }
+)
+
+### bayesmr_mix_het_fit methods ###
+
+#' Show a `bayesmr_mix_het_fit` object.
+#'
+#' @param object An object of class [`bayesmr_mix_het_fit-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases show,bayesmr_mix_het_fit-method
+#' @aliases bayesmr_mix_het_fit-show
+#'
+#' @importFrom methods show
+#' @exportMethod show
+setMethod("show",
+  "bayesmr_mix_het_fit",
+  function(object) {
+    cat("Bayesian Two-Sample Summary Data mixture model with heterogeneity (single chain)\n")
+    cat("Number of SNPs:", object@dim[["n"]], "\n")
+    cat("\n")
+    cat("To get a summary of the object, use the 'summary()' function.")
+  }
+)
+
+#' Summarize a `bayesmr_mix_het_fit` object.
+#'
+#' @param object An object of class [`bayesmr_mix_het_fit-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases summary,bayesmr_mix_het_fit-method
+#' @aliases bayesmr_mix_het_fit-summary
+#'
+#' @exportMethod summary
+setMethod("summary",
+  "bayesmr_mix_het_fit",
+  function(object, include.burnin = FALSE, ...) {
+    res.coda <- bayesmr_mix_het_fit_to_mcmc(object, include.burnin = include.burnin, verbose = FALSE)
+    out <- summary(res.coda)
+    return(out)
+  }
+)
+
+#' Subset MCMC parameters from a `bayesmr_mix_het_fit` object.
+#'
+#' @param x An object of class [`bayesmr_mix_het_fit-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc` object containing the selected parameters.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases subset,bayesmr_mix_het_fit-method
+#' @aliases bayesmr_mix_het_fit-subset
+#'
+#' @export
+setMethod("subset",
+  "bayesmr_mix_het_fit",
+  function(x, pars = character(), regex_pars = character(), ...) {
+    x_mcmc <- bayesmr_mix_het_fit_to_mcmc(x, include.burnin = TRUE, verbose = FALSE)
+    parnames <- colnames(x_mcmc)
+    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
+    out <- x_mcmc[, pars]
+    return(out)
+  }
+)
+
+#' Plot MCMC diagnostics and summaries for a `bayesmr_mix_het_fit` object.
+#'
+#' @param x An object of class [`bayesmr_mix_het_fit-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases plot,bayesmr_mix_het_fit-method
+#' @aliases bayesmr_mix_het_fit-plot
+#'
+#' @exportMethod plot
+setMethod("plot",
+  signature(x = "bayesmr_mix_het_fit"),
+  function(x, what = "trace", pars = character(), regex_pars = character(),
+           include.burnin = FALSE, combo = NULL, ...) {
+    stopifnot(is.character(pars), is.character(regex_pars), is.character(what))
+
+    if (!(what %in% unlist(all_plots_list, use.names = FALSE)))
+      stop("the plot type specified is not available.")
+
+    x_mcmc <- bayesmr_mix_het_fit_to_mcmc(x, include.burnin = include.burnin, verbose = FALSE)
+    control <- x@control
+
+    if (what %in% acf_plot_list) {
+      if (what == "acf") p <- bayesplot::mcmc_acf(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_acf_bar(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% areas_plot_list) {
+      if (what == "areas") p <- bayesplot::mcmc_areas(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_areas_ridges(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% dens_plot_list) {
+      if (what == "dens") p <- bayesplot::mcmc_dens(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else if (what == "dens_overlay") p <- bayesplot::mcmc_dens_overlay(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_dens_chains(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hex_plot_list) {
+      p <- bayesplot::mcmc_hex(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hist_plot_list) {
+      if (what == "hist") p <- bayesplot::mcmc_hist(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_hist_by_chain(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% intervals_plot_list) {
+      p <- bayesplot::mcmc_intervals(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% neff_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      nsample <- floor((control[["burnin"]] + control[["nsim"]]) / control[["thin"]])
+      neff <- coda::effectiveSize(x_sub)
+      ratio <- neff / nsample
+      if (what == "neff") p <- bayesplot::mcmc_neff(ratio = ratio, ...)
+      else p <- bayesplot::mcmc_neff_hist(ratio = ratio, ...)
+    } else if (what %in% pairs_plot_list) {
+      p <- bayesplot::mcmc_pairs(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% parcoord_plot_list) {
+      p <- bayesplot::mcmc_parcoord(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% recover_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      if (what == "recover_hist") p <- bayesplot::mcmc_recover_hist(x = x_sub, ...)
+      else if (what == "recover_intervals") p <- bayesplot::mcmc_recover_intervals(x = x_sub, ...)
+      else p <- bayesplot::mcmc_recover_scatter(x = x_sub, ...)
+    } else if (what %in% rhat_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      rhat <- coda::gelman.diag(x_sub, multivariate = FALSE)$psrf[, 1]
+      if (what == "rhat") p <- bayesplot::mcmc_rhat(rhat = rhat, ...)
+      else p <- bayesplot::mcmc_rhat_hist(rhat = rhat, ...)
+    } else if (what %in% scatter_plot_list) {
+      p <- bayesplot::mcmc_scatter(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% trace_plot_list) {
+      if (what == "trace") p <- bayesplot::mcmc_trace(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_trace_highlight(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% violin_plot_list) {
+      p <- bayesplot::mcmc_violin(x = x_mcmc, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what == "combo") {
+      if (!is.null(combo))
+        p <- bayesplot::mcmc_combo(x = x_mcmc, pars = pars, regex_pars = regex_pars, combo = combo, ...)
+      else
+        stop("to produce an 'mcmc_combo' plot, the 'combo' option must be specified.")
+    }
+
+    p
+  }
+)
+
+### bayesmr_mix_het_fit_list methods ###
+
+#' Show a `bayesmr_mix_het_fit_list` object.
+#'
+#' @param object An object of class [`bayesmr_mix_het_fit_list-class`].
+#'
+#' @return Invisibly returns `NULL`; called for its side effect of printing a
+#'   short description of the object.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases show,bayesmr_mix_het_fit_list-method
+#' @aliases bayesmr_mix_het_fit_list-show
+#'
+#' @importFrom methods show
+#' @exportMethod show
+setMethod("show",
+  "bayesmr_mix_het_fit_list",
+  function(object) {
+    cat("List of Bayesian Two-Sample Summary Data mixture model with heterogeneity chains\n")
+    cat("Number of simulated chains:", length(object@results), "\n")
+    cat("\n")
+    cat("To get a summary of the object, use the 'summary()' function.")
+  }
+)
+
+#' Summarize a `bayesmr_mix_het_fit_list` object.
+#'
+#' @param object An object of class [`bayesmr_mix_het_fit_list-class`].
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included when converting fitted objects to `coda`
+#'   objects before summarizing.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return For fitted objects and fitted-object lists, the result of
+#'   `summary.mcmc` or `summary.mcmc.list` via the
+#'   corresponding `coda` method. For [`bayesmr_data-class`], invisibly returns
+#'   `NULL` after printing a summary of the data.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases summary,bayesmr_mix_het_fit_list-method
+#' @aliases bayesmr_mix_het_fit_list-summary
+#'
+#' @exportMethod summary
+setMethod("summary",
+  "bayesmr_mix_het_fit_list",
+  function(object, include.burnin = FALSE, ...) {
+    res.coda <- bayesmr_mix_het_fit_list_to_mcmc.list(object, include.burnin = include.burnin, verbose = FALSE)
+    out <- summary(res.coda)
+    return(out)
+  }
+)
+
+#' Subset MCMC parameters from a `bayesmr_mix_het_fit_list` object.
+#'
+#' @param x An object of class [`bayesmr_mix_het_fit_list-class`].
+#' @param pars An optional character vector of exact parameter names to keep.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param ... Further arguments passed to or ignored by the method.
+#'
+#' @return A `coda::mcmc.list` object containing the selected parameters.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases subset,bayesmr_mix_het_fit_list-method
+#' @aliases bayesmr_mix_het_fit_list-subset
+#'
+#' @export
+setMethod("subset",
+  "bayesmr_mix_het_fit_list",
+  function(x, pars = character(), regex_pars = character(), ...) {
+    x_mcmc.list <- bayesmr_mix_het_fit_list_to_mcmc.list(x, include.burnin = TRUE, verbose = FALSE)
+    parnames <- colnames(x_mcmc.list[[1]])
+    pars <- select_pars(explicit = pars, patterns = regex_pars, complete = parnames)
+    out <- coda::mcmc.list(lapply(x_mcmc.list, function(chain) chain[, pars]))
+    return(out)
+  }
+)
+
+#' Plot MCMC diagnostics and summaries for a `bayesmr_mix_het_fit_list` object.
+#'
+#' @param x An object of class [`bayesmr_mix_het_fit_list-class`].
+#' @param what A length-one character vector specifying the plot type. It must be
+#'   one of the plot names supported by the package's internal `all_plots_list`
+#'   object, such as `"trace"`, `"dens"`, `"hist"`, `"acf"`, `"areas"`,
+#'   `"intervals"`, `"rhat"`, `"neff"`, or `"combo"`.
+#' @param pars An optional character vector of exact parameter names to plot.
+#' @param regex_pars An optional character vector of regular expressions used to
+#'   select parameter names.
+#' @param include.burnin A length-one logical value indicating whether burn-in
+#'   iterations should be included in the plotted draws.
+#' @param combo A character vector of plot types passed to
+#'   [bayesplot::mcmc_combo()] when `what = "combo"`.
+#' @param ... Further arguments passed to the selected `bayesplot` plotting
+#'   function.
+#'
+#' @return A `ggplot` object produced by `bayesplot`.
+#'
+#' @author Sergio Venturini \email{sergio.venturini@unicatt.it}
+#'
+#' @aliases plot,bayesmr_mix_het_fit_list-method
+#' @aliases bayesmr_mix_het_fit_list-plot
+#'
+#' @exportMethod plot
+setMethod("plot",
+  signature(x = "bayesmr_mix_het_fit_list"),
+  function(x, what = "trace", pars = character(), regex_pars = character(),
+           include.burnin = FALSE, combo = NULL, ...) {
+    stopifnot(is.character(pars), is.character(regex_pars), is.character(what))
+
+    if (!(what %in% unlist(all_plots_list, use.names = FALSE)))
+      stop("the plot type specified is not available.")
+
+    x_mcmc.list <- bayesmr_mix_het_fit_list_to_mcmc.list(x, include.burnin = include.burnin, verbose = FALSE)
+    control <- x@results[[1]]@control
+
+    if (what %in% acf_plot_list) {
+      if (what == "acf") p <- bayesplot::mcmc_acf(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_acf_bar(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% areas_plot_list) {
+      if (what == "areas") p <- bayesplot::mcmc_areas(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_areas_ridges(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% dens_plot_list) {
+      if (what == "dens") p <- bayesplot::mcmc_dens(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else if (what == "dens_overlay") p <- bayesplot::mcmc_dens_overlay(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_dens_chains(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hex_plot_list) {
+      p <- bayesplot::mcmc_hex(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% hist_plot_list) {
+      if (what == "hist") p <- bayesplot::mcmc_hist(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_hist_by_chain(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% intervals_plot_list) {
+      p <- bayesplot::mcmc_intervals(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% neff_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      nsample <- control[["nchains"]] * floor((control[["burnin"]] + control[["nsim"]]) / control[["thin"]])
+      neff <- coda::effectiveSize(x_sub)
+      ratio <- neff / nsample
+      if (what == "neff") p <- bayesplot::mcmc_neff(ratio = ratio, ...)
+      else p <- bayesplot::mcmc_neff_hist(ratio = ratio, ...)
+    } else if (what %in% pairs_plot_list) {
+      p <- bayesplot::mcmc_pairs(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% parcoord_plot_list) {
+      p <- bayesplot::mcmc_parcoord(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% recover_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      if (what == "recover_hist") p <- bayesplot::mcmc_recover_hist(x = x_sub, ...)
+      else if (what == "recover_intervals") p <- bayesplot::mcmc_recover_intervals(x = x_sub, ...)
+      else p <- bayesplot::mcmc_recover_scatter(x = x_sub, ...)
+    } else if (what %in% rhat_plot_list) {
+      x_sub <- subset(x, pars = pars, regex_pars = regex_pars)
+      rhat <- coda::gelman.diag(x_sub, multivariate = FALSE)$psrf[, 1]
+      if (what == "rhat") p <- bayesplot::mcmc_rhat(rhat = rhat, ...)
+      else p <- bayesplot::mcmc_rhat_hist(rhat = rhat, ...)
+    } else if (what %in% scatter_plot_list) {
+      p <- bayesplot::mcmc_scatter(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% trace_plot_list) {
+      if (what == "trace") p <- bayesplot::mcmc_trace(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+      else p <- bayesplot::mcmc_trace_highlight(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what %in% violin_plot_list) {
+      p <- bayesplot::mcmc_violin(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, ...)
+    } else if (what == "combo") {
+      if (!is.null(combo))
+        p <- bayesplot::mcmc_combo(x = x_mcmc.list, pars = pars, regex_pars = regex_pars, combo = combo, ...)
+      else
+        stop("to produce an 'mcmc_combo' plot, the 'combo' option must be specified.")
+    }
+
+    p
   }
 )

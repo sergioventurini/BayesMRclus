@@ -254,6 +254,8 @@ cluster_agreement_summary <- function(part_A, part_B,
 #' @param cluster_labels_A Named character: A integer -> description (optional)
 #' @param cluster_labels_B Named character: B integer -> description (optional)
 #' @param file             PNG path or NULL (returns ggplot object)
+#'
+#' @export
 plot_alluvial <- function(part_A, part_B,
                           snp_names        = NULL,
                           name_A           = "MRClust",
@@ -261,10 +263,11 @@ plot_alluvial <- function(part_A, part_B,
                           cluster_labels_A = NULL,
                           cluster_labels_B = NULL,
                           file             = NULL) {
-  for (pkg in c("ggplot2", "ggalluvial", "dplyr"))
-    if (!requireNamespace(pkg, quietly = TRUE))
-      stop(sprintf("Package '%s' required.", pkg))
-  library(ggplot2); library(ggalluvial); library(dplyr)
+  for (pkg in c("ggplot2", "ggalluvial", "dplyr")) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      stop(sprintf("Package '%s' required.", pkg), call. = FALSE)
+    }
+  }
 
   p  <- length(part_A)
   cm <- contingency_match(part_A, part_B)
@@ -272,41 +275,71 @@ plot_alluvial <- function(part_A, part_B,
   a_map <- .build_a_labels(part_A, cluster_labels_A)
   b_map <- .build_b_labels(cm, cluster_labels_B)
 
-  lab_A <- factor(a_map[as.character(part_A)],          levels = a_map)
+  lab_A <- factor(a_map[as.character(part_A)], levels = a_map)
   lab_B <- factor(b_map[as.character(cm$part_B_matched)], levels = b_map)
 
-  df     <- data.frame(
+  df <- data.frame(
     snp = if (is.null(snp_names)) seq_len(p) else snp_names,
-    A   = lab_A,
-    B   = lab_B,
+    A = lab_A,
+    B = lab_B,
     stringsAsFactors = FALSE
   )
-  df_agg <- df %>% dplyr::count(A, B, name = "freq")
+
+  df_agg <- dplyr::count(df, A, B, name = "freq")
 
   pal_A <- setNames(
-    rep(c("#D62728","#1F77B4","#2CA02C","#FF7F0E",
-          "#9467BD","#8C564B","#E377C2","#7F7F7F"),
-        length.out = length(levels(lab_A))),
+    rep(
+      c("#D62728", "#1F77B4", "#2CA02C", "#FF7F0E",
+        "#9467BD", "#8C564B", "#E377C2", "#7F7F7F"),
+      length.out = length(levels(lab_A))
+    ),
     levels(lab_A)
   )
 
-  g <- ggplot(df_agg, aes(axis1 = A, axis2 = B, y = freq)) +
-    geom_alluvium(aes(fill = A), width = 1/5, alpha = 0.75, knot.pos = 0.4) +
-    geom_stratum(width = 1/5, fill = "grey90", color = "grey40") +
-    geom_text(stat = "stratum",
-              aes(label = after_stat(stratum)),
-              size = 3.2, fontface = "bold") +
-    scale_x_discrete(limits = c(name_A, name_B), expand = c(0.12, 0.12)) +
-    scale_fill_manual(values = pal_A) +
-    labs(title = sprintf("SNP cluster assignment: %s vs. %s", name_A, name_B),
-         y = "Number of SNPs", fill = name_A) +
-    theme_minimal(base_size = 12) +
-    theme(legend.position = "right", panel.grid.major.x = element_blank())
+  g <- ggplot2::ggplot(
+    df_agg,
+    ggplot2::aes(axis1 = .data$A, axis2 = .data$B, y = .data$freq)
+  ) +
+    ggalluvial::geom_alluvium(
+      ggplot2::aes(fill = .data$A),
+      width = 1 / 5,
+      alpha = 0.75,
+      knot.pos = 0.4
+    ) +
+    ggalluvial::geom_stratum(
+      width = 1 / 5,
+      fill = "grey90",
+      color = "grey40"
+    ) +
+    ggplot2::geom_text(
+      stat = "stratum",
+      ggplot2::aes(label = ggplot2::after_stat(stratum)),
+      size = 3.2,
+      fontface = "bold"
+    ) +
+    ggplot2::scale_x_discrete(
+      limits = c(name_A, name_B),
+      expand = c(0.12, 0.12)
+    ) +
+    ggplot2::scale_fill_manual(values = pal_A) +
+    ggplot2::labs(
+      title = sprintf("SNP cluster assignment: %s vs. %s", name_A, name_B),
+      y = "Number of SNPs",
+      fill = name_A
+    ) +
+    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      legend.position = "right",
+      panel.grid.major.x = ggplot2::element_blank()
+    )
 
-  if (!is.null(file)) { ggsave(file, g, width = 7, height = 6, dpi = 130); invisible(g) }
-  else g
+  if (!is.null(file)) {
+    ggplot2::ggsave(file, g, width = 7, height = 6, dpi = 130)
+    invisible(g)
+  } else {
+    g
+  }
 }
-
 
 # =============================================================================
 # 4.  Wald-ratio scatter, two panels
@@ -331,6 +364,8 @@ plot_alluvial <- function(part_A, part_B,
 #' @param cluster_labels_B    Named character: B integer -> description (optional)
 #' @param highlight_discordant  Circle discordant SNPs (default TRUE)
 #' @param file                PNG path or NULL
+#'
+#' @export
 plot_wald_clusters <- function(part_A, part_B,
                                wald, se_wald,
                                name_A               = "MRClust",
@@ -340,7 +375,6 @@ plot_wald_clusters <- function(part_A, part_B,
                                highlight_discordant = TRUE,
                                file                 = NULL) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) stop("ggplot2 required.")
-  library(ggplot2)
 
   p  <- length(part_A)
   cm <- contingency_match(part_A, part_B)
@@ -379,30 +413,35 @@ plot_wald_clusters <- function(part_A, part_B,
   df        <- rbind(df_A, df_B)
   df$method <- factor(df$method, levels = c(name_A, name_B))
 
-  g <- ggplot(df, aes(x = wald, y = prec, colour = cluster)) +
-    geom_point(size = 1.2, alpha = 0.75) +
-    facet_wrap(~ method, ncol = 2) +
-    scale_colour_manual(values = pal, drop = TRUE, na.value = "grey50") +
-    labs(x      = "Wald ratio",
-         y      = "Precision (1 / SE)",
-         colour = "Cluster",
-         # title  = sprintf("Cluster assignments: %s vs. %s", name_A, name_B)) +
-         title  = "") +
-    theme_bw(base_size = 11) +
-    theme(strip.text = element_text(face = "bold"))
+  g <- ggplot2::ggplot(df, aes(x = wald, y = prec, colour = cluster)) +
+    ggplot2::geom_point(size = 1.2, alpha = 0.75) +
+    ggplot2::facet_wrap(~ method, ncol = 2) +
+    ggplot2::scale_colour_manual(values = pal, drop = TRUE, na.value = "grey50") +
+    ggplot2::labs(x      = "Wald ratio",
+                  y      = "Precision (1 / SE)",
+                  colour = "Cluster",
+                  # title  = sprintf("Cluster assignments: %s vs. %s", name_A, name_B)) +
+                  title  = "") +
+    ggplot2::theme_bw(base_size = 11) +
+    ggplot2::theme(strip.text = element_text(face = "bold"))
 
   if (highlight_discordant) {
     df_disc <- df[df$discord, ]          # discord is always TRUE/FALSE, never NA
     g <- g +
-      geom_point(data = df_disc,
-                 aes(x = wald, y = prec),
-                 shape = 1, size = 3.2, colour = "black",
-                 stroke = 0.6, inherit.aes = FALSE) +
-      labs(caption = "Open circle: SNP assigned to different cluster by the two methods")
+      ggplot2::geom_point(data = df_disc,
+                          aes(x = wald, y = prec),
+                          shape = 1, size = 3.2, colour = "black",
+                          stroke = 0.6, inherit.aes = FALSE) +
+      ggplot2::labs(
+        caption = "Open circle: SNP assigned to different cluster by the two methods"
+      )
   }
 
-  if (!is.null(file)) { ggsave(file, g, width = 9, height = 5, dpi = 130); invisible(g) }
-  else g
+  if (!is.null(file)) {
+    ggplot2::ggsave(file, g, width = 9, height = 5, dpi = 130); invisible(g)
+  } else {
+    g
+  }
 }
 
 
@@ -423,6 +462,8 @@ plot_wald_clusters <- function(part_A, part_B,
 #' @param cluster_labels_A Named character: A integer -> description (optional)
 #' @param cluster_labels_B Named character: B integer -> description (optional)
 #' @param file             PNG path or NULL
+#'
+#' @export
 plot_contingency_heatmap <- function(part_A, part_B,
                                      name_A           = "MRClust",
                                      name_B           = "BNPM-MR",
@@ -430,7 +471,6 @@ plot_contingency_heatmap <- function(part_A, part_B,
                                      cluster_labels_B = NULL,
                                      file             = NULL) {
   if (!requireNamespace("ggplot2", quietly = TRUE)) stop("ggplot2 required.")
-  library(ggplot2)
 
   cm    <- contingency_match(part_A, part_B)
   a_map <- .build_a_labels(part_A, cluster_labels_A)
@@ -442,23 +482,26 @@ plot_contingency_heatmap <- function(part_A, part_B,
   df$A <- factor(a_map[as.character(df$A)], levels = rev(as.character(a_map)))
   df$B <- factor(b_map[as.character(df$B)], levels = as.character(b_map))
 
-  g <- ggplot(df, aes(x = B, y = A, fill = n)) +
-    geom_tile(colour = "white", linewidth = 0.5) +
-    geom_text(aes(label = ifelse(n > 0, as.character(n), "")),
-              size = 3.5, fontface = "bold", colour = "white") +
-    scale_fill_gradient(low = "#deebf7", high = "#08519c", name = "SNPs") +
-    labs(x        = name_B,
-         y        = name_A,
-         title    = sprintf("Contingency table: %s vs. %s", name_A, name_B),
-         subtitle = sprintf("(%s columns relabelled to maximize diagonal)",
-                            name_B)) +
-    theme_minimal(base_size = 11) +
-    theme(axis.text.x = element_text(angle = 30, hjust = 1),
-          axis.text.y = element_text(hjust = 1),
-          panel.grid  = element_blank())
+  g <- ggplot2::ggplot(df, aes(x = B, y = A, fill = n)) +
+    ggplot2::geom_tile(colour = "white", linewidth = 0.5) +
+    ggplot2::geom_text(aes(label = ifelse(n > 0, as.character(n), "")),
+                       size = 3.5, fontface = "bold", colour = "white") +
+    ggplot2::scale_fill_gradient(low = "#deebf7", high = "#08519c", name = "SNPs") +
+    ggplot2::labs(x        = name_B,
+                  y        = name_A,
+                  title    = sprintf("Contingency table: %s vs. %s", name_A, name_B),
+                  subtitle = sprintf("(%s columns relabelled to maximize diagonal)",
+                                     name_B)) +
+    ggplot2::theme_minimal(base_size = 11) +
+    ggplot2::theme(axis.text.x = element_text(angle = 30, hjust = 1),
+                   axis.text.y = element_text(hjust = 1),
+                   panel.grid  = element_blank())
 
-  if (!is.null(file)) { ggsave(file, g, width = 6, height = 5, dpi = 130); invisible(g) }
-  else g
+  if (!is.null(file)) {
+    ggplot2::ggsave(file, g, width = 6, height = 5, dpi = 130); invisible(g)
+  } else {
+    g
+  }
 }
 
 
@@ -480,6 +523,8 @@ plot_contingency_heatmap <- function(part_A, part_B,
 #' @param cluster_labels_A Named character: A integer -> description (optional)
 #' @param cluster_labels_B Named character: B integer -> description (optional)
 #' @return  Data frame (sorted by Wald ratio if supplied)
+#'
+#' @export
 snp_agreement_table <- function(part_A, part_B,
                                 snp_names        = NULL,
                                 wald             = NULL,

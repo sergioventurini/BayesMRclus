@@ -5,6 +5,7 @@
 // Matrix column sums
 void colsums(double* colsums, const double* A, int nrows, int ncols){
   for(int j = 0; j < ncols; j++){
+    colsums[j] = 0.0;
     for(int i = 0; i < nrows; i++){
       colsums[j] += A[i + nrows*j];
     }
@@ -14,6 +15,7 @@ void colsums(double* colsums, const double* A, int nrows, int ncols){
 // Matrix row sums
 void rowsums(double* rowsums, const double* A, int nrows, int ncols){
   for(int i = 0; i < nrows; i++){
+    rowsums[i] = 0.0;
     for(int j = 0; j < ncols; j++){
       rowsums[i] += A[i + nrows*j];
     }

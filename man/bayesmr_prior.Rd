@@ -4,7 +4,7 @@
 \alias{bayesmr_prior}
 \alias{prior_bayesmr}
 \alias{check_prior}
-\title{Auxiliary Function for Setting BayesMR Model Priors}
+\title{Auxiliary Function for Setting BayesMR Prior Hyperparameters}
 \usage{
 bayesmr_prior(
   gammaj = list(psi2 = 1),
@@ -29,60 +29,71 @@ prior_bayesmr(
 check_prior(prior)
 }
 \arguments{
-\item{gammaj}{A named list containing the hyperparameters for the prior
-distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-contain two numeric vectors, namely \code{a} and \code{b}.}
+\item{gammaj}{A named list with element \code{psi2}: the fixed variance
+component \eqn{\psi^2} added to each SNP-exposure variance
+\eqn{\sigma^2_{X,j}} to form \eqn{\psi^2_j = \sigma^2_{X,j} + \psi^2}.
+Used only in the fixed-heterogeneity models (\code{\link{bayesmr}()},
+\code{\link{bayesmr_mix}()}).}
 
-\item{Gammaj}{A named list containing the hyperparameters for the prior
-distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-contain two numeric vectors, namely \code{a} and \code{b}.}
+\item{Gammaj}{A named list with element \code{tau2}: the fixed variance
+component \eqn{\tau^2} added to each SNP-outcome variance
+\eqn{\sigma^2_{Y,j}} to form \eqn{\tau^2_j = \sigma^2_{Y,j} + \tau^2}.
+Used only in the fixed-heterogeneity models.}
 
-\item{gamma}{A named list containing the hyperparameters for the prior
-distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-contain two numeric vectors, namely \code{a} and \code{b}.}
+\item{psi}{A named list with elements \code{alpha} (scale) and \code{nu}
+(degrees of freedom) of the half-\eqn{t} prior on \eqn{\psi}
+(exposure heterogeneity scale). Used in \code{\link{bayesmr_het}()} and
+\code{\link{bayesmr_mix_het}()}.}
 
-\item{beta}{A named list containing the hyperparameters for the prior
-distributions of the \eqn{\sigma^2_1,\ldots,\sigma^2_G} parameters. It
-should contain two numeric scalars, namely \code{a} and \code{b}.}
+\item{tau}{A named list with elements \code{alpha} (scale) and \code{nu}
+(degrees of freedom) of the half-\eqn{t} prior on \eqn{\tau}
+(outcome heterogeneity scale). Used in \code{\link{bayesmr_het}()} and
+\code{\link{bayesmr_mix_het}()}.}
 
-\item{prior}{A named list of prior hyperparameters.}
+\item{gamma}{A named list with elements \code{mean} and \code{var} for the
+Normal prior on the global causal effect \eqn{\gamma}.}
+
+\item{beta}{A named list with elements \code{mean} and \code{var} for the
+Normal prior on \eqn{\beta} (or on each cluster-specific causal effect
+in mixture models).}
+
+\item{alpha}{A named list with elements \code{a} and \code{b} for the
+Beta(\eqn{a}, \eqn{b}) prior on the Dirichlet Process concentration
+parameter \eqn{\alpha}. Used in \code{\link{bayesmr_mix}()} and
+\code{\link{bayesmr_mix_het}()}.}
+
+\item{prior}{A named list of prior hyperparameters (used by
+\code{check_prior()}).}
 }
 \value{
-A list with the prior hyperparameters as components.
+\code{bayesmr_prior()} (and its alias) returns a named list with
+all hyperparameters as components. \code{check_prior()} returns a
+length-one logical: \code{TRUE} if the list is valid, \code{FALSE}
+otherwise.
 }
 \description{
-{
-\code{bayesmr_prior()} is an auxiliary function as user interface for
-\code{bayesmr()} fitting. Typically only used when calling the \code{bayesmr()}
-function. It is used to set prior hyperparameters.
-
+\code{bayesmr_prior()} creates the named list of prior hyperparameters used
+by \code{\link{bayesmr}()} and its variants.
+}
+\details{
 \code{prior_bayesmr()} is an alias for \code{bayesmr_prior()}.
 
-\code{check_prior()} is an auxiliary function that verifies the
-correctness of the prior hyperparameters provided before a BayesMR is fitted
-with \code{\link{bayesmr}()}.
-
-\code{update_prior()} is an auxiliary function to modify a set of prior
-choices using a new value of \emph{p} and \emph{G}. It is intended for
-internal use mainly in the \code{\link{bayesmr_ic}()} function.
-}
+\code{check_prior()} validates a prior list before model fitting.
 }
 \examples{
-\dontrun{
-data(simdiss, package = "bayesmr")
-# Shorter run than default.
-sim.fit <- bayesmr(simdiss,
-  control = bayesmr_control(burnin = 1000, nsim = 2000, thin = 1, verbose = TRUE),
-  prior = bayesmr_prior(gamma = list(mean = 0, var = 1)))
-}
+# Default prior hyperparameters
+pr <- bayesmr_prior()
+str(pr)
+
+# Tighter normal priors on gamma and beta
+pr2 <- bayesmr_prior(gamma = list(mean = 0, var = 0.25),
+                     beta  = list(mean = 0, var = 0.25))
 
 }
 \seealso{
-\code{\link{bayesmr}()}
+\code{\link{bayesmr}()}, \code{\link{bayesmr_control}()},
+\code{\link{dhalft}()}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}
 }
-\keyword{based}
-\keyword{clustering}
-\keyword{model}

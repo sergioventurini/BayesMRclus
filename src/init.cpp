@@ -7,9 +7,9 @@
 #define CALLDEF(name, n)  {#name, (DL_FUNC) &name, n}
 
 static const R_CallMethodDef R_CallDef[] = {
-  CALLDEF(bayesmr_mcmc_noclus_wrap, 14),
-  CALLDEF(bayesmr_mcmc_noclus_het_wrap, 20),
-  CALLDEF(bayesmr_mcmc_mix_wrap, 20),
+  CALLDEF(bayesmr_mcmc_noclus_wrap, 13),
+  CALLDEF(bayesmr_mcmc_noclus_het_wrap, 19),
+  CALLDEF(bayesmr_mcmc_mix_wrap, 19),
   CALLDEF(bayesmr_mcmc_mix_het_wrap, 25),
   {NULL, NULL, 0}
 };
@@ -18,7 +18,7 @@ void
 #ifdef HAVE_VISIBILITY_ATTRIBUTE
 __attribute__ ((visibility ("default")))
 #endif
-R_init_bayesmrclus(DllInfo *dll) {
+R_init_BayesMRclus(DllInfo *dll) {
   R_registerRoutines(dll, NULL, R_CallDef, NULL, NULL);
   R_useDynamicSymbols(dll, FALSE);
   R_forceSymbols(dll, TRUE);

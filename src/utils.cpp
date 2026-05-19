@@ -50,7 +50,7 @@ double euclidean(const double *x, int nr, int nc, int i1, int i2){
 // Euclidean distance
 void dist(double* d, const double* x, int nr, int nc){
   size_t count = 0;
-  for(int j = 0; j <= nr; j++){
+  for(int j = 0; j < nr; j++){
     for(int i = (j + 1); i < nr; i++){
       d[count++] = euclidean(x, nr, nc, i, j);
     }

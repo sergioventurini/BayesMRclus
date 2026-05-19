@@ -2,49 +2,39 @@
 % Please edit documentation in R/convert.R
 \name{bayesmr_het_fit_to_mcmc}
 \alias{bayesmr_het_fit_to_mcmc}
-\title{Conversion of an \code{bayesmr_het_fit} object to an object of class \code{mcmc}.}
+\title{Conversion of a \code{bayesmr_het_fit} Object to \code{mcmc}}
 \usage{
 bayesmr_het_fit_to_mcmc(res, include.burnin = FALSE, verbose = TRUE)
 }
 \arguments{
-\item{res}{An object of type \code{bayesmr_het_fit}.}
+\item{res}{An object of class \code{bayesmr_het_fit}.}
 
-\item{include.burnin}{A logical scalar. If \code{TRUE} the burnin
-iterations (if available) are not removed.}
+\item{include.burnin}{Logical; if \code{TRUE} the burn-in iterations
+(when stored) are included. Default is \code{FALSE}.}
 
-\item{verbose}{A logical scalar. If \code{TRUE} prints additional
-warnings during the conversion.}
+\item{verbose}{Logical; if \code{TRUE} prints warnings during conversion.
+Default is \code{TRUE}.}
 }
 \value{
-An object of type \code{mcmc}.
+A \code{\link[coda]{mcmc}} object.
 }
 \description{
-\code{bayesmr_het_fit_to_mcmc} converts an object of class \code{bayesmr_het_fit}
-to an object with class \code{mcmc}.
+Converts a single-chain \code{\link{bayesmr_het_fit-class}} object to a
+\code{\link[coda]{mcmc}} object containing the \eqn{\gamma}, \eqn{\beta},
+\eqn{\psi}, \eqn{\tau}, and log-density chains.
 }
 \examples{
 \dontrun{
-data(simdiss, package = "bayesmr")
-
-G <- 3
-p <- 2
-prm.prop <- list(z = 1.5, alpha = .75)
-burnin <- 2000
-nsim <- 1000
-seed <- 2301
-
-set.seed(seed)
-
-control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-  alpha.prop = prm.prop[["alpha"]], verbose = TRUE)
-sim.bayesmr <- bayesmr(simdiss, control)
-sim.mcmc <- bayesmr_het_fit_to_mcmc(sim.bayesmr@results[[1]], TRUE)
-plot(sim.mcmc)
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
+res <- bayesmr_het(dat, control = bayesmr_control(nsim = 500, burnin = 500))
+mc <- bayesmr_het_fit_to_mcmc(res@results[[1]])
+plot(mc)
 }
+
 }
 \seealso{
-\code{\link{bayesmr}()} for for fitting a DMBC model;
-\code{\link{bayesmr_het_fit-class}};
+\code{\link{bayesmr_het}()}, \code{\link{bayesmr_het_fit-class}},
 \code{\link[coda]{mcmc}}.
 }
 \author{

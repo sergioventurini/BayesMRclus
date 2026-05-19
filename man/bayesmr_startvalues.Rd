@@ -4,7 +4,7 @@
 \alias{bayesmr_startvalues}
 \alias{startvalues_bayesmr}
 \alias{check_startvalues}
-\title{Auxiliary Function for Setting BayesMR Model Starting Values}
+\title{Construct a Starting-Values List for BayesMR}
 \usage{
 bayesmr_startvalues(gamma, beta, ...)
 
@@ -13,60 +13,47 @@ startvalues_bayesmr(gamma, beta, ...)
 check_startvalues(startvalues)
 }
 \arguments{
-\item{gamma}{A named list containing the hyperparameters for the prior
-distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-contain two numeric vectors, namely \code{a} and \code{b}.}
+\item{gamma}{A length-one numeric value for the initial causal effect
+\eqn{\gamma}.}
 
-\item{beta}{A named list containing the hyperparameters for the prior
-distributions of the \eqn{\sigma^2_1,\ldots,\sigma^2_G} parameters. It
-should contain two numeric scalars, namely \code{a} and \code{b}.}
+\item{beta}{A numeric vector of initial causal effect(s) \eqn{\beta} (or
+cluster-specific effects \eqn{\beta^*_1, \ldots, \beta^*_K} for mixture
+models). Length must equal \code{K} (supplied via \code{...}).}
 
-\item{gammaj}{A named list containing the hyperparameters for the prior
-distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-contain two numeric vectors, namely \code{a} and \code{b}.}
+\item{...}{Additional named starting values. For mixture models, supply
+\code{K} (integer, number of clusters), \code{xi} (integer vector of
+length \eqn{n} with cluster labels in \eqn{1,\ldots,K}), and
+\code{alpha} (positive scalar, DP concentration). For heterogeneity
+models, also supply \code{psi} and \code{tau} (positive scalars).}
 
-\item{Gammaj}{A named list containing the hyperparameters for the prior
-distribution of the \eqn{\eta_1,\ldots,\eta_G} parameters. It should
-contain two numeric vectors, namely \code{a} and \code{b}.}
-
-\item{prior}{A named list of prior hyperparameters.}
+\item{startvalues}{A named list of starting values (used by
+\code{check_startvalues()}).}
 }
 \value{
-A list with the prior hyperparameters as components.
+\code{bayesmr_startvalues()} returns a named list.
+\code{check_startvalues()} returns a length-one logical: \code{TRUE} if
+the list is valid, \code{FALSE} otherwise.
 }
 \description{
-{
-\code{bayesmr_startvalues()} is an auxiliary function as user interface for
-\code{bayesmr()} fitting. Typically only used when calling the \code{bayesmr()}
-function. It is used to set prior hyperparameters.
-
-\code{prior_bayesmr()} is an alias for \code{bayesmr_startvalues()}.
-
-\code{check_prior()} is an auxiliary function that verifies the
-correctness of the prior hyperparameters provided before a BayesMR is fitted
-with \code{\link{bayesmr}()}.
-
-\code{update_prior()} is an auxiliary function to modify a set of prior
-choices using a new value of \emph{p} and \emph{G}. It is intended for
-internal use mainly in the \code{\link{bayesmr_ic}()} function.
+\code{bayesmr_startvalues()} assembles a named list of user-supplied
+starting values to pass to \code{\link{bayesmr_init}()} when
+\code{random_start = FALSE}.
 }
+\details{
+\code{startvalues_bayesmr()} is an alias for \code{bayesmr_startvalues()}.
+
+\code{check_startvalues()} validates the list before model fitting.
 }
 \examples{
-\dontrun{
-data(simdiss, package = "bayesmr")
-# Shorter run than default.
-sim.fit <- bayesmr(simdiss,
-  control = bayesmr_control(burnin = 1000, nsim = 2000, thin = 1, verbose = TRUE),
-  prior = bayesmr_startvalues(gamma = list(mean = 0, var = 1)))
-}
+# Starting values for the no-clustering model
+sv <- bayesmr_startvalues(gamma = 0.1, beta = 0.2,
+                          K = 1, psi = 0.05, tau = 0.05)
+check_startvalues(sv)
 
 }
 \seealso{
-\code{\link{bayesmr}()}
+\code{\link{bayesmr_init}()}, \code{\link{bayesmr}()}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}
 }
-\keyword{based}
-\keyword{clustering}
-\keyword{model}

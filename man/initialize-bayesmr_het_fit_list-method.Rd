@@ -3,18 +3,20 @@
 \name{initialize,bayesmr_het_fit_list-method}
 \alias{initialize,bayesmr_het_fit_list-method}
 \alias{bayesmr_het_fit_list-initialize}
-\title{Create an instance of the \code{bayesmr_het_fit_list} class using new/initialize.}
+\title{Initialize a \code{bayesmr_het_fit_list} object.}
 \usage{
 \S4method{initialize}{bayesmr_het_fit_list}(.Object, results = list())
 }
 \arguments{
-\item{.Object}{Prototype object from the class \code{\link{bayesmr_het_fit_list}}.}
+\item{.Object}{Prototype object from class \code{\link[=bayesmr_het_fit_list-class]{bayesmr_het_fit_list}}.}
 
-\item{results}{A list whose elements are the \code{bayesmr_het_fit} objects for
-each simulated chain.}
+\item{results}{A list of fitted chain objects.}
+}
+\value{
+An initialized \code{\link[=bayesmr_het_fit_list-class]{bayesmr_het_fit_list}} object.
 }
 \description{
-Create an instance of the \code{bayesmr_het_fit_list} class using new/initialize.
+Initialize a \code{bayesmr_het_fit_list} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

@@ -3,7 +3,7 @@
 \name{initialize,bayesmr_het_fit-method}
 \alias{initialize,bayesmr_het_fit-method}
 \alias{bayesmr_het_fit-initialize}
-\title{Create an instance of the \code{bayesmr_het_fit} class using new/initialize.}
+\title{Initialize a \code{bayesmr_het_fit} object.}
 \usage{
 \S4method{initialize}{bayesmr_het_fit}(
   .Object,
@@ -12,7 +12,7 @@
   psi.chain = array(),
   tau.chain = array(),
   accept = matrix(),
-  data = list(),
+  data = data.frame(),
   dens = list(),
   control = list(),
   prior = list(),
@@ -20,59 +20,33 @@
 )
 }
 \arguments{
-\item{.Object}{Prototype object from the class \code{\link{bayesmr_het_fit}}.}
+\item{.Object}{Prototype object from class \code{\link[=bayesmr_het_fit-class]{bayesmr_het_fit}}.}
 
-\item{accept}{An object of class \code{matrix}; final acceptance rates
-for the MCMC algorithm.}
+\item{gamma.chain}{An array containing posterior draws of \code{gamma}.}
 
-\item{data}{An object of class \code{list}; list of observed
-dissimilarity matrices.}
+\item{beta.chain}{An array containing posterior draws of \code{beta} or, for mixture models, cluster-specific causal effects.}
 
-\item{dens}{An object of class \code{list}; list of log-likelihood,
-log-prior and log-posterior values at each iteration of the MCMC simulation.}
+\item{psi.chain}{An array containing posterior draws of \code{psi}.}
 
-\item{control}{An object of class \code{list}; list of the control
-parameters (number of burnin and sample iterations, number of MCMC chains,
-etc.). See \code{\link{bayesmr_control}()} for more information.}
+\item{tau.chain}{An array containing posterior draws of \code{tau}.}
 
-\item{prior}{An object of class \code{list}; list of the prior
-hyperparameters. See \code{\link{bayesmr_prior}()} for more information.}
+\item{accept}{A numeric vector or matrix containing Metropolis-Hastings acceptance information.}
 
-\item{dim}{An object of class \code{list}; list of dimensions for
-the estimated model, i.e. number of objects (\emph{n}), number of latent
-dimensions (\emph{p}), number of clusters (\emph{G}), and number of
-subjects (\emph{S}).}
+\item{data}{A data frame containing the analyzed summary data.}
 
-\item{z.chain}{An object of class \code{array}; posterior draws from
-the MCMC algorithm for the (untransformed) latent configuration \eqn{Z}.}
+\item{dens}{A list with log-density components, typically \code{loglik}, \code{logprior}, and \code{logpost}.}
 
-\item{z.chain.p}{An object of class \code{array}; posterior draws from
-the MCMC algorithm for the (Procrustes-transformed) latent configuration
-\eqn{Z}.}
+\item{control}{A named list of MCMC control settings.}
 
-\item{alpha.chain}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\alpha} parameters.}
+\item{prior}{A named list of prior hyperparameters.}
 
-\item{eta.chain}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\eta} parameters.}
-
-\item{sigma2.chain}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\sigma^2} parameters.}
-
-\item{lambda.chain}{An object of class \code{matrix}; posterior draws
-from the MCMC algorithm for the \eqn{\lambda} parameters.}
-
-\item{prob.chain}{An object of class \code{array}; posterior draws
-from the MCMC algorithm for the cluster membership probabilities.}
-
-\item{x.ind.chain}{An object of class \code{array}; posterior draws
-from the MCMC algorithm for the cluster membership indicators.}
-
-\item{x.chain}{An object of class \code{matrix}; posterior draws from
-the MCMC algorithm for the cluster membership labels.}
+\item{dim}{A list of model dimensions, including \code{n}, the number of SNPs.}
+}
+\value{
+An initialized \code{\link[=bayesmr_het_fit-class]{bayesmr_het_fit}} object.
 }
 \description{
-Create an instance of the \code{bayesmr_het_fit} class using new/initialize.
+Initialize a \code{bayesmr_het_fit} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

@@ -2,7 +2,7 @@
 % Please edit documentation in R/bayesmrclus_het.R
 \name{bayesmr_het}
 \alias{bayesmr_het}
-\title{Estimation of a BayesMR model.}
+\title{Estimate a BayesMR model with random heterogeneity.}
 \usage{
 bayesmr_het(
   data,
@@ -13,76 +13,82 @@ bayesmr_het(
 )
 }
 \arguments{
-\item{data}{An object of class \code{bayesmr_data} containing the data
-to analyze.}
+\item{data}{An object of class \code{\link[=bayesmr_data-class]{bayesmr_data}} containing the summary
+data to be analyzed.}
 
-\item{control}{A list of control parameters that affect the sampling
-but do not affect the posterior distribution. See
-\code{\link{bayesmr_control}()} for more details.}
+\item{control}{A named list of control parameters for the MCMC sampler, such
+as the number of iterations, burn-in, thinning, number of chains, seed, and
+parallelization options. Missing entries are filled with the defaults from
+\code{\link[=bayesmr_control]{bayesmr_control()}}.}
 
-\item{prior}{A list containing the prior hyperparameters. See
-\code{\link{bayesmr_prior}()} for more details.}
+\item{prior}{A named list of prior hyperparameters, or \code{NULL}. If \code{NULL}, the
+default prior specification returned by \code{\link[=bayesmr_prior]{bayesmr_prior()}} is used. Missing
+entries are filled with the defaults from \code{\link[=bayesmr_prior]{bayesmr_prior()}}.}
 
-\item{cl}{An optional \pkg{parallel} or \pkg{snow} cluster for use if
-\code{parallel = "snow"}. If not supplied, a cluster on the local machine
-is created for the duration of the \code{bayesmr_het()} call.}
+\item{cl}{An optional cluster object created by \code{\link[parallel:makeCluster]{parallel::makeCluster()}} or
+a compatible \code{snow} cluster. This is used only when
+\code{control$parallel = "snow"} and more than one chain is run. If \code{NULL}, a
+temporary local PSOCK cluster is created and stopped when the function exits.
+For user-supplied clusters, the random-number seed must be set externally.}
 
-\item{post_all}{A length-one logical vector, which if TRUE applies a further
-post-processing to the simulated chains (in case these are more than one).}
+\item{post_all}{A length-one logical vector. Currently reserved for optional
+post-processing of multiple simulated chains.}
 }
 \value{
-A \code{bayesmr_het_fit_list} object.
+An object of class \code{\link[=bayesmr_het_fit_list-class]{bayesmr_het_fit_list}} containing one
+fitted \code{\link[=bayesmr_het_fit-class]{bayesmr_het_fit}} object for each simulated chain.
 }
 \description{
-\code{bayesmr_het()}, the main function of the package, estimates a BayesMR model
-for a given set of \emph{S} dissimilarity matrices.
+\code{bayesmr_het()} estimates a BayesMR model with random heterogeneity and no
+mixture clustering. It initializes and runs one or more MCMC chains, either
+serially or in parallel according to the settings supplied through
+\code{\link[=bayesmr_control]{bayesmr_control()}}.
+}
+\details{
+The function validates the supplied \code{control} and \code{prior} lists, initializes
+each chain with \code{\link[=bayesmr_init]{bayesmr_init()}}, and fits each chain with
+\code{\link[=bayesmr_het_fit]{bayesmr_het_fit()}}. If \code{control$K_start} is \code{NULL} or greater than 1, it is
+set to 1 before initialization.
+
+If a seed is supplied through \code{control$seed}, it is used internally while
+preserving the caller's random-number generator state. Parallel execution is
+used only when more than one chain is requested and \code{control$parallel} is set
+to either \code{"multicore"} or \code{"snow"}. Multicore execution is unavailable on
+Windows.
 }
 \examples{
 \dontrun{
-data(simdiss, package = "bayesmr")
+data(ldl_cad)
+dat <- new("bayesmr_data", ldl_cad)
 
-G <- 3
-p <- 2
-prm.prop <- list(z = 1.5, alpha = .75)
-burnin <- 20000
-nsim <- 10000
-seed <- 2301
+control <- bayesmr_control(
+  nsim = 1000,
+  burnin = 1000,
+  nchains = 2,
+  verbose = TRUE
+)
+prior <- bayesmr_prior()
 
-set.seed(seed)
-
-control <- list(burnin = burnin, nsim = nsim, z.prop = prm.prop[["z"]],
-  alpha.prop = prm.prop[["alpha"]], random_start = TRUE, verbose = TRUE,
-  nchains = 2, thin = 10, store.burnin = TRUE, threads = 2,
-  parallel = "snow")
-sim.bayesmr <- bayesmr(simdiss, control)
-
-summary(sim.bayesmr, include.burnin = FALSE)
-
-library(bayesplot)
-library(ggplot2)
-color_scheme_set("teal")
-plot(sim.bayesmr, what = "trace", regex_pars = "eta")
-
-z <- bayesmr_get_configuration(sim.bayesmr, chain = 1, est = "mean",
-  labels = 1:16)
-summary(z)
-color_scheme_set("mix-pink-blue")
-graph <- plot(z, size = 2, size_lbl = 3)
-graph + panel_bg(fill = "gray90", color = NA)
+res <- bayesmr_het(
+  data = dat,
+  control = control,
+  prior = prior
+)
+summary(res)
+plot(res, what = "trace")
 }
 
 }
 \references{
-Consonni, G., Venturini, S., Castelletti, F. (2026), "Bayesian Hierarchical Modeling for
-Two-Sample Summary-Data Mendelian Randomization under Heterogeneity, working paper.
+Consonni, G., Venturini, S., Castelletti, F. (2026).
+"Bayesian Hierarchical Modeling for Two-Sample Summary-Data Mendelian
+Randomization under Heterogeneity". Working paper.
 }
 \seealso{
-\code{\link{bmds}} for Bayesian (metric) multidimensional scaling.
-
-\code{\link{bayesmr_data}} for a description of the data format.
-
-\code{\link{bayesmr_het_fit_list}} for a description of the elements
-included in the returned object.
+\code{\link[=bayesmr_het_fit]{bayesmr_het_fit()}} for the lower-level single-chain fitting function;
+\code{\link[=bayesmr_data-class]{bayesmr_data}} for the input data format;
+\code{\link[=bayesmr_het_fit_list-class]{bayesmr_het_fit_list}} for the returned object;
+\code{\link[=bayesmr_control]{bayesmr_control()}}, \code{\link[=bayesmr_prior]{bayesmr_prior()}}, and \code{\link[=bayesmr_init]{bayesmr_init()}}.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}

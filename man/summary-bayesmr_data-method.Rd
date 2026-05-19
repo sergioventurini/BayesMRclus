@@ -3,15 +3,21 @@
 \name{summary,bayesmr_data-method}
 \alias{summary,bayesmr_data-method}
 \alias{bayesmr_data-summary}
-\title{Provide a summary of a \code{bayesmr_data} class instance.}
+\title{Summarize a \code{bayesmr_data} object.}
 \usage{
-\S4method{summary}{bayesmr_data}(object)
+\S4method{summary}{bayesmr_data}(object, ...)
 }
 \arguments{
-\item{object}{An object of class \code{\link{bayesmr_data}}.}
+\item{object}{An object of class \code{\link[=bayesmr_data-class]{bayesmr_data}}.}
+
+\item{...}{Further arguments passed to or ignored by the method.}
+}
+\value{
+Invisibly returns \code{NULL}; called for its side effect of printing a
+summary of the observed data.
 }
 \description{
-Provide a summary of a \code{bayesmr_data} class instance.
+Summarize a \code{bayesmr_data} object.
 }
 \author{
 Sergio Venturini \email{sergio.venturini@unicatt.it}
