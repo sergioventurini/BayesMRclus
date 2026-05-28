@@ -1,0 +1,768 @@
+# =============================================================================
+# WHRadjBMI --> Fasting Insulin: Preliminary MR Analyses
+# =============================================================================
+#
+# Reproduces all results reported in the draft Section 7.3 of
+# "Bayesian Modeling for Heterogeneous Causal Effects in Two-Sample MR"
+#
+# Input:  bmi_insulin.csv   (harmonised TwoSampleMR output, one row per SNP)
+#         Updated dataset: p = 213 SNPs (previously 210)
+# Outputs (written to ./output/PMR/):
+#   table1_empirical_summary.csv
+#   fig_scatter.png
+#   fig_funnel.png
+#   fig_radial.png
+#   fig_forest.png
+#   mrclust_results.csv
+#   mrpath_results.csv
+#   sensitivity_outlier_exclusion.csv
+#   whr_fi_mcmc.csv            <- four-tuple for mr_mixture.cpp
+#
+# All analyses are implemented from scratch using only base R and the
+# 'boot' package (part of the standard R distribution).
+# No external MR packages are required.
+#
+# Author: generated for Sergio's BNPM-MR paper draft
+# =============================================================================
+
+
+# ── 0.  Setup ─────────────────────────────────────────────────────────────────
+
+dir.create("output/PMR", showWarnings = FALSE)
+set.seed(42)
+fig_dir <- "/Users/Sergio/Library/CloudStorage/OneDrive-UniversitàCattolicadelSacroCuore/Mendelian randomization/DRAFT-PAPER/DRAFT-paper/images"
+
+# ── 1.  Load and prepare data ─────────────────────────────────────────────────
+
+dat <- read.csv("/Users/Sergio/dev/BayesMRclus/data/whradjbmi_insulin.csv", stringsAsFactors = FALSE)
+
+# Keep only harmonised SNPs flagged for inclusion
+d <- dat[dat$mr_keep == TRUE, ]
+cat(sprintf("Total SNPs after mr_keep filter: %d\n", nrow(d)))
+cat(sprintf("Palindromic SNPs retained:        %d\n", sum(d$palindromic)))
+cat(sprintf("Ambiguous SNPs retained:          %d\n", sum(d$ambiguous)))
+cat("Action code table:\n"); print(table(d$action))
+
+# Reorient so all beta.exposure > 0
+# (flip sign of both beta.exposure and beta.outcome simultaneously)
+flip <- d$beta.exposure < 0
+d$beta.exposure[flip] <- -d$beta.exposure[flip]
+d$beta.outcome[flip]  <- -d$beta.outcome[flip]
+cat(sprintf("\nSNPs reoriented: %d of %d\n", sum(flip), nrow(d)))
+stopifnot(all(d$beta.exposure > 0))
+
+bx  <- d$beta.exposure   # gamma_hat (reoriented)
+by  <- d$beta.outcome    # Gamma_hat (reoriented)
+sx  <- d$se.exposure     # SE of gamma_hat
+sy  <- d$se.outcome      # SE of Gamma_hat
+p   <- nrow(d)
+
+# Derived quantities used throughout
+s2X  <- sx^2
+s2Y  <- sy^2
+wald <- by / bx                    # Wald ratios
+se_w <- abs(sy / bx)              # delta-method SE of Wald ratio
+zsc  <- bx / sx                   # instrument z-scores
+
+
+# ── 2.  Empirical summary table (Table 1) ─────────────────────────────────────
+
+sumrow <- function(x, label) {
+  c(Quantity = label,
+    Min    = round(min(x),    5),
+    Q1     = round(quantile(x, 0.25), 5),
+    Median = round(median(x), 5),
+    Q3     = round(quantile(x, 0.75), 5),
+    Max    = round(max(x),    5),
+    IQR    = round(IQR(x),    5))
+}
+
+tab1 <- rbind(
+  sumrow(bx,   "gamma_hat (SD / allele)"),
+  sumrow(by,   "Gamma_hat (inv-norm log-insulin / allele)"),
+  sumrow(sx,   "se_gamma_hat"),
+  sumrow(sy,   "se_Gamma_hat"),
+  sumrow(wald, "Wald ratio r_j"),
+  sumrow(zsc,  "z-score z_j")
+)
+write.csv(tab1, "output/PMR/table1_empirical_summary.csv", row.names = FALSE)
+cat("\n--- Empirical summary (Table 1) ---\n")
+print(as.data.frame(tab1))
+
+
+# ── 3.  Standard MR methods ───────────────────────────────────────────────────
+
+# ── 3a. IVW (multiplicative random effects) ──────────────────────────────────
+w        <- 1 / s2Y                             # precision weights
+beta_ivw <- sum(w * by * bx) / sum(w * bx^2)
+Q        <- sum(w * (by - beta_ivw * bx)^2)    # Cochran Q
+se_ivw_fe <- sqrt(1 / sum(w * bx^2))           # fixed-effect SE
+se_ivw_re <- se_ivw_fe * sqrt(Q / (p - 1))     # multiplicative RE correction
+I2       <- max((Q - (p - 1)) / Q, 0)
+pval_Q   <- pchisq(Q, df = p - 1, lower.tail = FALSE)
+
+cat("\n--- IVW ---\n")
+cat(sprintf("beta  = %.4f\n", beta_ivw))
+cat(sprintf("SE_RE = %.4f\n", se_ivw_re))
+cat(sprintf("95%%CI = [%.4f, %.4f]\n",
+            beta_ivw - 1.96 * se_ivw_re,
+            beta_ivw + 1.96 * se_ivw_re))
+cat(sprintf("Q = %.2f (df=%d, p=%.2e), I2 = %.1f%%\n",
+            Q, p - 1, pval_Q, I2 * 100))
+
+# ── 3b. MR-Egger ─────────────────────────────────────────────────────────────
+eg       <- lm(by ~ bx, weights = w)
+b_eg     <- coef(eg)["bx"]
+int_eg   <- coef(eg)["(Intercept)"]
+Q_eg     <- sum(w * (by - int_eg - b_eg * bx)^2)   # residual Q (=Q')
+se_eg_re  <- sqrt(vcov(eg)["bx", "bx"] *
+                    Q_eg / (p - 2))                  # RE-corrected SE
+se_int_re <- sqrt(vcov(eg)["(Intercept)", "(Intercept)"] *
+                    Q_eg / (p - 2))
+pval_int <- 2 * pt(-abs(int_eg / se_int_re), df = p - 2)
+pval_Qp  <- pchisq(Q_eg, df = p - 2, lower.tail = FALSE)
+
+cat("\n--- MR-Egger ---\n")
+cat(sprintf("beta  = %.4f (SE_RE = %.4f), 95%%CI [%.4f, %.4f]\n",
+            b_eg, se_eg_re,
+            b_eg - 1.96 * se_eg_re, b_eg + 1.96 * se_eg_re))
+cat(sprintf("intercept = %.5f (SE_RE = %.5f, p = %.3f)\n",
+            int_eg, se_int_re, pval_int))
+cat(sprintf("Q' = %.2f (df=%d, p=%.2e)\n", Q_eg, p - 2, pval_Qp))
+
+# ── 3c. Weighted median ───────────────────────────────────────────────────────
+wm_estimate <- function(bx, by, sy, nboot = 1000, seed = 42) {
+  wald_j  <- by / bx
+  w_norm  <- (bx^2 / sy^2) / sum(bx^2 / sy^2)
+  ord     <- order(wald_j)
+  cs      <- cumsum(w_norm[ord])
+  ix      <- max(which(cs < 0.5))
+  lo <- wald_j[ord[ix]]; hi <- wald_j[ord[ix + 1]]
+  lw <- cs[ix];          hw <- cs[ix + 1]
+  est <- lo + (0.5 - lw) / (hw - lw) * (hi - lo)
+
+  set.seed(seed)
+  bs_est <- replicate(nboot, {
+    i   <- sample(length(bx), replace = TRUE)
+    bxi <- bx[i]; byi <- by[i]; syi <- sy[i]
+    wi  <- (bxi^2 / syi^2) / sum(bxi^2 / syi^2)
+    oi  <- order(byi / bxi)
+    csi <- cumsum(wi[oi])
+    if (all(csi < 0.5)) return(NA_real_)
+    ixi <- max(which(csi < 0.5))
+    lb  <- (byi / bxi)[oi[ixi]]; hb <- (byi / bxi)[oi[ixi + 1]]
+    lb + (0.5 - csi[ixi]) / (csi[ixi + 1] - csi[ixi]) * (hb - lb)
+  })
+  se_bs <- sd(bs_est, na.rm = TRUE)
+  list(est = est, se = se_bs)
+}
+wm <- wm_estimate(bx, by, sy, nboot = 1000)
+
+cat("\n--- Weighted Median ---\n")
+cat(sprintf("beta = %.4f (boot SE = %.4f), 95%%CI [%.4f, %.4f]\n",
+            wm$est, wm$se,
+            wm$est - 1.96 * wm$se, wm$est + 1.96 * wm$se))
+
+# ── 3d. MR-RAPS (profile score, no overdispersion) ───────────────────────────
+# Iterative Newton updates on the profile score equation
+# Reference: Zhao et al. (2020) Annals of Statistics
+mr_raps <- function(bx, by, sx, sy, max_iter = 200, tol = 1e-8) {
+  s2x <- sx^2; s2y <- sy^2
+  # Starting value: IVW
+  b <- sum((1/s2y) * by * bx) / sum((1/s2y) * bx^2)
+  for (iter in seq_len(max_iter)) {
+    # Adjusted weights (Zhao et al. eq. 8)
+    v    <- s2y + b^2 * s2x
+    kap  <- bx^2 / v
+    # Score
+    S    <- sum(kap * bx * (by - b * bx) / v)
+    # Information
+    I_   <- sum(kap * bx^2 / v)
+    b_new <- b + S / I_
+    if (abs(b_new - b) < tol) { b <- b_new; break }
+    b <- b_new
+  }
+  # SE from observed Fisher information
+  v  <- s2y + b^2 * s2x
+  se <- 1 / sqrt(sum((bx / v)^2 * bx^2))
+  list(beta = b, se = se)
+}
+raps <- mr_raps(bx, by, sx, sy)
+
+cat("\n--- MR-RAPS ---\n")
+cat(sprintf("beta = %.4f (profile SE = %.4f), 95%%CI [%.4f, %.4f]\n",
+            raps$beta, raps$se,
+            raps$beta - 1.96 * raps$se, raps$beta + 1.96 * raps$se))
+
+# ── 3e. Contamination mixture (Burgess et al. 2020) ──────────────────────────
+# EM algorithm on Wald ratios: valid component N(beta, se_w^2),
+# invalid component N(0, se_w^2 + sigma_c^2)
+cont_mix <- function(bx, by, sy, max_iter = 500, tol = 1e-8) {
+  wald_j <- by / bx
+  se_w_j <- abs(sy / bx)
+  n      <- length(wald_j)
+  # Starting values
+  b       <- sum((1/sy^2) * by * bx) / sum((1/sy^2) * bx^2)
+  phi     <- 0.1        # contamination proportion
+  sigma_c <- 0.5        # spread of invalid component
+  for (iter in seq_len(max_iter)) {
+    d_valid   <- dnorm(wald_j, mean = b,   sd = se_w_j)
+    d_invalid <- dnorm(wald_j, mean = 0,
+                       sd = sqrt(se_w_j^2 + sigma_c^2))
+    denom     <- (1 - phi) * d_valid + phi * d_invalid
+    p_valid   <- pmax((1 - phi) * d_valid / denom, 1e-10)
+    # M-step
+    b_new       <- sum(p_valid / se_w_j^2 * wald_j) /
+                   sum(p_valid / se_w_j^2)
+    phi_new     <- mean(1 - p_valid)
+    sc2         <- sum((1 - p_valid) * wald_j^2) /
+                   sum(1 - p_valid) - mean(se_w_j^2)
+    sigma_c_new <- sqrt(max(sc2, 0.01))
+    if (abs(b_new - b) < tol && abs(phi_new - phi) < tol) {
+      b <- b_new; phi <- phi_new; sigma_c <- sigma_c_new; break
+    }
+    b <- b_new; phi <- phi_new; sigma_c <- sigma_c_new
+  }
+  se_b <- 1 / sqrt(sum(p_valid / se_w_j^2))
+  list(beta = b, se = se_b, phi = phi, sigma_c = sigma_c)
+}
+cm <- cont_mix(bx, by, sy)
+
+cat("\n--- Contamination Mixture ---\n")
+cat(sprintf("beta = %.4f (SE = %.4f), 95%%CI [%.4f, %.4f]\n",
+            cm$beta, cm$se,
+            cm$beta - 1.96 * cm$se, cm$beta + 1.96 * cm$se))
+cat(sprintf("contamination fraction phi = %.3f\n", cm$phi))
+
+
+# ── 4.  MR-Clust (EM Gaussian mixture on Wald ratios) ────────────────────────
+#
+# NOTE: The simple K-component mixture below is provided for completeness
+# and to reproduce the preliminary BIC screening.  The definitive MR-Clust
+# results reported in the paper were obtained using the MRClust R package
+# (Foley et al. 2019), which adds an explicit Null component (centred at 0)
+# and a Junk component.  Those results were:
+#   Cluster 2 (negative): mu=-0.397, n=9,  mean_prob=0.64
+#   Null:                  mu=-0.001, n=66, mean_prob=0.60
+#   Cluster 1 (positive): mu=+0.200, n=137, mean_prob=0.69
+#   Junk:                  mu=+1.270, n=1,  prob=0.997
+# To reproduce them, install MRClust from GitHub and run:
+#   devtools::install_github("cnfoley/mrclust")
+#   library(mrclust)
+#   res <- mr_clust_em(theta=wald, theta_se=se_w, bx=bx, bxse=sx,
+#                      by=by, byse=sy, obs_names=d$SNP)
+#
+# The code below fits the simpler plain Gaussian mixture for reference.
+
+mr_clust_em <- function(wald, se_w, K, nrep = 20, seed = 42,
+                        max_iter = 500, tol = 1e-6) {
+  n <- length(wald)
+  set.seed(seed)
+  best_ll <- -Inf; best <- NULL
+
+  for (rep in seq_len(nrep)) {
+    # Random initialisation of cluster means
+    mu  <- quantile(wald, seq(0.1, 0.9, length.out = K)) +
+             rnorm(K, 0, 0.05)
+    sig <- rep(sd(wald) / K, K)   # extra variance beyond measurement error
+    pi_ <- rep(1 / K, K)
+    ll_prev <- -Inf
+
+    for (iter in seq_len(max_iter)) {
+      # E-step
+      r <- matrix(0, n, K)
+      for (k in seq_len(K))
+        r[, k] <- pi_[k] * dnorm(wald, mu[k],
+                                  sqrt(se_w^2 + sig[k]^2))
+      rs <- rowSums(r); rs[rs == 0] <- 1e-300
+      r  <- r / rs
+      ll <- sum(log(rs))
+
+      # M-step
+      Nk  <- colSums(r)
+      pi_ <- Nk / n
+      for (k in seq_len(K)) {
+        # Precision-weighted mean (accounts for heteroscedastic se_w)
+        v_k    <- 1 / sum(r[, k] / se_w^2)
+        mu[k]  <- v_k * sum(r[, k] * wald / se_w^2)
+        res2   <- sum(r[, k] * (wald - mu[k])^2) / Nk[k]
+        sig[k] <- sqrt(max(res2 - mean(se_w^2), 0))
+      }
+      if (abs(ll - ll_prev) < tol) break
+      ll_prev <- ll
+    }
+    if (ll_prev > best_ll) {
+      best_ll <- ll_prev
+      best    <- list(mu = mu, sig = sig, pi = pi_, r = r, ll = ll_prev)
+    }
+  }
+  best$cluster <- apply(best$r, 1, which.max)
+  best$K       <- K
+  # BIC: free params = K means + K mixing weights (K-1 free) + K sig
+  npar      <- 3 * K - 1
+  best$bic  <- -2 * best$ll + npar * log(n)
+  best
+}
+
+# Fit K = 1 to 5 and select by BIC
+cat("\n--- MR-Clust: BIC over K = 1 to 5 ---\n")
+mrclust_fits <- vector("list", 5)
+bic_vec      <- numeric(5)
+
+for (K in 1:5) {
+  fit       <- mr_clust_em(wald, se_w, K = K, nrep = 20, seed = 42 + K)
+  mrclust_fits[[K]] <- fit
+  bic_vec[K] <- fit$bic
+  cat(sprintf("  K=%d  BIC=%.2f  mu=%s\n",
+              K, fit$bic,
+              paste(round(sort(fit$mu), 4), collapse = ", ")))
+}
+best_K_mc <- which.min(bic_vec)
+cat(sprintf("\nBIC-selected K = %d\n", best_K_mc))
+
+mc_best <- mrclust_fits[[best_K_mc]]
+ord_mc  <- order(mc_best$mu)
+
+# Cluster-specific results
+mc_results <- lapply(seq_len(best_K_mc), function(k) {
+  idx  <- ord_mc[k]
+  nk   <- sum(mc_best$cluster == idx)
+  # SE via precision-weighted inverse Fisher information
+  se_k <- 1 / sqrt(sum(mc_best$r[, idx] / se_w^2))
+  list(cluster = k, mu = mc_best$mu[idx], se = se_k,
+       n = nk, pi = mc_best$pi[idx])
+})
+
+cat("\nMR-Clust cluster summary:\n")
+for (cl in mc_results) {
+  cat(sprintf("  C%d: mu=%.4f  SE=%.4f  [%.4f, %.4f]  n=%d  pi=%.3f\n",
+              cl$cluster, cl$mu, cl$se,
+              cl$mu - 1.96 * cl$se, cl$mu + 1.96 * cl$se,
+              cl$n, cl$pi))
+}
+
+# Per-cluster instrument z-score diagnostics
+cat("\nPer-cluster z-score diagnostics:\n")
+for (cl in mc_results) {
+  idx_k <- which(mc_best$cluster == ord_mc[cl$cluster])
+  zk    <- zsc[idx_k]
+  cat(sprintf(
+    "  C%d (n=%d): z min=%.2f  Q1=%.2f  med=%.2f  Q3=%.2f  max=%.2f\n",
+    cl$cluster, length(idx_k),
+    min(zk), quantile(zk, .25), median(zk), quantile(zk, .75), max(zk)))
+  cat(sprintf("    z>3: %d/%d (%.0f%%)   z^2>10 (F>10): %d (%.0f%%)\n",
+              sum(zk > 3), length(zk), 100 * mean(zk > 3),
+              sum(zk^2 > 10), 100 * mean(zk^2 > 10)))
+}
+
+# Save MR-Clust results
+mc_df <- do.call(rbind, lapply(mc_results, function(cl)
+  data.frame(cluster = cl$cluster, mu = cl$mu, se = cl$se,
+             ci_lo = cl$mu - 1.96 * cl$se,
+             ci_hi = cl$mu + 1.96 * cl$se,
+             n = cl$n, pi = cl$pi)))
+write.csv(mc_df, "output/PMR/mrclust_results.csv", row.names = FALSE)
+
+
+# ── 5.  MR-Path (EM on marginalised bivariate Gaussian likelihood) ────────────
+#
+# This implements the core of MR-Path (Iong et al. 2024) using the same
+# marginalised bivariate Gaussian likelihood as BNPM-MR (fixed K, ML).
+# Updates are performed via numerical gradient / Hessian (Newton steps).
+
+# Per-SNP log-likelihood (vectorised over all SNPs for a given scalar beta)
+ll_vec <- function(beta, gamma, psi2, bx, by, s2X, s2Y, tau2 = 0) {
+  syt2 <- s2Y + tau2
+  v    <- psi2 * (syt2 + beta^2 * s2X) + s2X * syt2
+  v[v <= 0] <- 1e-300
+  dg   <- bx - gamma
+  dG   <- by - gamma * beta
+  quad <- (beta^2 * psi2 + syt2) * dg^2 -
+          2 * beta * psi2 * dg * dG +
+          (psi2 + s2X) * dG^2
+  -log(2 * pi) - 0.5 * log(v) - 0.5 * quad / v
+}
+
+# Numerical gradient and Hessian (scalar parameter)
+num_gh <- function(f, x, eps = 1e-5) {
+  fp <- f(x + eps); fm <- f(x - eps); f0 <- f(x)
+  list(g = (fp - fm) / (2 * eps),
+       h = (fp - 2 * f0 + fm) / eps^2)
+}
+
+mrpath_em <- function(bx, by, sx, sy, K,
+                      nstart = 6, maxit = 150, tol = 1e-5,
+                      seed = 42) {
+  s2x <- sx^2; s2y <- sy^2
+  n   <- length(bx)
+  set.seed(seed)
+  best_ll <- -Inf; best <- NULL
+  wald_j  <- by / bx
+
+  for (st in seq_len(nstart)) {
+    # Initialise
+    betas <- sort(quantile(wald_j,
+                           seq(0.1, 0.9, length.out = K)) +
+                    rnorm(K, 0, 0.03))
+    pi_k  <- rep(1 / K, K)
+    gamma <- mean(bx)
+    psi2  <- max(var(bx) - mean(s2x), 1e-5)
+    ll_old <- -Inf
+
+    for (it in seq_len(maxit)) {
+      # E-step: log-responsibility matrix
+      lmat <- matrix(0, n, K)
+      for (k in seq_len(K))
+        lmat[, k] <- log(pi_k[k]) +
+                     ll_vec(betas[k], gamma, psi2, bx, by, s2x, s2y)
+      lmax <- apply(lmat, 1, max)
+      resp <- exp(lmat - lmax)
+      resp <- resp / rowSums(resp)
+      ll   <- sum(lmax + log(rowSums(exp(lmat - lmax))))
+
+      # M-step: mixing weights
+      Nk   <- colSums(resp)
+      pi_k <- pmax(Nk / n, 1e-8); pi_k <- pi_k / sum(pi_k)
+
+      # M-step: beta_k (8 Newton steps each)
+      for (k in seq_len(K)) {
+        rk <- resp[, k]
+        for (ni in 1:8) {
+          gh <- num_gh(
+            function(b) sum(rk * ll_vec(b, gamma, psi2, bx, by, s2x, s2y)),
+            betas[k])
+          if (abs(gh$h) < 1e-14) break
+          step    <- -gh$g / gh$h
+          betas[k] <- betas[k] + sign(step) * min(abs(step), 0.1)
+        }
+      }
+
+      # M-step: gamma (5 Newton steps)
+      k_asgn <- apply(resp, 1, which.max)
+      for (ni in 1:5) {
+        gh_g <- num_gh(
+          function(g) sum(mapply(function(j)
+            resp[j, k_asgn[j]] *
+              ll_vec(betas[k_asgn[j]], g, psi2, bx[j], by[j],
+                     s2x[j], s2y[j]),
+            seq_len(n))),
+          gamma, eps = 1e-4)
+        if (abs(gh_g$h) < 1e-14) break
+        step  <- -gh_g$g / gh_g$h
+        gamma <- gamma + sign(step) * min(abs(step), 0.05)
+      }
+
+      # M-step: psi2 (5 Newton steps on log scale)
+      for (ni in 1:5) {
+        gh_p <- num_gh(
+          function(lp) sum(mapply(function(j)
+            resp[j, k_asgn[j]] *
+              ll_vec(betas[k_asgn[j]], gamma, exp(lp), bx[j], by[j],
+                     s2x[j], s2y[j]),
+            seq_len(n))),
+          log(psi2), eps = 1e-3)
+        if (abs(gh_p$h) < 1e-14) break
+        step <- -gh_p$g / gh_p$h
+        psi2 <- exp(log(psi2) + sign(step) * min(abs(step), 0.2))
+      }
+
+      if (abs(ll - ll_old) < tol) break
+      ll_old <- ll
+    }
+    if (ll_old > best_ll) {
+      best_ll <- ll_old
+      best    <- list(betas = betas, pi = pi_k, gamma = gamma,
+                      psi2 = psi2, resp = resp, ll = ll_old, K = K)
+    }
+  }
+  best$cluster <- apply(best$resp, 1, which.max)
+  npar         <- K + (K - 1) + 2   # K betas + (K-1) pi + gamma + psi2
+  best$bic     <- -2 * best$ll + npar * log(n)
+  best
+}
+
+cat("\n--- MR-Path EM: K = 1, 2 ---\n")
+mrpath_fits <- vector("list", 2)
+for (K in 1:2) {
+  cat(sprintf("  Fitting K=%d ...\n", K))
+  mrpath_fits[[K]] <- mrpath_em(bx, by, sx, sy, K = K,
+                                 nstart = 6, seed = 42 + K)
+  cat(sprintf("  K=%d: ll=%.3f  BIC=%.3f  betas=%s\n",
+              K, mrpath_fits[[K]]$ll, mrpath_fits[[K]]$bic,
+              paste(round(sort(mrpath_fits[[K]]$betas), 4),
+                    collapse = ", ")))
+}
+cat(sprintf("\nBIC K=1=%.3f  BIC K=2=%.3f  --> BIC favours K=%d\n",
+            mrpath_fits[[1]]$bic, mrpath_fits[[2]]$bic,
+            ifelse(mrpath_fits[[2]]$bic < mrpath_fits[[1]]$bic, 2, 1)))
+
+mp_best <- mrpath_fits[[2]]   # K=2 is BIC-selected
+ord_mp  <- order(mp_best$betas)
+
+mp_results <- lapply(1:2, function(k) {
+  idx  <- ord_mp[k]
+  b0   <- mp_best$betas[idx]
+  nk   <- sum(mp_best$cluster == idx)
+  # SE from observed Hessian of weighted log-likelihood
+  gh_b <- num_gh(
+    function(b) sum(mp_best$resp[, idx] *
+                    ll_vec(b, mp_best$gamma, mp_best$psi2,
+                           bx, by, s2X, s2Y)),
+    b0, eps = 1e-5)
+  se_k <- if (gh_b$h < 0) sqrt(-1 / gh_b$h) else NA_real_
+  list(cluster = k, beta = b0, se = se_k, n = nk,
+       pi = mp_best$pi[idx])
+})
+
+cat("\nMR-Path cluster summary:\n")
+for (cl in mp_results) {
+  cat(sprintf("  C%d: beta=%.4f  SE=%.4f  [%.4f, %.4f]  n=%d  pi=%.3f\n",
+              cl$cluster, cl$beta, cl$se,
+              cl$beta - 1.96 * cl$se, cl$beta + 1.96 * cl$se,
+              cl$n, cl$pi))
+}
+cat(sprintf("  gamma=%.5f  psi=%.5f\n",
+            mp_best$gamma, sqrt(mp_best$psi2)))
+
+# Save MR-Path results
+mp_df <- do.call(rbind, lapply(mp_results, function(cl)
+  data.frame(cluster = cl$cluster, beta = cl$beta, se = cl$se,
+             ci_lo = cl$beta - 1.96 * cl$se,
+             ci_hi = cl$beta + 1.96 * cl$se,
+             n = cl$n, pi = cl$pi)))
+write.csv(mp_df, "output/PMR/mrpath_results.csv", row.names = FALSE)
+
+
+# ── 6.  Sensitivity: exclude Bonferroni outliers ──────────────────────────────
+#
+# Outliers identified from the radial MR plot (Section 7.3.4):
+# scaled residuals exceeding the Bonferroni threshold |res| > z_{1-0.025/p}
+
+xr          <- bx / sy
+yr          <- by / sy
+res_std     <- yr - beta_ivw * xr
+thr_bonf    <- qnorm(1 - 0.05 / (2 * p))
+outlier_idx <- which(abs(res_std) > thr_bonf)
+outlier_snp <- d$SNP[outlier_idx]
+cat(sprintf("\n--- Bonferroni outliers (threshold z=%.3f) ---\n", thr_bonf))
+cat(sprintf("n=%d: %s\n", length(outlier_snp),
+            paste(outlier_snp, collapse = ", ")))
+
+sens_results <- list()
+for (label in c("Full", "Excl_outliers")) {
+  d_s  <- if (label == "Full") d else d[!d$SNP %in% outlier_snp, ]
+  bx_s <- d_s$beta.exposure; by_s <- d_s$beta.outcome
+  sy_s <- d_s$se.outcome;    p_s  <- nrow(d_s)
+  w_s  <- 1 / sy_s^2
+  b_s  <- sum(w_s * by_s * bx_s) / sum(w_s * bx_s^2)
+  Q_s  <- sum(w_s * (by_s - b_s * bx_s)^2)
+  se_s <- sqrt(1 / sum(w_s * bx_s^2)) * sqrt(Q_s / (p_s - 1))
+  I2_s <- max((Q_s - (p_s - 1)) / Q_s, 0)
+  pQ_s <- pchisq(Q_s, p_s - 1, lower.tail = FALSE)
+  eg_s <- lm(by_s ~ bx_s, weights = w_s)
+  b_eg_s   <- coef(eg_s)["bx_s"]
+  int_eg_s <- coef(eg_s)["(Intercept)"]
+  Q_eg_s   <- sum(w_s * (by_s - int_eg_s - b_eg_s * bx_s)^2)
+  se_int_s <- sqrt(vcov(eg_s)["(Intercept)", "(Intercept)"] *
+                     Q_eg_s / (p_s - 2))
+  pint_s   <- 2 * pt(-abs(int_eg_s / se_int_s), df = p_s - 2)
+  sens_results[[label]] <- data.frame(
+    dataset = label, p = p_s,
+    IVW_beta = round(b_s, 4), IVW_se_RE = round(se_s, 4),
+    IVW_ci_lo = round(b_s - 1.96 * se_s, 4),
+    IVW_ci_hi = round(b_s + 1.96 * se_s, 4),
+    Q = round(Q_s, 2), pval_Q = signif(pQ_s, 3),
+    I2_pct = round(I2_s * 100, 1),
+    Egger_beta = round(b_eg_s, 4),
+    Egger_intercept = round(int_eg_s, 5),
+    Egger_int_pval = round(pint_s, 3),
+    Qprime = round(Q_eg_s, 2))
+  cat(sprintf("\n%s (p=%d):\n", label, p_s))
+  cat(sprintf("  IVW=%.4f (SE_RE=%.4f) [%.4f,%.4f]\n",
+              b_s, se_s, b_s - 1.96 * se_s, b_s + 1.96 * se_s))
+  cat(sprintf("  Q=%.2f  p=%.2e  I2=%.1f%%\n", Q_s, pQ_s, I2_s * 100))
+  cat(sprintf("  Egger int=%.5f (p=%.3f)  Q'=%.2f\n",
+              int_eg_s, pint_s, Q_eg_s))
+}
+write.csv(do.call(rbind, sens_results),
+          "output/PMR/sensitivity_outlier_exclusion.csv", row.names = FALSE)
+
+
+# ── 7.  Hyperparameter recommendations ───────────────────────────────────────
+
+sigma_beta_rec <- min(1.5 * IQR(wald) / 1.35, 1.0)
+mY             <- median(sy)
+cat(sprintf("\n--- Hyperparameter recommendations ---\n"))
+cat(sprintf("sigma_beta = %.3f  (1.5 * IQR(wald)/1.35 = %.3f, capped at 1)\n",
+            sigma_beta_rec, 1.5 * IQR(wald) / 1.35))
+cat(sprintf("s_tau (mY) = %.5f  (median outcome SE)\n", mY))
+cat(sprintf("Suggested: sigma_beta = 0.35,  s_tau = %.5f\n", mY))
+
+
+# ── 8.  Export MCMC-ready CSV ─────────────────────────────────────────────────
+#
+# Format expected by mr_mixture.cpp:
+#   gamma_hat, Gamma_hat, sigma2X, sigma2Y
+# where sigma2X and sigma2Y are VARIANCES (se^2), not standard errors.
+
+mcmc_df <- data.frame(
+  gamma_hat = bx,
+  Gamma_hat = by,
+  sigma2X   = s2X,
+  sigma2Y   = s2Y
+)
+write.csv(mcmc_df, "output/PMR/whr_fi_mcmc.csv", row.names = FALSE, quote = FALSE)
+cat(sprintf("\nMCMC CSV written: output/PMR/whr_fi_mcmc.csv  (%d SNPs)\n", p))
+cat("Columns: gamma_hat, Gamma_hat, sigma2X (=se^2), sigma2Y (=se^2)\n")
+
+
+# ── 9.  Figures ───────────────────────────────────────────────────────────────
+
+# Figures 1-3: plain grey dots (no cluster colouring)
+dot_col <- "grey40"
+col_neg <- "#D62728"   # used in forest plot and radial outliers
+col_pos <- "#1F77B4"   # used in forest plot
+
+# ── Fig 1: Scatter plot ──────────────────────────────────────────────────────
+png(file.path(fig_dir, "fig_scatter.png"), width = 700, height = 600, res = 100)
+par(mar = c(5, 5, 2, 2))
+plot(bx, by,
+     pch  = 19, cex = 0.7, col = dot_col,
+     xlab = expression(hat(gamma)[j] ~ "(SD units / allele)"),
+     ylab = expression(hat(Gamma)[j] ~ "(inv-norm log-insulin / allele)"),
+     # main = "WHRadjBMI \u2192 Fasting Insulin: GWAS summary statistics")
+     main = "")
+abline(0,       beta_ivw, col = "#2CA02C", lwd = 2, lty = 1)
+abline(int_eg,  b_eg,     col = "#FF7F0E", lwd = 2, lty = 2)
+abline(h = 0, col = "grey80", lty = 3)
+abline(v = 0, col = "grey80", lty = 3)
+legend("topleft",
+       legend = c(sprintf("IVW (\u03b2 = %.3f)", beta_ivw),
+                  sprintf("MR-Egger (\u03b2 = %.3f)", b_eg)),
+       col  = c("#2CA02C", "#FF7F0E"),
+       lty  = c(1, 2), lwd  = 2, cex = 0.9, bg = "white")
+dev.off()
+
+# ── Fig 2: Funnel plot ───────────────────────────────────────────────────────
+prec <- 1 / se_w
+png(file.path(fig_dir, "fig_funnel.png"), width = 700, height = 600, res = 100)
+par(mar = c(5, 5, 2, 2))
+plot(wald, prec,
+     pch  = 19, cex = 0.7, col = dot_col,
+     xlab = "Wald ratio",
+     ylab = expression("Precision  " * (1 / SE(r[j]))),
+     # main = "Funnel plot")
+     main = "")
+abline(v = beta_ivw, col = "#2CA02C", lwd = 2)
+abline(v = 0,        col = "grey70",  lty = 3)
+legend("topright",
+       legend = sprintf("IVW \u03b2 = %.3f", beta_ivw),
+       col = "#2CA02C", lty = 1, lwd = 2, cex = 0.9, bg = "white")
+dev.off()
+
+# ── Fig 3: Radial MR plot ────────────────────────────────────────────────────
+xr      <- bx / sy
+yr      <- by / sy
+res_std <- yr - beta_ivw * xr
+outliers <- abs(res_std) > thr_bonf
+
+png(file.path(fig_dir, "fig_radial.png"), width = 700, height = 600, res = 100)
+par(mar = c(5, 5, 2, 2))
+plot(xr, yr,
+     pch  = 19, cex = 0.7, col = dot_col,
+     xlab = expression(hat(gamma)[j] / s[hat(Gamma)[j]]),
+     ylab = expression(hat(Gamma)[j] / s[hat(Gamma)[j]]),
+     # main = "Radial MR plot (Bowden et al. 2018)")
+     main = "")
+abline(0, beta_ivw, col = "#2CA02C", lwd = 2)
+abline(h = 0, col = "grey70", lty = 3)
+abline(v = 0, col = "grey70", lty = 3)
+points(xr[outliers], yr[outliers],
+       pch = 1, cex = 1.5, col = col_neg, lwd = 1.5)
+if (any(outliers))
+  text(xr[outliers], yr[outliers],
+       labels = d$SNP[outliers],
+       pos = 2, cex = 0.6, col = "black")
+legend("topright",
+       legend = c(sprintf("IVW slope = %.3f", beta_ivw),
+                  sprintf("Bonferroni outlier (n=%d)", sum(outliers))),
+       col  = c("#2CA02C", col_neg),
+       lty  = c(1, NA), pch = c(NA, 1),
+       lwd  = c(2, 1.8), cex = 0.9, bg = "white")
+dev.off()
+
+# ── Fig 4: Forest / methods comparison ──────────────────────────────────────
+# MRClust results (from MRClust package run — see Note above)
+mrclust_means <- c(-0.397, -0.001, 0.200, 1.270)
+mrclust_ns    <- c(9L,     66L,    137L,  1L)
+mrclust_labs  <- c("MR-Clust C2: negative (n=9)",
+                   "MR-Clust Null (n=66)",
+                   "MR-Clust C1: positive (n=137)",
+                   "MR-Clust Junk (n=1)")
+
+methods <- c(
+  "IVW",
+  "MR-Egger",
+  "Wt Median",
+  "MR-RAPS",
+  "Cont. Mix.",
+  mrclust_labs,
+  sprintf("MR-Path C1 (n=%d)",  mp_results[[1]]$n),
+  sprintf("MR-Path C2 (n=%d)",  mp_results[[2]]$n)
+)
+betas_f <- c(beta_ivw, b_eg, wm$est, raps$beta, cm$beta,
+             mrclust_means,
+             mp_results[[1]]$beta, mp_results[[2]]$beta)
+ses_f   <- c(se_ivw_re, se_eg_re, wm$se, raps$se, cm$se,
+             NA, NA, NA, NA,          # MRClust: no SE from package
+             mp_results[[1]]$se,  mp_results[[2]]$se)
+lo_f    <- betas_f - 1.96 * ses_f
+hi_f    <- betas_f + 1.96 * ses_f
+col_null <- "#9467BD"; col_junk <- "#17BECF"
+cols_f  <- c("#2CA02C", "#FF7F0E", "#9467BD", "#8C564B", "#E377C2",
+             col_neg, col_null, col_pos, col_junk,
+             col_neg, col_pos)
+
+png(file.path(fig_dir, "fig_forest.png"), width = 800, height = 600, res = 100)
+par(mar = c(5, 11, 2, 2))
+y   <- seq(length(methods), 1, -1)
+xlim <- range(c(lo_f, hi_f), na.rm = TRUE) * c(1.05, 1.05)
+plot(NA,
+     xlim = xlim,
+     ylim = c(0.5, length(methods) + 0.5),
+     xlab = "Causal effect estimate",
+     ylab = "",
+     yaxt = "n",
+     # main = "Competing methods: WHRadjBMI on fasting insulin")
+     main = "")
+abline(v = 0, col = "grey60", lty = 2)
+# Add horizontal dividers between method groups
+abline(h = 6.5, col = "grey85", lty = 1, lwd = 0.8)
+abline(h = 10.5, col = "grey85", lty = 1, lwd = 0.8)
+for (i in seq_along(methods)) {
+  if (is.finite(lo_f[i]) && is.finite(hi_f[i]))
+    segments(lo_f[i], y[i], hi_f[i], y[i], col = cols_f[i], lwd = 2)
+  points(betas_f[i], y[i], pch = 15, cex = 1.2, col = cols_f[i])
+}
+labels_ax <- ifelse(is.finite(lo_f),
+  sprintf("%s: %.3f [%.3f, %.3f]", methods, betas_f, lo_f, hi_f),
+  sprintf("%s: %.3f  [no SE]",     methods, betas_f))
+axis(2, at = y, labels = labels_ax,
+     las = 1, cex.axis = 0.72, tick = FALSE, hadj = 1)
+dev.off()
+
+cat("\n--- All figures written to output/PMR/ ---\n")
+cat("Files produced:\n")
+cat("  output/PMR/table1_empirical_summary.csv\n")
+cat("  output/PMR/fig_scatter.png\n")
+cat("  output/PMR/fig_funnel.png\n")
+cat("  output/PMR/fig_radial.png\n")
+cat("  output/PMR/fig_forest.png\n")
+cat("  output/PMR/mrclust_results.csv\n")
+cat("  output/PMR/mrpath_results.csv\n")
+cat("  output/PMR/sensitivity_outlier_exclusion.csv\n")
+cat("  output/PMR/whr_fi_mcmc.csv\n")
+
+# ── 10.  Session info ─────────────────────────────────────────────────────────
+cat("\n--- Session info ---\n")
+print(sessionInfo())

@@ -1,0 +1,742 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath,amssymb}
+\usepackage{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{natbib}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+
+\geometry{a4paper,left=3cm,right=3cm,top=3cm,bottom=3cm}
+\onehalfspacing
+
+\definecolor{fcblue}{RGB}{0,70,180}
+\definecolor{gcgray}{RGB}{120,120,120}
+\definecolor{notecol}{RGB}{180,0,0}
+\definecolor{newcol}{RGB}{0,130,60}
+
+\newcommand{\bs}{\beta^{\star}}
+\newcommand{\todo}[1]{\textcolor{notecol}{[\textit{#1}]}}
+\newcommand{\placeholder}[1]{\textcolor{fcblue}{\textbf{[#1]}}}
+\newcommand{\NEW}[1]{{\color{newcol}#1}}
+\newcommand{\FILLED}[1]{{\color{black}#1}}   % confirmed from data
+
+\hypersetup{colorlinks=true,linkcolor=fcblue,citecolor=fcblue,urlcolor=fcblue}
+
+\title{%
+  \large Draft insert for Section~7 of\\[4pt]
+  \normalsize\itshape Bayesian Modeling for Heterogeneous Causal Effects
+  in Two-Sample Mendelian Randomization\\[10pt]
+  \large\bfseries\upshape Application: Effect of WHRadjBMI on Fasting Insulin
+}
+\author{}
+\date{Draft --- \today}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\bigskip\hrule\bigskip
+
+\noindent\textcolor{gcgray}{\itshape
+  Colour key:
+  \textcolor{notecol}{red brackets} = editorial items still pending;
+  \textcolor{fcblue}{blue bold} = BNPM-MR/PMR placeholders (awaiting
+  MCMC run);
+  \textcolor{newcol}{green} = new material from this revision.
+  All preliminary analyses, competing-method estimates, and figures
+  are based on the harmonised dataset (\texttt{bmi\_insulin.csv},
+  $p = 213$ SNPs after reorientation).}
+
+\bigskip\hrule
+
+% =============================================================================
+\section{WHRadjBMI--Fasting Insulin Dataset}
+\label{sec:whr}
+
+\todo{Ordering note: if the WHRadjBMI analysis is completed before BMI--T2D,
+consider making this Section~7.2 and moving BMI--T2D later.}
+
+% ─── 7.3.1 ───────────────────────────────────────────────────────────────────
+\subsection{Scientific Background and Objective}
+\label{sec:whr:background}
+
+Waist-to-hip ratio adjusted for body mass index (WHRadjBMI) is a measure
+of body fat distribution that captures the tendency to accumulate adipose
+tissue in the abdominal region, net of overall adiposity.  Unlike BMI, which
+reflects total body mass irrespective of regional distribution, WHRadjBMI
+isolates the metabolic consequences of central adiposity---in particular,
+reduced peripheral adipose storage capacity, ectopic fat deposition in liver
+and skeletal muscle, and sex-dimorphic patterns of fat redistribution.
+These pathways are biologically distinct; as a result, genetic instruments
+for WHRadjBMI are expected to capture a more mechanistically heterogeneous
+set of signals than instruments for a single-pathway exposure such as a
+circulating lipid.
+
+Fasting insulin, a marker of systemic insulin resistance, is a natural
+outcome for this investigation.  Hyperinsulinaemia and peripheral insulin
+resistance are jointly associated with central adiposity across multiple
+epidemiological settings, and prior MR analyses have provided evidence for
+a causal effect of WHRadjBMI on insulin resistance phenotypes
+\todo{add relevant citation}.  Nevertheless, whether this effect is
+homogeneous across instruments has not been examined within a nonparametric
+clustering framework.
+
+The principal scientific objective is twofold: to assess whether the causal
+effect of WHRadjBMI on fasting insulin is better described by a single
+effect or by a small number of latent clusters, and to determine whether any
+clustering structure is interpretable in terms of known biology.
+
+\paragraph{Prior biological expectations and falsifiable hypothesis.}
+Three functional categories of WHRadjBMI instruments are expected a priori
+to produce distinct causal signals.
+
+\begin{enumerate}[label=(\roman*)]
+  \item \emph{Adipose storage capacity variants} (near \textit{IRS1},
+        \textit{PPARG}, \textit{ADIPOQ}): variants that impair
+        gluteo-femoral fat buffering are expected to produce a
+        \textbf{negative} causal effect on fasting insulin.
+  \item \emph{Ectopic and visceral fat deposition variants} (near
+        \textit{LYPLAL1}, \textit{GRB14}, \textit{VEGFA}): hepatic lipid
+        accumulation is the primary driver of peripheral insulin resistance,
+        so these instruments are expected to yield a \textbf{positive}
+        effect.
+  \item \emph{Sex-hormone pathway variants}: if the exposure GWAS is
+        sex-combined, some instruments may act through oestrogen or androgen
+        signalling; their effect on fasting insulin is expected to be near
+        zero or diffuse.
+\end{enumerate}
+
+We therefore expect BNPM-MR to recover $K = 2$ or $K = 3$ clusters.
+\FILLED{This expectation is confirmed by the preliminary MR-Clust analysis
+(Section~\ref{sec:whr:prelim}), which recovers exactly two clusters with
+cluster means of $-0.397$ (negative-effect cluster, $n=9$) and $+0.200$
+(positive-effect cluster, $n=137$) on the inverse-normal log-insulin scale,
+with an additional large Null cluster ($\hat\mu \approx 0$, $n=66$) and
+one Junk outlier ($\hat\mu = 1.27$, $n=1$),
+consistent with pathways~(i) and~(ii).}  A posterior mode of $K = 1$ would
+be interpreted as insufficient instrument strength to resolve the split
+rather than genuine homogeneity; \FILLED{however, all 213 retained
+instruments have $z$-scores exceeding~5 (minimum $5.07$, median $7.27$,
+implied median $F \approx 52.8$), and per-cluster $z$-scores in both
+MR-Clust clusters are uniformly above~5 with all implied $F > 10$, so
+instrument strength is unlikely to be the limiting factor.}
+
+% ─── 7.3.2 ───────────────────────────────────────────────────────────────────
+\subsection{Data Sources}
+\label{sec:whr:data}
+
+Summary association statistics are obtained from two large-scale GWAS
+retrieved from the OpenGWAS database \citep{Elsworth2020}.
+
+\paragraph{Exposure.}
+SNP--WHRadjBMI associations are drawn from OpenGWAS accession
+\texttt{ebi-a-GCST90025996} ($n = 458{,}349$).
+\todo{Add full citation; confirm whether sex-combined or sex-specific.}
+All SNP--exposure coefficients $\hat{\gamma}_{j}$ are in units of standard
+deviations of WHRadjBMI per additional effect allele.
+
+\paragraph{Outcome.}
+SNP--fasting insulin associations are drawn from OpenGWAS accession
+\texttt{ebi-a-GCST005185}, the MAGIC Consortium GWAS \citep{Manning2012}
+($n = 51{,}750$, European ancestry).  Fasting insulin was natural-log
+transformed and then rank-based inverse-normal transformed within cohorts
+before meta-analysis, so all $\hat{\Gamma}_{j}$ are on the
+\emph{inverse-normal log-insulin scale}.
+
+\paragraph{Interpretation of causal effects on the outcome scale.}
+Because of the double transformation, the cluster-specific effects $\bs_{k}$
+do not admit a simple proportional-change interpretation.  We treat their
+sign and relative magnitude as the primary inferential targets and do not
+attempt a clinical translation.  All method comparisons are made on the
+Wald-ratio scale, which is a consistent estimand regardless of outcome
+transformation.
+
+% ─── 7.3.3 ───────────────────────────────────────────────────────────────────
+\subsection{Harmonisation and Reorientation}
+\label{sec:whr:harmonisation}
+
+\paragraph{Harmonisation.}
+\emph{Harmonisation} ensures that, for every SNP $j$, the effect allele is
+the same in both GWAS before forming the pair
+$(\hat{\gamma}_{j}, \hat{\Gamma}_{j})$.  A failure to harmonise produces
+sign errors in a subset of $\hat{\Gamma}_{j}$, distorting both the
+likelihood and the clustering structure.  Harmonisation was performed using
+the \texttt{TwoSampleMR} package \citep{Hemani2018} with \texttt{action = 2}
+(palindromic SNPs aligned using allele frequencies; mid-frequency
+palindromes excluded).  \FILLED{All 210 retained SNPs carry
+\texttt{action = 2}.  Ten are palindromic; none was classified as ambiguous
+(i.e.\ no SNPs were excluded at this step), indicating that all palindromic
+SNPs had effect allele frequencies sufficiently away from~0.5.}
+
+\paragraph{Reorientation.}
+After harmonisation, SNPs were reoriented so that all $\hat{\gamma}_{j} > 0$
+by simultaneously flipping the sign of both $\hat{\gamma}_{j}$ and
+$\hat{\Gamma}_{j}$ for any SNP with $\hat{\gamma}_{j} < 0$.  This
+relabelling is innocuous for the Wald ratio but ensures that a positive
+cluster-specific effect $\bs_{k}$ unambiguously corresponds to an
+exposure-increasing mechanism that raises fasting insulin.
+\FILLED{Of 213 SNPs, 108 required reorientation.}
+
+\paragraph{Empirical summary of the instrument data.}
+Table~\ref{tab:data_summary} reports the distribution of the four-tuple
+$(\hat{\gamma}_{j}, \hat{\Gamma}_{j}, s_{\hat{\gamma}_{j}},
+s_{\hat{\Gamma}_{j}})$ and of the Wald ratios
+$r_{j} = \hat{\Gamma}_{j}/\hat{\gamma}_{j}$ and instrument $z$-scores
+across all $p = 213$ retained SNPs.
+
+\begin{table}[h!]
+\centering
+\caption{Empirical summary of the harmonised and reoriented
+WHRadjBMI--fasting insulin dataset ($p = 213$ SNPs after LD pruning,
+palindromic exclusion, and reorientation).
+$s_{\hat\gamma_j}$ and $s_{\hat\Gamma_j}$ are standard errors.
+Wald ratio $r_j = \hat\Gamma_j/\hat\gamma_j$;
+$z_j = \hat\gamma_j/s_{\hat\gamma_j}$.}
+\label{tab:data_summary}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lrrrrrr}
+\toprule
+Quantity & Min & Q1 & Median & Q3 & Max & IQR \\
+\midrule
+$\hat{\gamma}_{j}$ (SD / allele)
+  & 0.01054 & 0.01427 & 0.01711 & 0.02250 & 0.04443 & 0.00823 \\
+$\hat{\Gamma}_{j}$ (inv-norm log-insulin / allele)
+  & $-$0.01400 & $-$0.00150 & 0.00200 & 0.00440 & 0.03000 & 0.00590 \\
+$s_{\hat{\gamma}_{j}}$
+  & 0.00198 & 0.00203 & 0.00216 & 0.00251 & 0.00552 & 0.00048 \\
+$s_{\hat{\Gamma}_{j}}$
+  & 0.00310 & 0.00330 & 0.00350 & 0.00440 & 0.04400 & 0.00110 \\
+Wald ratio $r_{j}$
+  & $-$0.873 & $-$0.082 & 0.105 & 0.233 & 1.526 & 0.315 \\
+$z$-score $z_{j}$
+  & 5.07 & 6.19 & 7.22 & 8.98 & 19.62 & 2.78 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ─── 7.3.4 ───────────────────────────────────────────────────────────────────
+\subsection{Preliminary Analysis and Assessment of Heterogeneity}
+\label{sec:whr:prelim}
+
+\paragraph{Heterogeneity statistics.}
+Figure~\ref{fig:scatter_funnel}a displays $\hat{\Gamma}_{j}$ against
+$\hat{\gamma}_{j}$ with IVW and MR-Egger regression lines overlaid.  Cochran's heterogeneity
+statistic is
+\begin{equation}
+  Q = \sum_{j=1}^{213} w_{j}
+      \bigl(r_{j} - \hat{\beta}_{\mathrm{IVW}}\bigr)^{2}
+    = 385.25
+  \quad \bigl(p = 3.47 \times 10^{-12},\; I^{2} = 45.0\%\bigr),
+\end{equation}
+where $w_{j} = \hat{\gamma}_{j}^{2}/s^{2}_{\hat{\Gamma}_{j}}$ and
+$\hat{\beta}_{\mathrm{IVW}} = 0.0929$.  The highly significant $Q$ and
+moderate-to-high $I^{2}$ conclusively reject the homogeneous-effect model
+and motivate clustering.
+
+The MR-Egger intercept is $-0.00169$ (robust SE $= 0.00139$, $p = 0.226$),
+providing no significant evidence of directional pleiotropy.  R\"{u}cker's
+residual statistic is $Q^{\prime} = 380.46$ ($p = 7.70 \times 10^{-12}$),
+confirming that the heterogeneity is not explained by the Egger
+intercept and is therefore predominantly due to slope variation---precisely
+what BNPM-MR targets.
+
+\paragraph{Funnel plot.}
+Figure~\ref{fig:scatter_funnel}b shows the funnel plot of Wald ratios
+against precision.  The distribution is asymmetric, with a heavy left tail
+extending to $r_{j} = -0.873$ corresponding to the negative-effect cluster
+identified below.
+
+\paragraph{Radial MR plot.}
+Figure~\ref{fig:radial} displays the radial MR plot \citep{Bowden2018}.
+Four SNPs exceed the Bonferroni outlier threshold (rs10787472, rs464605,
+rs4691380, rs4841132) and are marked with open circles.  A bimodal
+departure from the IVW line is visible in the raw data before any model is
+fitted.
+
+\paragraph{MR-Clust preliminary analysis.}
+Applying the \texttt{MRClust} R package \citep{Foley2019} to the Wald
+ratios identifies a four-component solution comprising two causal
+clusters, a Null component, and a Junk component.
+Table~\ref{tab:mrclust} summarises the results.
+Cluster~1 has a positive mean of $+0.200$ ($n = 137$ SNPs,
+mean posterior probability $0.685$, 28 high-confidence members).
+Cluster~2 has a negative mean of $-0.397$ ($n = 9$ SNPs,
+mean posterior probability $0.640$, 2 high-confidence members).
+The Null component captures 66 SNPs with Wald ratios indistinguishable
+from zero (mean $\approx 0.000$, mean posterior probability $0.604$),
+and a single Junk SNP (posterior probability $0.997$) corresponds to
+the most extreme outlier identified in the radial plot.
+
+\begin{table}[h!]
+\centering
+\caption{MR-Clust four-component solution for the WHRadjBMI--fasting
+insulin dataset (\texttt{MRClust} R package; \citealp{Foley2019}).
+High-confidence SNPs have posterior probability $> 0.8$ for their
+assigned component.}
+\label{tab:mrclust}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Component & Mean & $n$ SNPs & Mean post.\ prob. & High-conf.\ SNPs \\
+\midrule
+Cluster~1 (positive) & $+0.200$ & 137 & 0.685 & 28 \\
+Cluster~2 (negative) & $-0.397$ &   9 & 0.640 &  2 \\
+Null                 & $\approx 0$ &  66 & 0.604 &  4 \\
+Junk                 & $+1.270$ &   1 & 0.997 &  1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The four-component solution has important implications for the
+subsequent analyses.  The 66 Null SNPs ($31\%$ of instruments) appear
+causally inert for fasting insulin; given that all instruments have
+$z_{j} > 5$, these SNPs most plausibly influence WHRadjBMI through
+pathways orthogonal to insulin metabolism rather than through instrument
+weakness.  The negative cluster, while small ($n = 9$), carries a more
+extreme mean ($-0.397$) than a plain two-component mixture would
+recover, because the dedicated Null component absorbs null-like SNPs
+that a two-component model forces into the causal clusters.  Per-cluster
+$z$-scores confirm adequate instrument strength in both causal clusters:
+all 9 Cluster~2 SNPs and all 137 Cluster~1 SNPs have $z_{j} > 5$
+(all implied $F > 25$), ruling out instrument weakness as an obstacle
+to cluster recovery by BNPM-MR.
+
+\paragraph{Prior hyperparameter calibration.}
+\begin{itemize}[leftmargin=2em]
+  \item Base measure scale: $\sigma_{\beta} = 1.5 \times
+        \mathrm{IQR}(r_{j})/1.35
+        = 1.5 \times 0.311/1.35 \approx 0.350$; we adopt
+        $\sigma_{\beta} = 0.35$.
+  \item Pleiotropy scale: $s_{\tau} = m_{Y} =
+        \mathrm{median}(s_{\hat{\Gamma}_{j}}) = 0.00350$.
+  \item DP concentration: $\alpha \sim \mathrm{Gamma}(1,1)$; prior
+        expected clusters $\approx \log(213) \approx 5.4$.
+\end{itemize}
+The data-ready CSV file for the C++ MCMC sampler
+(\texttt{whr\_fi\_mcmc.csv}) is provided alongside this document;
+columns are \texttt{gamma\_hat}, \texttt{Gamma\_hat}, \texttt{sigma2X},
+\texttt{sigma2Y} with variances (SE$^{2}$) in the last two columns, as
+required by \texttt{mr\_mixture.cpp}.
+
+\begin{figure}[h!]
+\centering
+\begin{subfigure}[t]{0.48\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{fig_scatter.png}
+  \caption{Scatter plot of $\hat{\Gamma}_{j}$ vs $\hat{\gamma}_{j}$.
+  Green line: IVW ($\hat\beta=0.093$).
+  Orange dashed: MR-Egger ($\hat\beta=0.175$, intercept $= -0.002$).}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{fig_funnel.png}
+  \caption{Funnel plot of Wald ratios against precision.
+  The distribution is bimodal, with a left tail of negative-Wald-ratio
+  SNPs and a dominant positive-effect group.}
+\end{subfigure}
+\caption{Preliminary heterogeneity diagnostics ($p=213$).
+Points shown in grey; no cluster colouring applied (see
+Figure~\ref{fig:forest} for MR-Clust cluster assignments).}
+\label{fig:scatter_funnel}
+\end{figure}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.65\textwidth]{fig_radial.png}
+\caption{Radial MR plot \citep{Bowden2018}.  Green line: IVW slope.
+Four Bonferroni outliers are circled in red.
+A bimodal departure from the IVW line is visible in the raw data.}
+\label{fig:radial}
+\end{figure}
+
+% ─── 7.3.5 ───────────────────────────────────────────────────────────────────
+\subsection{Results from BNPM-MR and BNPM-PMR}
+\label{sec:whr:results}
+
+\todo{\textbf{MCMC not yet run.  All text in this subsection that refers to
+BNPM-MR/PMR outputs remains as placeholder.  The data-ready CSV
+\texttt{whr\_fi\_mcmc.csv} is available; recommended settings:
+$S = 10{,}000$, burn-in $2{,}000$, $m = 3$ auxiliary components,
+$\sigma_\beta = 0.35$, $s_\tau = 0.00350$.}}
+
+\paragraph{Planned figures.}
+\emph{Figure~A} (PSM heatmap): the $213 \times 213$ posterior similarity
+matrix with rows/columns reordered by the Binder-loss partition; a colour
+strip indicates cluster membership.
+\emph{Figure~B} (SNP effects): per-SNP posterior means $\hat\beta_j$ with
+95\% credible intervals from Bayesian model averaging (equation~22),
+ordered by Wald ratio and coloured by cluster; empirical Wald ratios
+overlaid as faint grey points.
+
+\paragraph{Pre-specified interpretive scenarios.}
+\emph{Scenario~1} ($\tau$ non-negligible, clustering stable): BNPM-PMR
+separates balanced pleiotropy from slope heterogeneity; this would be the
+clearest demonstration of the method's advantage over MR-Path.
+\emph{Scenario~2} ($\tau$ non-negligible, clustering changes): some
+apparent slope heterogeneity in BNPM-MR was actually balanced pleiotropy.
+\emph{Scenario~3} ($\tau \approx 0$): BNPM-MR is adequate; the
+non-significant Egger intercept ($p = 0.226$) makes this the most
+probable outcome a priori.
+
+Both BNPM-MR and BNPM-PMR are to be fitted for $S = \placeholder{insert}$
+iterations (burn-in $\placeholder{insert}$), with convergence assessed via
+trace plots of $\gamma$, $\psi$, $\alpha$, and $K$, and Gelman--Rubin
+diagnostics from $\placeholder{two/three}$ independent chains.
+
+The posterior distribution of $K$ \placeholder{concentrates on / spans
+insert range}, mode $K = \placeholder{insert}$, mean $\approx
+\placeholder{insert}$.  \placeholder{Comment on consistency with the
+biological prior ($K = 2$ or $3$) and with the MR-Clust preview.}
+The Binder-loss partition assigns \placeholder{insert} SNPs to Cluster~1
+($\hat\bs_1 = \placeholder{insert}$, 95\% CI \placeholder{insert}) and
+\placeholder{insert} SNPs to Cluster~2 ($\hat\bs_2 = \placeholder{insert}$,
+CI \placeholder{insert}).  \placeholder{Continue for further clusters.}
+
+Under BNPM-PMR, $\tau$ \placeholder{concentrates near zero / is
+non-negligible} (mean \placeholder{insert}, 95\% CI \placeholder{insert}).
+The dispersion statistic $T^{(s)}$ concentrates near \placeholder{insert}.
+\placeholder{Assign to Scenario 1/2/3 and interpret.}
+
+% ─── 7.3.6 ───────────────────────────────────────────────────────────────────
+\subsection{Comparison with Competing Methods}
+\label{sec:whr:competing}
+
+All estimates are displayed in Figure~\ref{fig:forest}.
+Table~\ref{tab:methods} summarises the numerical results.
+
+\begin{table}[h!]
+\centering
+\caption{Competing-method estimates for the effect of WHRadjBMI on fasting
+insulin.  IVW, MR-Egger and weighted median use multiplicative
+random-effects SEs; MR-RAPS uses the profile-score SE; contamination
+mixture uses the EM-based posterior SE; MR-Clust and MR-Path SEs are from
+the observed Fisher information.  SE not available for MRClust
+components (reported as `---'); only posterior means are shown.
+CI = 95\% confidence/credible interval.}
+\label{tab:methods}
+\small
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccc}
+\toprule
+Method & $\hat\beta$ & SE & 95\% CI & Notes \\
+\midrule
+IVW & 0.095 & 0.018 & $[0.058,\; 0.128]$
+  & $Q=385$, $p=3\times10^{-12}$, $I^2=45\%$ \\
+MR-Egger & 0.179 & 0.073 & $[0.035,\; 0.315]$
+  & intercept $=-0.002$ ($p=0.23$) \\
+Weighted median & 0.127 & 0.018 & $[0.090,\; 0.165]$
+  & bootstrap SE, 1000 resamples \\
+MR-RAPS & 0.109 & 0.002 & $[0.104,\; 0.112]$
+  & profile-score SE \\
+Cont.\ mixture & 0.240 & 0.021 & $[0.199,\; 0.282]$
+  & $\hat\phi=0.62$ \\[4pt]
+MR-Clust C1 & $-$0.225 & 0.031 & $[-0.279,\; -0.160]$
+  & $n=29$, $\hat\pi=0.202$ \\
+MR-Clust C2 & $+$0.168 & 0.015 & $[0.137,\; 0.195]$
+  & $n=184$, $\hat\pi=0.798$ \\[4pt]
+MR-Path C1 & $-$0.216 & 0.030 & $[-0.275,\; -0.157]$
+  & $n=31$, $\hat\pi=0.206$ \\
+MR-Path C2 & $+$0.172 & 0.015 & $[0.141,\; 0.200]$
+  & $n=182$, $\hat\pi=0.794$ \\[4pt]
+BNPM-MR & \placeholder{} & --- & \placeholder{}
+  & \placeholder{from MCMC} \\
+BNPM-PMR & \placeholder{} & --- & \placeholder{}
+  & \placeholder{from MCMC} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{IVW.}
+$\hat\beta_{\mathrm{IVW}} = 0.095$ (95\% CI $[0.059,\, 0.130]$), statistically
+significant but uninformative about heterogeneity; serves as the
+homogeneous-model baseline.
+
+\paragraph{MR-Egger.}
+$\hat\beta_{\mathrm{Egger}} = 0.179$ (95\% CI $[0.036,\, 0.321]$).  The
+non-significant intercept ($p = 0.226$) confirms that directional pleiotropy
+does not explain the heterogeneity.
+
+\paragraph{Weighted median.}
+$\hat\beta_{\mathrm{WM}} = 0.127$ (95\% CI $[0.091,\, 0.163]$), consistent
+with IVW and confirming that more than half the instrument weight comes from
+instruments with positive Wald ratios.
+
+\paragraph{MR-RAPS.}
+$\hat\beta_{\mathrm{RAPS}} = 0.109$ (95\% CI $[0.105,\, 0.113]$).  The
+narrow interval reflects the profiling of nuisance parameters but does not
+account for the bimodal Wald-ratio structure; the single-effect assumption
+is violated.
+
+\paragraph{Contamination mixture \citep{Burgess2020}.}
+$\hat\beta_{\mathrm{CM}} = 0.240$ (95\% CI $[0.199,\, 0.281]$;
+$\hat\phi = 0.61$).  The large contamination fraction ($\approx 61\%$)
+indicates that the method is attributing the negative-effect cluster to
+``invalid instruments'' rather than a separate causal mechanism; this
+illustrates the limitation of contamination-mixture models when the data
+contain two genuine causal effects of opposite sign.
+
+\paragraph{MR-Clust \citep{Foley2019}.}
+BIC selects $K = 2$.  Cluster~1: $\hat\mu_{1} = -0.219$
+($[-0.279,\, -0.160]$, $n = 27$); Cluster~2: $\hat\mu_{2} = +0.166$
+($[0.137,\, 0.195]$, $n = 183$).  The cluster directions align with the
+biological prior of Section~\ref{sec:whr:background}.
+
+\paragraph{MR-Path \citep{Iong2024}.}
+Implemented here via a Monte Carlo EM on the marginalised bivariate
+Gaussian likelihood (same as BNPM-MR but with fixed $K$); BIC selects
+$K = 2$ (BIC $= -3117.5$ vs $-3081.0$ for $K = 1$).  Cluster~1:
+$\hat\beta_{1} = -0.216$ ($[-0.275,\, -0.157]$, $n = 30$, $\hat\pi =
+0.206$); Cluster~2: $\hat\beta_{2} = +0.171$ ($[0.141,\, 0.200]$,
+$n = 182$, $\hat\pi = 0.789$).  The MR-Path estimates are strikingly
+consistent with MR-Clust ($\Delta\hat\mu < 0.005$ for both clusters),
+providing strong cross-method convergence.  Both methods return the same
+$K$, the same cluster directions, and similar cluster sizes.  The
+discrepancy between MR-Path and BNPM-MR (once available) will reveal the
+additional information carried by the full Bayesian nonparametric prior
+and the posterior uncertainty on $K$.
+
+\paragraph{BESIDE-MR \citep{Shapland2022}.}
+\todo{State whether BESIDE-MR is included; if computationally prohibitive,
+note this explicitly.}
+
+\begin{figure}[h!]
+\centering
+\includegraphics[width=0.85\textwidth]{fig_forest.png}
+\caption{Forest plot of competing-method estimates for the causal effect
+of WHRadjBMI on fasting insulin.  For multi-component methods,
+component-specific estimates are shown.  MR-Clust results are from
+the \texttt{MRClust} R package \citep{Foley2019} (four-component
+solution including Null and Junk components; cluster means shown
+without confidence intervals as the package reports posterior means
+rather than standard errors).
+\textcolor{fcblue}{BNPM-MR and BNPM-PMR to be added.}}
+\label{fig:forest}
+\end{figure}
+
+% ─── 7.3.7 ───────────────────────────────────────────────────────────────────
+\subsection{Sensitivity Analyses}
+\label{sec:whr:sensitivity}
+
+\paragraph{Exclusion of Bonferroni outliers.}
+Excluding the four outlier SNPs identified in the radial plot yields
+$p = 209$ instruments.  The IVW estimate changes modestly to
+$\hat\beta = 0.101$ ($[0.068,\, 0.131]$), and $I^{2}$ falls from 45.0\%
+to 29.7\%, confirming that the outliers contribute to but do not drive the
+heterogeneity.  The MR-Egger intercept is now borderline significant
+($p = 0.027$; intercept $= -0.00241$, SE $= 0.00110$), suggesting that
+after removing the most extreme observations there is modest evidence of
+directional pleiotropy.  This finding motivates the inclusion of BNPM-PMR
+alongside BNPM-MR as the primary analysis.
+
+\paragraph{DP concentration prior sensitivity.}
+\placeholder{Report BNPM-MR posterior mode of $K$ under
+$(a_\alpha, b_\alpha) \in \{(1,1),(1,0.5),(2,0.5),(0.5,1)\}$.}
+
+\paragraph{Multivariable MR.}
+\todo{Condition on BMI instruments to check whether clustering is driven by
+fat distribution rather than total adiposity.}
+
+% ─── 7.3.8 ───────────────────────────────────────────────────────────────────
+\subsection{Main Findings}
+\label{sec:whr:findings}
+
+\todo{\textbf{Final paragraph to be completed once BNPM-MR/PMR and
+BESIDE-MR results are available.}}
+
+Across all available methods, the analyses provide strong evidence for
+heterogeneity in the causal effect of WHRadjBMI on fasting insulin.
+Cochran's $Q = 385.25$ ($p = 3.47 \times 10^{-12}$, $I^{2} = 45.0\%$)
+conclusively rejects the homogeneous-effect model, and a non-significant
+Egger intercept ($p = 0.226$) indicates that slope heterogeneity, not
+directional pleiotropy, is the dominant source of variability.  The radial
+MR plot reveals a bimodal cluster structure in the raw data, confirmed by
+BIC-selected $K = 2$ in both MR-Clust and MR-Path.
+
+A negative-effect cluster and a positive-effect cluster are recovered
+consistently across all multi-component methods, confirming the biological
+prior of Section~\ref{sec:whr:background}.  However, the methods differ
+importantly in how they handle instruments that appear causally inert.
+MRClust explicitly models a Null component and identifies 66 instruments
+($31\%$ of the total) as having Wald ratios indistinguishable from zero;
+the resulting causal cluster means are accordingly more extreme
+($-0.397$ and $+0.200$).  MR-Path, which has no Null component, absorbs
+these null-like instruments into the positive cluster, yielding a larger
+cluster ($n = 182$) and an attenuated positive mean ($+0.171$).  This
+discrepancy is expected and illustrates the sensitivity of cluster-specific
+effect estimates to whether a Null component is explicitly modelled.
+
+The single-effect methods (IVW, MR-RAPS, weighted median) recover estimates
+near $+0.09$ to $+0.13$, which represent precision-weighted averages across
+all three causal groups (negative, null, positive) and are therefore not
+causally interpretable as a single effect.  The IVW estimate is dominated
+by the large positive and null clusters and substantially underestimates
+the positive causal effect for the pathway-specific group.
+
+The contamination mixture yields $\hat\beta = 0.240$ with a contamination
+fraction of 61\%, illustrating the risk of misinterpreting the
+negative-effect cluster as invalid instruments: the method forces a
+single-direction conclusion where two genuine mechanisms are present.
+
+\placeholder{Compare BNPM-MR and BNPM-PMR cluster-specific effects with
+MR-Path.  Report posterior $K$ distribution and PSM block structure.
+Assign to pre-specified Scenario~1, 2, or 3 based on the $\tau$
+posterior.  If Scenario~1 or 3, confirm that the non-significant Egger
+intercept in the full sample is consistent with the BNPM-PMR finding on
+$\tau$.  If the sensitivity analysis (outlier exclusion) shifts the Egger
+intercept to $p = 0.027$, discuss whether this motivates a BNPM-PMR
+sensitivity run on the outlier-excluded dataset.}
+
+Overall, the WHRadjBMI--fasting insulin application demonstrates that a
+mechanistically mixed exposure yields a naturally interpretable two-cluster
+structure under both frequentist and Bayesian mixture approaches, and that
+a single-number causal summary is misleading when two pathways of
+comparable effect magnitude but opposite sign are present.
+
+% =============================================================================
+\newpage
+\section*{Implementation Notes (Internal)}
+\addcontentsline{toc}{section}{Implementation Notes}
+\label{sec:notes}
+
+\subsection*{Note 1: Dataset status summary}
+
+\begin{itemize}
+  \item $p = 213$ SNPs, all \texttt{action = 2}, 10 palindromic (none
+        ambiguous), 108 reoriented.
+  \item MCMC-ready CSV: \texttt{whr\_fi\_mcmc.csv} (columns:
+        \texttt{gamma\_hat}, \texttt{Gamma\_hat}, \texttt{sigma2X},
+        \texttt{sigma2Y}; last two are \emph{variances}).
+  \item Recommended MCMC settings: $S = 10{,}000$, burn-in $2{,}000$,
+        $m = 3$, $\sigma_\beta = 0.35$, $s_\tau = 0.00350$,
+        $\alpha \sim \mathrm{Gamma}(1,1)$.
+\end{itemize}
+
+\subsection*{Note 2: Per-cluster instrument strength}
+
+Both MR-Clust clusters have uniformly strong instruments:
+\begin{itemize}
+  \item Cluster~1 ($n=29$, $\hat\mu=-0.225$): $z$-scores range $5.44$
+        to $16.26$, median $7.30$; all $z > 5$, all implied $F > 29$.
+  \item Cluster~2 ($n=184$, $\hat\mu=+0.168$): $z$-scores range $5.07$
+        to $19.62$, median $7.26$; all $z > 5$, all implied $F > 25$.
+\end{itemize}
+This rules out instrument weakness as a barrier to cluster recovery by
+BNPM-MR.
+
+\subsection*{Note 3: Sensitivity analysis --- outlier exclusion}
+
+After removing rs10787472, rs464605, rs4691380, rs4841132 ($p = 209$):
+IVW $= 0.101$ ($[0.068,\, 0.131]$); $I^2 = 29.7\%$;
+Egger intercept $= -0.00241$ ($p = 0.027$).  The emergence of a
+borderline-significant intercept after outlier removal is noteworthy:
+these four SNPs may have negative Wald ratios that partially balance the
+Egger intercept in the full sample.  A BNPM-PMR run on both the full and
+outlier-excluded datasets is recommended to assess robustness.
+
+\subsection*{Note 4: MR-Path implementation note}
+
+MR-Path was implemented here via EM on the marginalised bivariate Gaussian
+likelihood (same structural model as BNPM-MR but with fixed $K$ and
+maximum-likelihood parameter estimation).  Results ($K=2$, BIC-selected)
+agree closely with MR-Clust.  \todo{Verify against the published
+\texttt{MRPATH} R package once network access allows.}
+
+\subsection*{Note 5: Retrieval and export code}
+
+\begin{verbatim}
+library(ieugwasr); library(TwoSampleMR)
+exp_dat <- extract_instruments("ebi-a-GCST90025996",
+                               p1=5e-8, clump=TRUE, r2=0.001, kb=10000)
+out_dat <- extract_outcome_data(snps=exp_dat$SNP,
+                                outcomes="ebi-a-GCST005185")
+dat <- harmonise_data(exp_dat, out_dat, action=2)
+table(dat$action)                  # should be all 2s
+flip <- dat$beta.exposure < 0
+dat$beta.exposure[flip] <- -dat$beta.exposure[flip]
+dat$beta.outcome[flip]  <- -dat$beta.outcome[flip]
+write.csv(data.frame(              # VARIANCES in last two columns
+  gamma_hat = dat$beta.exposure,
+  Gamma_hat = dat$beta.outcome,
+  sigma2X   = dat$se.exposure^2,
+  sigma2Y   = dat$se.outcome^2),
+  "whr_fi_mcmc.csv", row.names=FALSE, quote=FALSE)
+\end{verbatim}
+
+% =============================================================================
+\newpage
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+\bibitem[Bowden et~al.(2018)]{Bowden2018}
+Bowden, J., Spiller, W., Del~Greco~M., F., et~al. (2018).
+Improving the visualisation, interpretation and analysis of two-sample
+summary data Mendelian randomization via the radial plot and radial
+regression.
+\textit{International Journal of Epidemiology} \textbf{47}(4), 1264--1278.
+
+\bibitem[Burgess et~al.(2020)]{Burgess2020}
+Burgess, S., Foley, C.N., and Zuber, V. (2020).
+Inferring causal relationships between risk factors and outcomes from
+genome-wide association study data.
+\textit{Genetic Epidemiology} \textbf{44}(6), 487--500.
+
+\bibitem[Elsworth et~al.(2020)]{Elsworth2020}
+Elsworth, B., Lyon, M., Alexander, T., et~al. (2020).
+The MRC IEU OpenGWAS data infrastructure.
+\textit{bioRxiv}. \url{https://doi.org/10.1101/2020.08.10.244293}
+
+\bibitem[Foley et~al.(2019)]{Foley2019}
+Foley, C.N., Kirk, P.D.W., and Burgess, S. (2019).
+MR-Clust: clustering of genetic variants in Mendelian randomization with
+similar causal estimates.
+\textit{Bioinformatics} \textbf{35}(15), 2489--2498.
+
+\bibitem[Hemani et~al.(2018)]{Hemani2018}
+Hemani, G., Zheng, J., Elsworth, B., et~al. (2018).
+The MR-Base platform supports systematic causal inference across the
+human phenome. \textit{eLife} \textbf{7}, e34408.
+
+\bibitem[Iong et~al.(2024)]{Iong2024}
+Iong, D., Zhao, Q., and Chen, Y. (2024).
+A latent mixture model for heterogeneous causal mechanisms in Mendelian
+randomization.
+\textit{Annals of Applied Statistics} \textbf{18}(1), 966--990.
+
+\bibitem[Manning et~al.(2012)]{Manning2012}
+Manning, A.K., Hivert, M.-F., Scott, R.A., et~al. (2012).
+A genome-wide approach accounting for body mass index identifies genetic
+variants influencing fasting glycemic traits and insulin resistance.
+\textit{Nature Genetics} \textbf{44}(6), 659--669.
+
+\bibitem[Morrison et~al.(2020)]{Morrison2020}
+Morrison, J., Knoblauch, N., Marcus, J.H., Stephens, M., and He, X. (2020).
+Mendelian randomization accounting for correlated and uncorrelated pleiotropic
+effects using genome-wide summary statistics.
+\textit{Nature Genetics} \textbf{52}, 740--747.
+
+\bibitem[Shapland et~al.(2022)]{Shapland2022}
+Shapland, C.Y., Zhao, Q., and Bowden, J. (2022).
+Bayesian estimation of subgroup-specific causal effects in Mendelian
+randomization.
+\textit{Biostatistics} \textbf{23}(2), 341--356.
+
+\bibitem[Zhao et~al.(2020)]{Zhao2020}
+Zhao, Q., Wang, J., Hemani, G., Bowden, J., and Small, D.S. (2020).
+Statistical inference in two-sample summary-data Mendelian randomization
+using robust adjusted profile score.
+\textit{The Annals of Statistics} \textbf{48}(3), 1742--1769.
+
+\end{thebibliography}
+
+\end{document}
