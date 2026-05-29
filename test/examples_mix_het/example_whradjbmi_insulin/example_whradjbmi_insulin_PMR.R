@@ -67,7 +67,7 @@ results <- run_bnpmr_postprocess(
 
 # results$K_posterior          # posterior distribution of K
 # results$binder$partition     # representative partition (1-indexed)
-# results$clusters             # cluster-specific effect summaries
+# results$clusters_level       # cluster-specific effect summaries
 # results$bma                  # per-SNP BMA posterior effects
 # results$pleiotropy$mean_T    # dispersion statistic
 
@@ -75,7 +75,7 @@ results <- run_bnpmr_postprocess(
 # write.csv(mcmc_sim, file = "/Users/Sergio/dev/BayesMRclus/test/examples_mix_het/example_whradjbmi_insulin/output/PMR/mcmc_sim.csv")
 # write.csv(results$K_posterior , file = "/Users/Sergio/dev/BayesMRclus/test/examples_mix_het/example_whradjbmi_insulin/output/PMR/Kpost.csv")
 # write.csv(results$binder$partition, file = "/Users/Sergio/dev/BayesMRclus/test/examples_mix_het/example_whradjbmi_insulin/output/PMR/binder.csv")
-# write.csv(results$clusters, file = "/Users/Sergio/dev/BayesMRclus/test/examples_mix_het/example_whradjbmi_insulin/output/PMR/clus.csv")
+# write.csv(results$clusters_level, file = "/Users/Sergio/dev/BayesMRclus/test/examples_mix_het/example_whradjbmi_insulin/output/PMR/clus.csv")
 # write.csv(results$bma, file = "/Users/Sergio/dev/BayesMRclus/test/examples_mix_het/example_whradjbmi_insulin/output/PMR/bma.csv")
 
 # MR-CLUST =====================================================================

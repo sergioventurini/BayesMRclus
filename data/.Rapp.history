@@ -1,3 +1,0 @@
-load("/Users/Sergio/dev/BayesMRclus/data/ldl_cad.rda")
-ls()
-ldl_cad

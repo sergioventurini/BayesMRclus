@@ -270,7 +270,33 @@ salso_partition <- function(out, loss = salso::VI()) {
 
 
 # =============================================================================
-# 7. Per-SNP BMA causal effects
+# 7a. Per-SNP causal effects
+# =============================================================================
+
+#' Approximate marginal posterior distribution of the SNP-specific
+#' causal effect
+#'
+#' At each iteration s, beta_j^(s) = beta*_{xi_j^(s)}.
+#'
+#' @param out   Object from remove_burnin()
+#' @return      Matrix with the collection of beta_j^(s)'s
+#'
+#' @noRd
+snp_effects <- function(out) {
+  S <- out$S; p <- out$p
+  
+  # Matrix S × p of SNP-specific causal effects
+  beta_snp <- matrix(NA_real_, S, p)
+  for (s in seq_len(S)) {
+    beta_snp[s, ] <- out$beta[[s]][out$xi[s, ]]
+  }
+  
+  beta_snp
+}
+
+
+# =============================================================================
+# 7b. Per-SNP BMA causal effects
 # =============================================================================
 
 #' Bayesian model averaging posterior for each SNP's causal effect
@@ -278,21 +304,15 @@ salso_partition <- function(out, loss = salso::VI()) {
 #' At each iteration s, beta_j^(s) = beta*_{xi_j^(s)}.
 #' Averages these over all post-burn-in samples.
 #'
-#' @param out   Object from remove_burnin()
-#' @param ci    Credible interval level (default 0.95)
-#' @return      Data frame with columns:
-#'                snp_index, mean, sd, lower, upper,
-#'                prob_positive, prob_negative
+#' @param beta_snp   Object from snp_effects()
+#' @param ci         Credible interval level (default 0.95)
+#' @return           Data frame with columns:
+#'                     snp_index, mean, sd, lower, upper,
+#'                     prob_positive, prob_negative
 #' @noRd
-snp_bma_effects <- function(out, ci = 0.95) {
-  S <- out$S; p <- out$p
+snp_bma_effects <- function(beta_snp, ci = 0.95) {
+  p <- ncol(beta_snp)
   alpha_ci <- (1 - ci) / 2
-  
-  # Matrix S × p of SNP-specific causal effects
-  beta_snp <- matrix(NA_real_, S, p)
-  for (s in seq_len(S)) {
-    beta_snp[s, ] <- out$beta[[s]][out$xi[s, ]]
-  }
   
   data.frame(
     snp_index        = seq_len(p),
@@ -308,53 +328,162 @@ snp_bma_effects <- function(out, ci = 0.95) {
 
 
 # =============================================================================
-# 8. Cluster-specific effect summaries
+# 8a. Cluster-level summaries  (Section 6.1, equation for beta_{C*_k}^(s))
 # =============================================================================
-
-#' Summarise cluster-specific effects from the Binder partition
+ 
+#' Cluster-level posterior summaries
 #'
-#' For each cluster in the representative partition, reports the
-#' posterior mean, SD, and credible interval of the cluster atom beta*_k,
-#' marginalised over the label-switching uncertainty by using the
-#' per-SNP BMA effects restricted to SNPs assigned to that cluster.
+#' For each cluster C*_k in the representative partition, computes for
+#' every MCMC iteration s the cluster-average causal effect
+#'
+#'   beta_{C*_k}^(s) = (1 / |C*_k|) * sum_{j in C*_k} beta_j^(s),
+#'
+#' and then summarises the resulting S-length posterior sample.
+#' These are proper posterior draws of a well-defined derived parameter
+#' and can be used directly for posterior inference (credible intervals,
+#' posterior probabilities of positive/negative effects, etc.).
 #'
 #' @param binder  Output from salso_partition()
-#' @param bma     Output from snp_bma_effects()
-#' @param out     Output from remove_burnin()
+#' @param eff     S x p matrix from snp_effects() — entry \[s, j\] is
+#'                beta_j^(s) = beta*_{xi_j^(s)}
 #' @param ci      Credible interval level (default 0.95)
-#' @return        Data frame with one row per cluster
+#'
+#' @return Data frame with one row per cluster and columns:
+#'   cluster        integer cluster index (1, 2, ...)
+#'   n_snps         number of SNPs in the cluster
+#'   mean           posterior mean of beta_{C*_k}
+#'   sd             posterior SD of beta_{C*_k}
+#'   lower          lower bound of the `ci`-level credible interval
+#'   upper          upper bound of the `ci`-level credible interval
+#'   prob_positive  Pr(beta_{C*_k} > 0 | data)
+#'   prob_negative  Pr(beta_{C*_k} < 0 | data)
+#'
+#' @details
+#' For a singleton cluster (|C*_k| = 1) the cluster-average reduces to the
+#' SNP-specific marginal posterior, so the two summary types coincide.
+#'
+#' @seealso pooled_cluster_summaries(), snp_effects(), salso_partition()
+#'
 #' @noRd
-cluster_summaries <- function(binder, bma, out, ci = 0.95) {
-  part   <- binder$partition
-  K_rep  <- length(unique(part))
-  labs   <- sort(unique(part))
+cluster_level_summaries <- function(binder, eff, ci = 0.95) {
+  stopifnot(
+    is.matrix(eff),
+    length(binder$partition) == ncol(eff)
+  )
+
+  part     <- binder$partition
+  labs     <- sort(unique(part))
   alpha_ci <- (1 - ci) / 2
-  
-  # Per-SNP draws for the Binder iteration
-  beta_snp_all <- matrix(NA_real_, out$S, out$p)
-  for (s in seq_len(out$S))
-    beta_snp_all[s, ] <- out$beta[[s]][out$xi[s, ]]
-  
+ 
   rows <- lapply(seq_along(labs), function(i) {
     k      <- labs[i]
     snps_k <- which(part == k)
-    # Pool all per-SNP draws within this cluster
-    pool   <- as.vector(beta_snp_all[, snps_k])
+ 
+    # For each iteration s, average beta_j^(s) over all j in C*_k.
+    # rowMeans handles both singletons (drop = FALSE keeps the matrix shape)
+    # and multi-SNP clusters without a special case.
+    cluster_avg <- rowMeans(eff[, snps_k, drop = FALSE])  # length-S vector
+ 
     data.frame(
-      cluster   = i,
-      n_snps    = length(snps_k),
-      mean      = mean(pool),
-      sd        = sd(pool),
-      lower     = quantile(pool, alpha_ci),
-      upper     = quantile(pool, 1 - alpha_ci),
+      cluster       = i,
+      n_snps        = length(snps_k),
+      mean          = mean(cluster_avg),
+      sd            = sd(cluster_avg),
+      lower         = quantile(cluster_avg, alpha_ci),
+      upper         = quantile(cluster_avg, 1 - alpha_ci),
+      prob_positive = mean(cluster_avg > 0),
+      prob_negative = mean(cluster_avg < 0),
       stringsAsFactors = FALSE
     )
   })
+ 
   rows <- do.call(rbind, rows)
   rownames(rows) <- NULL
   rows
 }
+ 
 
+# =============================================================================
+# 8b. Pooled-within-cluster summaries  (Section 6.1, "Pooled-within-cluster")
+# =============================================================================
+ 
+#' Pooled-within-cluster posterior summaries
+#'
+#' For each cluster C*_k in the representative partition, pools ALL
+#' per-SNP posterior draws
+#'
+#'   { beta_j^(s) : j in C*_k, s = 1, ..., S }
+#'
+#' into a single sample of size S * |C*_k|, and summarises it.
+#'
+#' These summaries are *descriptive*: they do not correspond to the
+#' posterior of any single model parameter.  Rather, they describe the
+#' empirical distribution of SNP-level causal effects within the cluster,
+#' pooled across all iterations.  The cluster is treated as fixed at the
+#' post-processing stage (conditional on the Binder-loss partition), and
+#' the resulting quantities should be interpreted accordingly.
+#'
+#' In particular, P(+) and P(-) here are the fraction of pooled draws
+#' that are positive/negative — a mixture over SNP-specific posteriors
+#' within the cluster — rather than a posterior probability for a single
+#' cluster parameter.
+#'
+#' @param binder  Output from salso_partition()
+#' @param eff     S x p matrix from snp_effects() — entry \[s, j\] is
+#'                beta_j^(s) = beta*_{xi_j^(s)}
+#' @param ci      Credible interval level (default 0.95)
+#'
+#' @return Data frame with one row per cluster and columns:
+#'   cluster        integer cluster index (1, 2, ...)
+#'   n_snps         number of SNPs in the cluster
+#'   n_draws        total draws in the pool  (= S * n_snps)
+#'   mean           mean of the pooled sample
+#'   sd             SD of the pooled sample
+#'   lower          lower quantile of the pooled sample at (1-ci)/2
+#'   upper          upper quantile of the pooled sample at 1-(1-ci)/2
+#'   prob_positive  fraction of pooled draws > 0
+#'   prob_negative  fraction of pooled draws < 0
+#'
+#' @seealso cluster_level_summaries(), snp_effects(), salso_partition()
+#'
+#' @noRd
+pooled_cluster_summaries <- function(binder, eff, ci = 0.95) {
+  stopifnot(
+    is.matrix(eff),
+    length(binder$partition) == ncol(eff)
+  )
+ 
+  part     <- binder$partition
+  labs     <- sort(unique(part))
+  alpha_ci <- (1 - ci) / 2
+ 
+  rows <- lapply(seq_along(labs), function(i) {
+    k      <- labs[i]
+    snps_k <- which(part == k)
+ 
+    # Concatenate all S * |C*_k| per-SNP draws into one flat vector.
+    # drop = FALSE ensures a singleton cluster yields a one-column matrix
+    # that as.vector() reduces to a plain length-S vector.
+    pool <- as.vector(eff[, snps_k, drop = FALSE])
+ 
+    data.frame(
+      cluster       = i,
+      n_snps        = length(snps_k),
+      n_draws       = length(pool),
+      mean          = mean(pool),
+      sd            = sd(pool),
+      lower         = quantile(pool, alpha_ci),
+      upper         = quantile(pool, 1 - alpha_ci),
+      prob_positive = mean(pool > 0),
+      prob_negative = mean(pool < 0),
+      stringsAsFactors = FALSE
+    )
+  })
+ 
+  rows <- do.call(rbind, rows)
+  rownames(rows) <- NULL
+  rows
+}
 
 # =============================================================================
 # 9. Pleiotropy check: dispersion statistic T
@@ -431,6 +560,7 @@ pleiotropy_check <- function(out, dat) {
 #' @param width      Width of the image file saved on disk
 #' @param height     Height of the image file saved on disk
 #' @param res        Resolution of the image file saved on disk
+#'
 #' @noRd
 plot_psm <- function(psm, binder, snp_names = NULL,
                      name_cex     = 0.35,
@@ -543,6 +673,7 @@ plot_psm <- function(psm, binder, snp_names = NULL,
 #' @param width      Width of the image file saved on disk
 #' @param height     Height of the image file saved on disk
 #' @param res        Resolution of the image file saved on disk
+#'
 #' @noRd
 plot_snp_effects <- function(bma, binder,
                              snp_names  = NULL,
@@ -575,7 +706,7 @@ plot_snp_effects <- function(bma, binder,
   # ── Cluster colours ───────────────────────────────────────────────────────
   part       <- binder$partition
   K          <- length(unique(part))
-  strip_cols <- c("#D62728","#1F77B4","#2CA02C","#FF7F0E",
+  strip_cols <- c("#1F77B4","#D62728","#2CA02C","#FF7F0E",
                   "#9467BD","#8C564B","#E377C2","#7F7F7F")
   strip_cols <- rep(strip_cols, length.out = K)
   pt_col     <- strip_cols[part]   # colour for each SNP by its cluster
@@ -665,6 +796,7 @@ plot_snp_effects <- function(bma, binder,
 #'
 #' @param Kd    Output from posterior_K()
 #' @param file  Optional file path
+#'
 #' @noRd
 plot_posterior_K <- function(Kd, file = NULL) {
   if (!is.null(file)) png(file, width = 1200, height = 900, res = 220)
@@ -689,6 +821,7 @@ plot_posterior_K <- function(Kd, file = NULL) {
 #' @param out        Object from remove_burnin()
 #' @param pleiotropy Declare whether the model assumes pleiotropy
 #' @param file       Optional file path
+#'
 #' @noRd
 plot_traces <- function(out, file = NULL, pleiotropy = TRUE) {
   if (!is.null(file)) png(file, width = 1800, height = 1400, res = 220)
@@ -758,7 +891,9 @@ plot_traces <- function(out, file = NULL, pleiotropy = TRUE) {
 #' @param snp_names  Optional character vector of SNP names (length p)
 #' @param name_cex   Character expansion for SNP names
 #' @param pleiotropy Declare whether the model assumes pleiotropy
+#'
 #' @return           Named list with all inferential summaries
+#'
 #' @export
 run_bnpmr_postprocess <- function(res,
                                   burnin     = 2000L,
@@ -796,12 +931,19 @@ run_bnpmr_postprocess <- function(res,
   K_rep  <- length(unique(binder$partition))
   if (verbose) cat(sprintf("  Representative partition: K = %d clusters\n", K_rep))
   
+  if (verbose) cat("Per-SNP causal effects ...\n")
+  eff  <- snp_effects(out)
+  
   if (verbose) cat("Per-SNP BMA causal effects ...\n")
-  bma  <- snp_bma_effects(out, ci)
+  bma  <- snp_bma_effects(eff, ci)
   
   if (verbose) cat("Cluster-specific summaries ...\n")
-  clus <- cluster_summaries(binder, bma, out, ci)
-  if (verbose) print(clus)
+  if (verbose) cat("  - Cluster-level summaries\n")
+  clus_summ   <- cluster_level_summaries(binder, eff, ci = 0.95)
+  if (verbose) print(clus_summ)
+  if (verbose) cat("  - Pooled-within-cluster summaries\n")
+  clus_pool  <- pooled_cluster_summaries(binder, eff, ci = 0.95)
+  if (verbose) print(clus_pool)
   
   plei <- NULL
   if (!is.null(dat)) {
@@ -833,13 +975,16 @@ run_bnpmr_postprocess <- function(res,
   }
   
   invisible(list(
-    out        = out,
-    diag       = diag,
-    psm        = psm,
-    binder     = binder,
-    bma        = bma,
-    clusters   = clus,
-    K_posterior= Kd,
-    pleiotropy = plei
+    out             = out,
+    diag            = diag,
+    psm             = psm,
+    binder          = binder,
+    effects         = eff,
+    bma             = bma,
+    clusters_pool   = clus_pool,
+    clusters_level  = clus_summ,
+    K_posterior     = Kd,
+    pleiotropy      = plei,
+    wald            = wald
   ))
 }
